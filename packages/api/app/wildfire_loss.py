@@ -25,30 +25,45 @@ NOMINATIM_UA = "Heavi/0.1 (wildfire-loss-api)"
 
 # Resolution chain for the fitted vulnerability model bundle. We try, in order:
 #   1. WILDFIRE_MODEL_PATH env var (explicit override for ops)
-#   2. packages/api/app/wildfire_vulnerability_model.json (local mirror — works
-#      on Railway with Root Directory = packages/api, where sibling packages
-#      may not be in the container)
+#   2. packages/api/app/wildfire_vulnerability_model.json — the local mirror
+#      next to this file. This is what Railway uses, where the Root Directory
+#      is packages/api and sibling packages are NOT in the container.
 #   3. ../../validation/modules/wildfire_vulnerability/fitted_model.json
-#      (monorepo dev/CI layout)
-# When the validation package retrains the model, both copies should be
-# refreshed in the same commit so they stay byte-identical. The local mirror is
-# the canonical artifact for the API service.
+#      (monorepo dev/CI layout — only resolvable when the full repo is on disk).
+# The local mirror is the canonical artifact for the API service. When the
+# validation package retrains the model, refresh both copies in the same commit.
 _HERE = Path(__file__).resolve().parent
-_REPO_ROOT = Path(__file__).resolve().parents[3]
 
-_MODEL_PATH_CANDIDATES = [
-    Path(p) for p in (os.getenv("WILDFIRE_MODEL_PATH"),) if p
-] + [
-    _HERE / "wildfire_vulnerability_model.json",
-    _REPO_ROOT / "packages" / "validation" / "modules" / "wildfire_vulnerability" / "fitted_model.json",
-]
+
+def _candidate_paths() -> list[Path]:
+    """Build the resolution chain lazily so a non-existent monorepo path can't
+    raise IndexError at import time (it did on Railway, where the file lives
+    at /app/app/wildfire_loss.py and parents[3] is out of bounds)."""
+    paths: list[Path] = []
+    env = os.getenv("WILDFIRE_MODEL_PATH")
+    if env:
+        paths.append(Path(env))
+    paths.append(_HERE / "wildfire_vulnerability_model.json")
+    # Monorepo path is OPTIONAL — only attempt it if we have enough ancestors.
+    parents = Path(__file__).resolve().parents
+    if len(parents) >= 4:
+        paths.append(
+            parents[3]
+            / "packages"
+            / "validation"
+            / "modules"
+            / "wildfire_vulnerability"
+            / "fitted_model.json"
+        )
+    return paths
 
 
 def _load_model() -> dict[str, Any]:
-    for path in _MODEL_PATH_CANDIDATES:
+    candidates = _candidate_paths()
+    for path in candidates:
         if path.exists():
             return json.loads(path.read_text())
-    tried = "\n  ".join(str(p) for p in _MODEL_PATH_CANDIDATES)
+    tried = "\n  ".join(str(p) for p in candidates)
     raise RuntimeError(
         "wildfire_loss: fitted_model.json not found. Tried:\n  " + tried
     )
