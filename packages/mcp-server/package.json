@@ -1,0 +1,29 @@
+{
+  "name": "@heavi/mcp-server",
+  "version": "0.1.0",
+  "description": "Heavi spatial computation MCP server",
+  "type": "module",
+  "main": "dist/index.js",
+  "bin": {
+    "heavi-mcp": "dist/index.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsx watch src/index.ts",
+    "start": "node dist/index.js",
+    "lint": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.52.0",
+    "@modelcontextprotocol/sdk": "^1.12.1",
+    "dotenv": "^16.4.0",
+    "pg": "^8.13.0",
+    "zod": "^3.24.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "@types/pg": "^8.11.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.7.0"
+  }
+}

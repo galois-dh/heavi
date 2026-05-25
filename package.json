@@ -1,0 +1,16 @@
+{
+  "name": "heavi",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Spatial computation platform",
+  "scripts": {
+    "dev:mcp": "pnpm --filter @heavi/mcp-server dev",
+    "dev:web": "pnpm --filter @heavi/web dev",
+    "build": "pnpm -r build",
+    "lint": "pnpm -r lint"
+  },
+  "engines": {
+    "node": ">=20",
+    "pnpm": ">=9"
+  }
+}
