@@ -28,6 +28,7 @@ import { siteSuitability, siteSuitabilitySchema } from "./tools/site-suitability
 import { bufferAnalysis, bufferAnalysisSchema } from "./tools/buffer-analysis.js";
 import { dataLayers } from "./tools/data-layers.js";
 import { enrichLocation, enrichLocationSchema } from "./tools/enrich-location.js";
+import { wildfireLoss, wildfireLossSchema } from "./tools/wildfire-loss.js";
 
 const server = new McpServer({
   name: "heavi",
@@ -82,6 +83,19 @@ server.tool(
   enrichLocationSchema.shape,
   async (input) => ({
     content: [{ type: "text", text: JSON.stringify(await enrichLocation(input), null, 2) }],
+  }),
+);
+
+server.tool(
+  "wildfire_loss",
+  "Estimate wildfire expected annual loss (EAL) for a Sonoma County property. " +
+    "Accepts lat/lng or address, finds the nearest USACE NSI structure within the search radius, " +
+    "and returns the burn probability, vulnerability-model destruction probability, " +
+    "replacement value, all raster enrichment features, and the resulting EAL. " +
+    "Frequency-severity decomposition (Klugman/Panjer/Willmot); see methodology summary in the response.",
+  wildfireLossSchema.shape,
+  async (input) => ({
+    content: [{ type: "text", text: JSON.stringify(await wildfireLoss(input), null, 2) }],
   }),
 );
 

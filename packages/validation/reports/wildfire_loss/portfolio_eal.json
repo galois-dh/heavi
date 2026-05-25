@@ -1,0 +1,357 @@
+{
+  "run_id": "3b8b4377-8496-4066-b721-1b9ce45dbc2c",
+  "generated_at": "2026-05-15T22:30:26.891326+00:00",
+  "vulnerability_model_run_id": "ca43038e-04e9-43ee-b800-46455b60dc3e",
+  "vulnerability_model_methodology_hash": "10e96fde8758c088495cdc1be9722c9239839aacdcfd68d956a3f564565c35cc",
+  "n_structures": 185300,
+  "total_eal": 47586439.26203247,
+  "mean_eal": 256.8075513331488,
+  "median_eal": 6.157780667083532,
+  "p5_eal": 0.0,
+  "p95_eal": 1099.1977099072071,
+  "max_eal": 59891.88173412196,
+  "total_exposure": 74825836281.44469,
+  "implied_portfolio_burn_freq_per_year": 123.471566129221,
+  "distribution": [
+    {
+      "bucket": "$0",
+      "n": 69488,
+      "share": 0.37500269832703725,
+      "bucket_total_eal": 0.0
+    },
+    {
+      "bucket": "$0-10",
+      "n": 27165,
+      "share": 0.14660010793308148,
+      "bucket_total_eal": 72241.17977626124
+    },
+    {
+      "bucket": "$10-100",
+      "n": 24398,
+      "share": 0.13166756610901242,
+      "bucket_total_eal": 1079819.0648500612
+    },
+    {
+      "bucket": "$100-500",
+      "n": 37065,
+      "share": 0.20002698327037238,
+      "bucket_total_eal": 9786564.040805582
+    },
+    {
+      "bucket": "$500-1000",
+      "n": 16124,
+      "share": 0.08701565029681597,
+      "bucket_total_eal": 11458714.754650554
+    },
+    {
+      "bucket": "$1000+",
+      "n": 11060,
+      "share": 0.05968699406368052,
+      "bucket_total_eal": 25189100.22195001
+    }
+  ],
+  "by_occtype": [
+    {
+      "occ_group": "RES",
+      "n": 166924,
+      "total_eal": 34783367.253067195,
+      "mean_eal": 208.37846716510026,
+      "median_eal": 6.943595413747749,
+      "total_exposure": 49421482850.4082,
+      "share_of_total_eal": 0.7309512498200218
+    },
+    {
+      "occ_group": "COM",
+      "n": 12033,
+      "total_eal": 4952528.389557464,
+      "mean_eal": 411.5788572722899,
+      "median_eal": 0.0,
+      "total_exposure": 14253921593.645,
+      "share_of_total_eal": 0.10407436375490506
+    },
+    {
+      "occ_group": "IND",
+      "n": 3795,
+      "total_eal": 3480747.4905295037,
+      "mean_eal": 917.1930146322803,
+      "median_eal": 5.013130497906239,
+      "total_exposure": 5821705835.0703,
+      "share_of_total_eal": 0.0731457857429284
+    },
+    {
+      "occ_group": "AGR",
+      "n": 1309,
+      "total_eal": 2568816.9782050904,
+      "mean_eal": 1962.427026894645,
+      "median_eal": 1051.5421284899962,
+      "total_exposure": 1211389832.3817,
+      "share_of_total_eal": 0.05398212217686684
+    },
+    {
+      "occ_group": "EDU",
+      "n": 357,
+      "total_eal": 1045423.3710049135,
+      "mean_eal": 2928.356781526368,
+      "median_eal": 5.192560367268164,
+      "total_exposure": 2674407091.219,
+      "share_of_total_eal": 0.021968934579205204
+    },
+    {
+      "occ_group": "REL",
+      "n": 567,
+      "total_eal": 383584.29356243106,
+      "mean_eal": 676.5155089284499,
+      "median_eal": 0.26352035315962513,
+      "total_exposure": 871591182.891,
+      "share_of_total_eal": 0.008060789996289537
+    },
+    {
+      "occ_group": "GOV",
+      "n": 315,
+      "total_eal": 371971.4861058677,
+      "mean_eal": 1180.8618606535483,
+      "median_eal": 134.65574261823863,
+      "total_exposure": 571337895.8295,
+      "share_of_total_eal": 0.007816753929782901
+    }
+  ],
+  "top_20_tracts": [
+    {
+      "tract_fips": "06097151100",
+      "n_structures": 2678,
+      "total_eal": 4525188.362775493,
+      "mean_eal": 1689.7641384523874,
+      "total_exposure": 1251040508.2088,
+      "centroid_lng": -122.72646386743838,
+      "centroid_lat": 38.261249240477966,
+      "zip_code": NaN
+    },
+    {
+      "tract_fips": "06097151201",
+      "n_structures": 3321,
+      "total_eal": 2224979.255281755,
+      "mean_eal": 669.9726754838166,
+      "total_exposure": 1826600757.5657,
+      "centroid_lng": -122.70238763806081,
+      "centroid_lat": 38.321839336344475,
+      "zip_code": "94931"
+    },
+    {
+      "tract_fips": "06097150612",
+      "n_structures": 2167,
+      "total_eal": 2196378.679341013,
+      "mean_eal": 1013.5573047258944,
+      "total_exposure": 1697075446.8244,
+      "centroid_lng": -122.58786333594831,
+      "centroid_lat": 38.24244437609599,
+      "zip_code": "94954"
+    },
+    {
+      "tract_fips": "06097153501",
+      "n_structures": 1978,
+      "total_eal": 2189380.5970424498,
+      "mean_eal": 1106.8658225694892,
+      "total_exposure": 725612254.9649,
+      "centroid_lng": -122.78586996966632,
+      "centroid_lat": 38.34846531597574,
+      "zip_code": NaN
+    },
+    {
+      "tract_fips": "06097150500",
+      "n_structures": 2107,
+      "total_eal": 1935605.9524343307,
+      "mean_eal": 918.6549370832134,
+      "total_exposure": 828312298.5983,
+      "centroid_lng": -122.53905808827717,
+      "centroid_lat": 38.38026248410062,
+      "zip_code": "95442"
+    },
+    {
+      "tract_fips": "06097152600",
+      "n_structures": 3074,
+      "total_eal": 1706409.2210459157,
+      "mean_eal": 555.1103516740129,
+      "total_exposure": 1268322174.3135,
+      "centroid_lng": -122.64482148763825,
+      "centroid_lat": 38.482803994795056,
+      "zip_code": "95409"
+    },
+    {
+      "tract_fips": "06097151000",
+      "n_structures": 1676,
+      "total_eal": 1581103.2133221957,
+      "mean_eal": 943.3790055621693,
+      "total_exposure": 782337139.3132,
+      "centroid_lng": -122.67404848389022,
+      "centroid_lat": 38.25116032995226,
+      "zip_code": "94999"
+    },
+    {
+      "tract_fips": "06097154100",
+      "n_structures": 1749,
+      "total_eal": 1571247.74066448,
+      "mean_eal": 898.3692056400686,
+      "total_exposure": 993325716.2454,
+      "centroid_lng": -122.88491149113779,
+      "centroid_lat": 38.715238735849056,
+      "zip_code": "95441"
+    },
+    {
+      "tract_fips": "06097153502",
+      "n_structures": 1601,
+      "total_eal": 1499180.5415270275,
+      "mean_eal": 936.4025868376186,
+      "total_exposure": 571759040.8042,
+      "centroid_lng": -122.86817508307307,
+      "centroid_lat": 38.36261965146783,
+      "zip_code": "95472"
+    },
+    {
+      "tract_fips": "06097150303",
+      "n_structures": 2499,
+      "total_eal": 1486906.632600154,
+      "mean_eal": 595.0006533013822,
+      "total_exposure": 888235844.7443,
+      "centroid_lng": -122.50260907563025,
+      "centroid_lat": 38.28651963185274,
+      "zip_code": "95476"
+    },
+    {
+      "tract_fips": "06097151309",
+      "n_structures": 2377,
+      "total_eal": 1253988.853164478,
+      "mean_eal": 527.5510530771888,
+      "total_exposure": 786862425.6504,
+      "centroid_lng": -122.67154388220446,
+      "centroid_lat": 38.354630738746316,
+      "zip_code": "95404"
+    },
+    {
+      "tract_fips": "06097151602",
+      "n_structures": 2088,
+      "total_eal": 1046037.800606287,
+      "mean_eal": 500.9759581447735,
+      "total_exposure": 587171229.4882,
+      "centroid_lng": -122.5903297887931,
+      "centroid_lat": 38.43007630747127,
+      "zip_code": "95409"
+    },
+    {
+      "tract_fips": "06097150702",
+      "n_structures": 2110,
+      "total_eal": 1033428.4233842077,
+      "mean_eal": 489.77650397355814,
+      "total_exposure": 752272725.4581,
+      "centroid_lng": -122.6286416706161,
+      "centroid_lat": 38.21865435924171,
+      "zip_code": "94952"
+    },
+    {
+      "tract_fips": "06097153600",
+      "n_structures": 2110,
+      "total_eal": 1024732.2176189786,
+      "mean_eal": 485.6550794402742,
+      "total_exposure": 730324746.4301,
+      "centroid_lng": -122.88239656777252,
+      "centroid_lat": 38.42140146777251,
+      "zip_code": "95444"
+    },
+    {
+      "tract_fips": "06097154302",
+      "n_structures": 2490,
+      "total_eal": 889119.7168276865,
+      "mean_eal": 357.07619149706284,
+      "total_exposure": 900343288.3295,
+      "centroid_lng": -122.98445651927712,
+      "centroid_lat": 38.36643520240964,
+      "zip_code": "94922"
+    },
+    {
+      "tract_fips": "06097150100",
+      "n_structures": 1559,
+      "total_eal": 871518.4510798672,
+      "mean_eal": 559.0240225015184,
+      "total_exposure": 1208288359.1288,
+      "centroid_lng": -122.43930245606157,
+      "centroid_lat": 38.25853590121873,
+      "zip_code": "95476"
+    },
+    {
+      "tract_fips": "06097151502",
+      "n_structures": 2578,
+      "total_eal": 854045.5355326182,
+      "mean_eal": 331.28220928340505,
+      "total_exposure": 851773734.3817999,
+      "centroid_lng": -122.66847251978278,
+      "centroid_lat": 38.42034815515904,
+      "zip_code": "95405"
+    },
+    {
+      "tract_fips": "06097153706",
+      "n_structures": 1961,
+      "total_eal": 801765.6081218129,
+      "mean_eal": 408.85548603866033,
+      "total_exposure": 589776201.3188,
+      "centroid_lng": -122.89882802855685,
+      "centroid_lat": 38.47695117746048,
+      "zip_code": "95436"
+    },
+    {
+      "tract_fips": "06097150800",
+      "n_structures": 1897,
+      "total_eal": 797557.4195365083,
+      "mean_eal": 420.43090117897117,
+      "total_exposure": 805577136.346,
+      "centroid_lng": -122.64997414602003,
+      "centroid_lat": 38.22687499525566,
+      "zip_code": "94952"
+    },
+    {
+      "tract_fips": "06097153404",
+      "n_structures": 1553,
+      "total_eal": 791795.9519578196,
+      "mean_eal": 509.8492929541659,
+      "total_exposure": 515836589.4064,
+      "centroid_lng": -122.82641380167418,
+      "centroid_lat": 38.384836399227304,
+      "zip_code": "95472"
+    }
+  ],
+  "standard_ep_curve": [
+    {
+      "return_period_years": 10,
+      "annual_freq_exceed": 0.1,
+      "loss_amount": 10377837.913928626
+    },
+    {
+      "return_period_years": 25,
+      "annual_freq_exceed": 0.04,
+      "loss_amount": 13752257.863926966
+    },
+    {
+      "return_period_years": 50,
+      "annual_freq_exceed": 0.02,
+      "loss_amount": 16858049.261225805
+    },
+    {
+      "return_period_years": 100,
+      "annual_freq_exceed": 0.01,
+      "loss_amount": 20944229.16986009
+    },
+    {
+      "return_period_years": 250,
+      "annual_freq_exceed": 0.004,
+      "loss_amount": 27979501.854048662
+    },
+    {
+      "return_period_years": 500,
+      "annual_freq_exceed": 0.002,
+      "loss_amount": 42388006.40479162
+    },
+    {
+      "return_period_years": 1000,
+      "annual_freq_exceed": 0.001,
+      "loss_amount": 44322034.699454404
+    }
+  ]
+}

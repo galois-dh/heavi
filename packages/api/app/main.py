@@ -12,15 +12,22 @@ from pydantic import BaseModel
 
 from .site_report import geocode, reverse_geocode, site_report
 from .spatial_query import spatial_query
+from .wildfire_loss import wildfire_loss
 
 # Load .env from monorepo root
 load_dotenv(Path(__file__).resolve().parents[3] / ".env")
 
 app = FastAPI(title="Heavi API", version="0.1.0")
 
+# ALLOWED_ORIGINS is a comma-separated list of allowed Origin headers, e.g.
+# "https://heavi.vercel.app,http://localhost:3000". Defaults to localhost:3000
+# for dev. Trailing slashes/blank entries are tolerated.
+_origins_env = os.getenv("ALLOWED_ORIGINS", "http://localhost:3000")
+_allowed_origins = [o.strip().rstrip("/") for o in _origins_env.split(",") if o.strip()]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],
+    allow_origins=_allowed_origins,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -153,3 +160,28 @@ async def site_report_endpoint(req: SiteReportRequest) -> dict:
         raise HTTPException(400, "Provide either address or latitude+longitude")
 
     return await site_report(pool, lat, lng, req.radius_meters, address)
+
+
+class WildfireLossRequest(BaseModel):
+    latitude: float | None = None
+    longitude: float | None = None
+    address: str | None = None
+    search_radius_m: int = 500
+
+
+@app.post("/wildfire-loss")
+async def wildfire_loss_endpoint(req: WildfireLossRequest) -> dict:
+    if not pool:
+        raise HTTPException(503, "Database pool not initialized")
+    if req.latitude is None and req.longitude is None and not req.address:
+        raise HTTPException(400, "Provide either address or latitude+longitude")
+    try:
+        return await wildfire_loss(
+            pool,
+            latitude=req.latitude,
+            longitude=req.longitude,
+            address=req.address,
+            search_radius_m=req.search_radius_m,
+        )
+    except ValueError as e:
+        raise HTTPException(400, str(e))
