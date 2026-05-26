@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState, useCallback } from "react";
+import Link from "next/link";
 import { MapView, type MapHandle } from "../components/map-view";
 import { ChatPanel } from "../components/chat-panel";
 import { DataTable } from "../components/data-table";
@@ -236,9 +237,17 @@ export default function Home() {
     <div className="flex h-full">
       {/* Left sidebar */}
       <div className="flex w-[420px] shrink-0 flex-col border-r border-zinc-800 bg-zinc-900">
-        <div className="border-b border-zinc-800 px-4 py-3">
-          <h1 className="text-lg font-semibold tracking-tight">Heavi</h1>
-          <p className="text-xs text-zinc-500">Spatial decision intelligence</p>
+        <div className="flex items-start justify-between gap-3 border-b border-zinc-800 px-4 py-3">
+          <div>
+            <h1 className="text-lg font-semibold tracking-tight">Heavi</h1>
+            <p className="text-xs text-zinc-500">Spatial decision intelligence</p>
+          </div>
+          <Link
+            href="/portfolio"
+            className="shrink-0 rounded-md border border-zinc-700 px-2.5 py-1 text-[11px] font-medium text-zinc-300 transition hover:border-zinc-500 hover:text-white"
+          >
+            Portfolio →
+          </Link>
         </div>
 
         <ChatPanel

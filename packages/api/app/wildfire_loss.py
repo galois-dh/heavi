@@ -152,25 +152,26 @@ METHODOLOGY_SUMMARY = (
 )
 
 
-async def wildfire_loss(
+async def score_property(
     pool: asyncpg.Pool,
+    latitude: float,
+    longitude: float,
     *,
-    latitude: float | None = None,
-    longitude: float | None = None,
-    address: str | None = None,
     search_radius_m: int = 500,
 ) -> dict[str, Any]:
-    if latitude is None or longitude is None:
-        if not address:
-            raise ValueError("Provide either latitude+longitude or address")
-        g = await _geocode(address)
-        if not g:
-            raise ValueError(f"Could not geocode: {address}")
-        latitude, longitude, resolved_address = g
-    else:
-        # Click-driven path — best-effort reverse geocode so the UI can show
-        # an address. Failures are silent; the response just has None here.
-        resolved_address = await _reverse_geocode(latitude, longitude)
+    """Pure scoring path: given a known lat/lng, look up the nearest NSI
+    structure, compute the vulnerability + loss fields, return everything
+    EXCEPT the geocoding query block.
+
+    Returns a dict with `match`, `features`, `vulnerability_score`,
+    `loss_estimate` (and `methodology_summary`) on success; on no-match,
+    `match` is None and a `message` is set. No Nominatim calls are made —
+    callers that need a display address must geocode themselves.
+
+    Used by both the click-driven /wildfire-loss endpoint (which wraps this
+    with Nominatim reverse-geocode) and the portfolio loop (which has
+    already geocoded the address forward, so calling _reverse_geocode again
+    would be wasted Nominatim quota)."""
 
     # 100 m ≈ 0.001° at Sonoma latitude; pad by 50 %.
     deg_expand = (search_radius_m / 100_000) * 1.5
@@ -180,13 +181,6 @@ async def wildfire_loss(
 
     if row is None or row["match_dist_m"] > search_radius_m:
         return {
-            "query": {
-                "latitude": latitude,
-                "longitude": longitude,
-                "address": address,
-                "resolved_address": resolved_address,
-                "search_radius_m": search_radius_m,
-            },
             "match": None,
             "message": f"No NSI structure within {search_radius_m} m of the query point.",
         }
@@ -206,13 +200,6 @@ async def wildfire_loss(
     eal_recomputed = lambda_destroy * val_struct
 
     return {
-        "query": {
-            "latitude": latitude,
-            "longitude": longitude,
-            "address": address,
-            "resolved_address": resolved_address,
-            "search_radius_m": search_radius_m,
-        },
         "match": {
             "fd_id": int(row["fd_id"]),
             "match_distance_m": round(float(row["match_dist_m"]), 1),
@@ -253,3 +240,36 @@ async def wildfire_loss(
         },
         "methodology_summary": METHODOLOGY_SUMMARY,
     }
+
+
+async def wildfire_loss(
+    pool: asyncpg.Pool,
+    *,
+    latitude: float | None = None,
+    longitude: float | None = None,
+    address: str | None = None,
+    search_radius_m: int = 500,
+) -> dict[str, Any]:
+    if latitude is None or longitude is None:
+        if not address:
+            raise ValueError("Provide either latitude+longitude or address")
+        g = await _geocode(address)
+        if not g:
+            raise ValueError(f"Could not geocode: {address}")
+        latitude, longitude, resolved_address = g
+    else:
+        # Click-driven path — best-effort reverse geocode so the UI can show
+        # an address. Failures are silent; the response just has None here.
+        resolved_address = await _reverse_geocode(latitude, longitude)
+
+    core = await score_property(pool, latitude, longitude, search_radius_m=search_radius_m)
+    query_block = {
+        "query": {
+            "latitude": latitude,
+            "longitude": longitude,
+            "address": address,
+            "resolved_address": resolved_address,
+            "search_radius_m": search_radius_m,
+        },
+    }
+    return {**query_block, **core}

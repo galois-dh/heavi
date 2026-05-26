@@ -6,10 +6,19 @@ from pathlib import Path
 
 import asyncpg
 from dotenv import load_dotenv
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, File, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import Response
 from pydantic import BaseModel
 
+from .portfolio_pdf import render_pdf
+from .portfolio_risk import (
+    MAX_ROWS,
+    get_job,
+    job_to_response,
+    parse_csv,
+    run_portfolio,
+)
 from .site_report import geocode, reverse_geocode, site_report
 from .spatial_query import spatial_query
 from .wildfire_loss import wildfire_loss
@@ -190,3 +199,67 @@ async def wildfire_loss_endpoint(req: WildfireLossRequest) -> dict:
         )
     except ValueError as e:
         raise HTTPException(400, str(e))
+
+
+@app.post("/portfolio-risk")
+async def portfolio_risk_endpoint(file: UploadFile = File(...)) -> dict:
+    """Score a CSV of properties. Returns the job_id + inline results.
+    Run sequentially; Nominatim ≤1 req/s so this can take ~rows×1.1 s."""
+    if not pool:
+        raise HTTPException(503, "Database pool not initialized")
+    raw = await file.read()
+    if not raw:
+        raise HTTPException(400, "Empty upload")
+    if len(raw) > 10 * 1024 * 1024:
+        raise HTTPException(413, "CSV exceeds 10 MB.")
+    try:
+        rows = parse_csv(raw)
+    except ValueError as e:
+        # Distinguish a row-cap overflow so the client can show a 413 message.
+        if str(e).startswith("CSV has ") and "per-request cap" in str(e):
+            raise HTTPException(413, str(e))
+        raise HTTPException(400, str(e))
+
+    job = await run_portfolio(pool, rows)
+    return job_to_response(job)
+
+
+@app.get("/portfolio-risk/{job_id}/report")
+async def portfolio_report_endpoint(job_id: str) -> Response:
+    """Generate the multi-page PDF for a previously-run portfolio job.
+    Jobs live in process memory for up to an hour; restarts wipe them."""
+    job = get_job(job_id)
+    if job is None:
+        raise HTTPException(404, f"No portfolio job {job_id} (cache miss or TTL expired)")
+    pdf_bytes = render_pdf(job)
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={
+            "Content-Disposition": (
+                f'attachment; filename="wildfire-risk-{job_id[:8]}.pdf"'
+            ),
+        },
+    )
+
+
+@app.get("/portfolio-risk/limits")
+async def portfolio_limits_endpoint() -> dict:
+    """Public knobs for the upload UI so the form can show 'up to N rows'."""
+    return {"max_rows": MAX_ROWS}
+
+
+@app.get("/portfolio-risk/sample.csv")
+async def portfolio_sample_endpoint() -> Response:
+    """Serve the canonical 50-address Sonoma sample CSV from the deployed
+    source tree so the UI can link to it without duplicating the file."""
+    sample = Path(__file__).resolve().parent.parent / "sample_portfolio.csv"
+    if not sample.exists():
+        raise HTTPException(404, "sample_portfolio.csv missing from deploy")
+    return Response(
+        content=sample.read_bytes(),
+        media_type="text/csv",
+        headers={
+            "Content-Disposition": 'attachment; filename="heavi_sample_portfolio.csv"',
+        },
+    )
