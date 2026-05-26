@@ -6,7 +6,36 @@ import { ChatPanel } from "../components/chat-panel";
 import { DataTable } from "../components/data-table";
 import { SqlPanel } from "../components/sql-panel";
 import { SiteReportPanel, siteKey } from "../components/site-report";
-import { postSiteReport, type QueryResult, type SiteReport } from "../lib/api";
+import { WildfireReportPanel } from "../components/wildfire-report";
+import {
+  postSiteReport,
+  postWildfireLoss,
+  type QueryResult,
+  type SiteReport,
+  type WildfireRiskAssessment,
+} from "../lib/api";
+
+// Sonoma County bbox (per product spec). Click inside → wildfire risk
+// assessment; click outside → site-suitability report. The bbox is
+// generous on purpose — better to misroute a few edge clicks toward the
+// wildfire model (which gracefully handles "no NSI within 500 m") than to
+// silently strand Sonoma users in the Alameda-tuned suitability flow.
+const SONOMA_BBOX = { latMin: 38.1, latMax: 38.9, lngMin: -123.1, lngMax: -122.3 };
+function inSonomaCounty(lat: number, lng: number): boolean {
+  return (
+    lat >= SONOMA_BBOX.latMin &&
+    lat <= SONOMA_BBOX.latMax &&
+    lng >= SONOMA_BBOX.lngMin &&
+    lng <= SONOMA_BBOX.lngMax
+  );
+}
+
+// Report state is a discriminated union so only one panel can be open at
+// a time and TypeScript narrows the right shape per branch.
+type ReportState =
+  | { kind: "suitability"; data: SiteReport }
+  | { kind: "wildfire"; data: WildfireRiskAssessment }
+  | null;
 
 // html2canvas's color parser pre-dates CSS Color Level 4, so any oklch(...)
 // value blows up. Fix in two passes: rewrite <style> text so Tailwind's
@@ -70,7 +99,7 @@ export default function Home() {
   const mapRef = useRef<MapHandle>(null);
   const [result, setResult] = useState<QueryResult | null>(null);
   const [loading, setLoading] = useState(false);
-  const [report, setReport] = useState<SiteReport | null>(null);
+  const [report, setReport] = useState<ReportState>(null);
   const [reportLoading, setReportLoading] = useState(false);
   const [exporting, setExporting] = useState(false);
 
@@ -104,13 +133,31 @@ export default function Home() {
     }
   }, []);
 
-  const runReport = useCallback(
+  const runSuitabilityReport = useCallback(
     async (body: { address?: string; latitude?: number; longitude?: number }) => {
       setReportLoading(true);
       try {
         const r = await postSiteReport(body);
-        setReport(r);
+        setReport({ kind: "suitability", data: r });
         mapRef.current?.setMarker(r.location.latitude, r.location.longitude);
+      } finally {
+        setReportLoading(false);
+      }
+    },
+    [],
+  );
+
+  const runWildfireReport = useCallback(
+    async (body: { address?: string; latitude?: number; longitude?: number }) => {
+      setReportLoading(true);
+      try {
+        const r = await postWildfireLoss(body);
+        setReport({ kind: "wildfire", data: r });
+        // For wildfire we drop the marker on the *match* location (NSI snap)
+        // when available, falling back to the click coord.
+        const lat = r.match?.nsi_location.latitude ?? r.query.latitude;
+        const lng = r.match?.nsi_location.longitude ?? r.query.longitude;
+        mapRef.current?.setMarker(lat, lng);
       } finally {
         setReportLoading(false);
       }
@@ -120,18 +167,22 @@ export default function Home() {
 
   const handleMapPick = useCallback(
     (lat: number, lng: number) => {
-      runReport({ latitude: lat, longitude: lng }).catch((err) => {
+      const fn = inSonomaCounty(lat, lng) ? runWildfireReport : runSuitabilityReport;
+      fn({ latitude: lat, longitude: lng }).catch((err) => {
         console.error(err);
       });
     },
-    [runReport],
+    [runSuitabilityReport, runWildfireReport],
   );
 
+  // Chat-driven site-report requests stay on the suitability flow — the
+  // intent matcher explicitly captures "score X" / "site report for X",
+  // which are suitability semantics. Only map clicks branch by geography.
   const handleSiteReportRequest = useCallback(
     async (address: string) => {
-      await runReport({ address });
+      await runSuitabilityReport({ address });
     },
-    [runReport],
+    [runSuitabilityReport],
   );
 
   const handleCloseReport = useCallback(() => {
@@ -139,9 +190,10 @@ export default function Home() {
     mapRef.current?.clearMarker();
   }, []);
 
+  // Generalized PDF export — each panel passes the element to rasterize and
+  // the desired filename. Decouples export from any specific report shape.
   const handleExport = useCallback(
-    async (el: HTMLElement) => {
-      if (!report) return;
+    async (el: HTMLElement, filename: string) => {
       setExporting(true);
       try {
         const [{ default: html2canvas }, jsPDFModule] = await Promise.all([
@@ -172,13 +224,12 @@ export default function Home() {
         const drawW = canvas.width * ratio;
         const drawH = canvas.height * ratio;
         pdf.addImage(imgData, "PNG", (pageW - drawW) / 2, margin, drawW, drawH);
-        const filename = `site-report-${siteKey(report)}.pdf`;
         pdf.save(filename);
       } finally {
         setExporting(false);
       }
     },
-    [report],
+    [],
   );
 
   return (
@@ -187,7 +238,7 @@ export default function Home() {
       <div className="flex w-[420px] shrink-0 flex-col border-r border-zinc-800 bg-zinc-900">
         <div className="border-b border-zinc-800 px-4 py-3">
           <h1 className="text-lg font-semibold tracking-tight">Heavi</h1>
-          <p className="text-xs text-zinc-500">Spatial computation platform</p>
+          <p className="text-xs text-zinc-500">Spatial decision intelligence</p>
         </div>
 
         <ChatPanel
@@ -214,14 +265,25 @@ export default function Home() {
         )}
         {!report && !reportLoading && (
           <div className="pointer-events-none absolute bottom-4 left-1/2 -translate-x-1/2 rounded-full bg-white/90 px-3 py-1 text-[11px] font-medium text-zinc-700 shadow">
-            Click any point on the map for a site report
+            Click any point — Alameda → site report · Sonoma → wildfire risk
           </div>
         )}
 
-        {report && (
+        {report?.kind === "suitability" && (
           <SiteReportPanel
-            key={siteKey(report)}
-            report={report}
+            key={`s:${siteKey(report.data)}`}
+            report={report.data}
+            onClose={handleCloseReport}
+            onExport={(el) =>
+              handleExport(el, `site-report-${siteKey(report.data)}.pdf`)
+            }
+            exporting={exporting}
+          />
+        )}
+        {report?.kind === "wildfire" && (
+          <WildfireReportPanel
+            key={`w:${report.data.query.latitude.toFixed(5)},${report.data.query.longitude.toFixed(5)}`}
+            report={report.data}
             onClose={handleCloseReport}
             onExport={handleExport}
             exporting={exporting}

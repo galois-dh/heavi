@@ -103,6 +103,17 @@ async def _geocode(address: str) -> tuple[float, float, str] | None:
     return float(data[0]["lat"]), float(data[0]["lon"]), data[0]["display_name"]
 
 
+async def _reverse_geocode(lat: float, lng: float) -> str | None:
+    async with httpx.AsyncClient(timeout=10.0, headers={"User-Agent": NOMINATIM_UA}) as c:
+        r = await c.get(
+            "https://nominatim.openstreetmap.org/reverse",
+            params={"lat": lat, "lon": lng, "format": "json", "zoom": 18},
+        )
+    if r.status_code != 200:
+        return None
+    return r.json().get("display_name")
+
+
 _NEAREST_SQL = """
 WITH p AS (SELECT ST_SetSRID(ST_MakePoint($1, $2), 4326) AS g)
 SELECT
@@ -157,7 +168,9 @@ async def wildfire_loss(
             raise ValueError(f"Could not geocode: {address}")
         latitude, longitude, resolved_address = g
     else:
-        resolved_address = None
+        # Click-driven path — best-effort reverse geocode so the UI can show
+        # an address. Failures are silent; the response just has None here.
+        resolved_address = await _reverse_geocode(latitude, longitude)
 
     # 100 m ≈ 0.001° at Sonoma latitude; pad by 50 %.
     deg_expand = (search_radius_m / 100_000) * 1.5
