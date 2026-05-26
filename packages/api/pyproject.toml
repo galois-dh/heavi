@@ -31,3 +31,10 @@ line-length = 100
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "N", "UP"]
+
+# Bundle non-Python data files (the sample portfolio CSV, the fitted
+# wildfire model JSON) into the installed package so they survive
+# `pip install .` builders like Nixpacks/Railway. Without this, only .py
+# files get copied into site-packages and the runtime cannot find them.
+[tool.setuptools.package-data]
+app = ["sample_portfolio.csv", "wildfire_vulnerability_model.json"]
