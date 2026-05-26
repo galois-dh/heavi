@@ -14,8 +14,13 @@ from .site_report import geocode, reverse_geocode, site_report
 from .spatial_query import spatial_query
 from .wildfire_loss import wildfire_loss
 
-# Load .env from monorepo root
-load_dotenv(Path(__file__).resolve().parents[3] / ".env")
+# Best-effort .env load — for local dev where the file lives at the monorepo
+# root (~/heavi/.env). On Railway/Render the file at /app/app/main.py only has
+# 3 parents so parents[3] would IndexError; we guard the depth check and skip
+# silently when the path can't be resolved. Hosted envs inject vars directly.
+_parents = Path(__file__).resolve().parents
+if len(_parents) >= 4:
+    load_dotenv(_parents[3] / ".env")
 
 app = FastAPI(title="Heavi API", version="0.1.0")
 
