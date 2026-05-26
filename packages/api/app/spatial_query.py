@@ -37,10 +37,15 @@ class TableSchema:
 async def discover_schema(pool: asyncpg.Pool) -> list[TableSchema]:
     async with pool.acquire() as conn:
         geom_rows = await conn.fetch(
+            # Expose both the catalog_* layers (Alameda reference data) and the
+            # wildfire_* layers (Sonoma DINS / FRAP / NSI / footprints) so chat
+            # queries can target either region. catalog_layers is the metadata
+            # table and is excluded by name.
             """SELECT f_table_name AS table_name, f_geometry_column AS geom_column,
                       type AS geom_type, srid
                FROM geometry_columns
-               WHERE f_table_name LIKE 'catalog_%' AND f_table_name != 'catalog_layers'
+               WHERE (f_table_name LIKE 'catalog_%' OR f_table_name LIKE 'wildfire_%')
+                 AND f_table_name != 'catalog_layers'
                ORDER BY f_table_name"""
         )
 
@@ -180,7 +185,10 @@ async def execute_with_guardrails(
                 "sql": sql,
             }
 
-        # Large result — sample without geometry
+        # Large result — return a 5-row sample with geometry intact so the
+        # web client can preview the features on the map. The data-table
+        # extracts `.properties` if present, so renderable features and
+        # plain-row dicts both coexist in `sample_rows`.
         sample_sql = _LIMIT_RE.sub("", sql).rstrip("; \n") + " LIMIT 5"
         sample_rows: list[dict] = []
         try:
@@ -188,7 +196,9 @@ async def execute_with_guardrails(
             for r in raw:
                 d = dict(r)
                 if "feature" in d and isinstance(d["feature"], dict):
-                    d = {"properties": d["feature"].get("properties")}
+                    # Promote the GeoJSON Feature out of the wrapper column
+                    # ({geometry, properties, type}) so the row IS the feature.
+                    d = d["feature"]
                 sample_rows.append(d)
         except Exception:
             pass

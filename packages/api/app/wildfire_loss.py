@@ -127,16 +127,16 @@ LIMIT 1
 """
 
 METHODOLOGY_SUMMARY = (
-    "EAL = burn_probability × P(destroyed | features) × replacement_value "
+    "Risk Estimate = wildfire_likelihood × P(destroyed | features) × replacement_value "
     "(Klugman, Panjer & Willmot, Loss Models §6). "
-    "burn_probability: USFS WRC FSim 270 m, LANDFIRE 2014 fuels. "
+    "wildfire_likelihood: USFS WRC FSim 270 m, LANDFIRE 2014 fuels. "
     "P(destroyed): logistic regression on 5 predictors "
-    "(burn_probability, distance_to_fuel_m, canopy_cover_100m, slope_degrees, "
+    "(wildfire_likelihood, distance_to_fuel_m, canopy_cover_100m, slope_degrees, "
     "is_res1) calibrated against DINS from 5 Sonoma fires "
     f"(AUC {MODEL['auc_roc']:.3f}). "
     "Replacement value: USACE NSI v2 val_struct (full total-loss assumption). "
-    "Caveat: burn_probability appears in both terms with opposite signs "
-    "(conditioning effect), compressing the EAL spread. "
+    "Caveat: wildfire_likelihood appears in both terms with opposite signs "
+    "(conditioning effect), compressing the risk-estimate spread. "
     "See packages/validation/reports/wildfire_loss/methodology.md."
 )
 

@@ -131,30 +131,41 @@ export const MapView = forwardRef<MapHandle, Props>(function MapView({ onPointPi
       const source = map.getSource("results") as maplibregl.GeoJSONSource;
       source.setData(geojson);
 
-      // Fit bounds
-      if (geojson.features.length > 0) {
-        const bounds = new maplibregl.LngLatBounds();
-        for (const f of geojson.features) {
-          const geom = f.geometry;
-          if (geom.type === "Point") {
+      // Fit bounds. We extend a LngLatBounds with each vertex of every
+      // feature, recursing through MultiPolygon rings and the children of
+      // GeometryCollection. Animated `easeTo` so the camera move is visible
+      // — instant jump made it look like nothing happened on big datasets.
+      if (geojson.features.length === 0) return;
+      const bounds = new maplibregl.LngLatBounds();
+      const extendBy = (geom: GeoJSON.Geometry) => {
+        switch (geom.type) {
+          case "Point":
             bounds.extend(geom.coordinates as [number, number]);
-          } else if (geom.type === "Polygon" || geom.type === "MultiPolygon") {
-            const coords =
-              geom.type === "Polygon"
-                ? geom.coordinates[0]
-                : geom.coordinates.flatMap((p) => p[0]);
-            for (const c of coords) {
-              bounds.extend(c as [number, number]);
-            }
-          } else if (geom.type === "LineString") {
-            for (const c of geom.coordinates) {
-              bounds.extend(c as [number, number]);
-            }
-          }
+            return;
+          case "MultiPoint":
+          case "LineString":
+            for (const c of geom.coordinates) bounds.extend(c as [number, number]);
+            return;
+          case "MultiLineString":
+            for (const line of geom.coordinates)
+              for (const c of line) bounds.extend(c as [number, number]);
+            return;
+          case "Polygon":
+            // Outer ring only — it bounds the full polygon.
+            for (const c of geom.coordinates[0] ?? []) bounds.extend(c as [number, number]);
+            return;
+          case "MultiPolygon":
+            for (const poly of geom.coordinates)
+              for (const c of poly[0] ?? []) bounds.extend(c as [number, number]);
+            return;
+          case "GeometryCollection":
+            for (const g of geom.geometries) extendBy(g);
+            return;
         }
-        if (!bounds.isEmpty()) {
-          map.fitBounds(bounds, { padding: 60, maxZoom: 15 });
-        }
+      };
+      for (const f of geojson.features) if (f.geometry) extendBy(f.geometry);
+      if (!bounds.isEmpty()) {
+        map.fitBounds(bounds, { padding: 60, maxZoom: 15, duration: 700 });
       }
     },
     clearGeoJSON() {

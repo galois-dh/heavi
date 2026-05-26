@@ -76,11 +76,29 @@ export default function Home() {
 
   const handleResult = useCallback((r: QueryResult) => {
     setResult(r);
+
+    // Build a renderable FeatureCollection from either a normal feature
+    // result OR the truncated-sample preview embedded in large_result_summary.
+    // For the sample case, sample_rows entries are full GeoJSON Features
+    // (see api.ts QueryResult). We filter to ones that carry geometry so
+    // plain-row samples (aggregate-shaped) don't poison setGeoJSON.
+    let features: GeoJSON.Feature[] = [];
     if (r.type === "FeatureCollection" && r.features?.length) {
-      mapRef.current?.setGeoJSON({
-        type: "FeatureCollection",
-        features: r.features,
+      features = r.features;
+    } else if (r.type === "large_result_summary" && r.sample_rows?.length) {
+      // sample_rows is typed as Record<string,unknown>[] (it can also carry
+      // plain row dicts for non-feature queries) — cast through unknown so
+      // TS accepts the filter narrowing.
+      features = (r.sample_rows as unknown[]).filter((row): row is GeoJSON.Feature => {
+        if (row === null || typeof row !== "object") return false;
+        const rec = row as Record<string, unknown>;
+        const geom = rec.geometry as { type?: string } | null | undefined;
+        return !!geom && typeof geom === "object" && typeof geom.type === "string";
       });
+    }
+
+    if (features.length) {
+      mapRef.current?.setGeoJSON({ type: "FeatureCollection", features });
     } else {
       mapRef.current?.clearGeoJSON();
     }

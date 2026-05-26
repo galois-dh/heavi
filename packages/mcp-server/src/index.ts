@@ -88,10 +88,10 @@ server.tool(
 
 server.tool(
   "wildfire_loss",
-  "Estimate wildfire expected annual loss (EAL) for a Sonoma County property. " +
+  "Estimate the wildfire annual risk for a Sonoma County property. " +
     "Accepts lat/lng or address, finds the nearest USACE NSI structure within the search radius, " +
-    "and returns the burn probability, vulnerability-model destruction probability, " +
-    "replacement value, all raster enrichment features, and the resulting EAL. " +
+    "and returns the wildfire likelihood, vulnerability-model destruction probability, " +
+    "replacement value, all raster enrichment features, and the resulting risk estimate. " +
     "Frequency-severity decomposition (Klugman/Panjer/Willmot); see methodology summary in the response.",
   wildfireLossSchema.shape,
   async (input) => ({

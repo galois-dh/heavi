@@ -9,10 +9,13 @@ export interface QueryResult {
   rows?: Record<string, unknown>[];
   row_count?: number;
   sql?: string;
-  // large_result_summary
+  // large_result_summary — backend returns a 5-row sample. When the query is
+  // a feature query, each entry is a full GeoJSON Feature ({type, geometry,
+  // properties}); the map renders these and the data table extracts
+  // `.properties`. Otherwise entries are plain row dicts.
   total_count?: number;
   message?: string;
-  sample_rows?: Record<string, unknown>[];
+  sample_rows?: Array<Record<string, unknown>>;
   // error
   generated_sql?: string;
 }

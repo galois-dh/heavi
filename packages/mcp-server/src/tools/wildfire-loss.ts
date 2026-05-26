@@ -210,13 +210,13 @@ export async function wildfireLoss(input: WildfireLossInput) {
         lambda_destroy > 0 ? Math.round(1.0 / lambda_destroy) : null,
     },
     methodology_summary: [
-      "EAL = burn_probability × P(destroyed | features) × replacement_value (Klugman, Panjer & Willmot, Loss Models §6).",
-      "burn_probability: USFS WRC FSim 270 m, LANDFIRE 2014 fuels.",
-      "P(destroyed): logistic regression on 5 predictors (distance-to-fuel, canopy_cover_100m, slope, burn_probability, is_res1), calibrated against DINS from 5 Sonoma fires (AUC " +
+      "Risk Estimate = wildfire_likelihood × P(destroyed | features) × replacement_value (Klugman, Panjer & Willmot, Loss Models §6).",
+      "wildfire_likelihood: USFS WRC FSim 270 m, LANDFIRE 2014 fuels.",
+      "P(destroyed): logistic regression on 5 predictors (distance-to-fuel, canopy_cover_100m, slope, wildfire_likelihood, is_res1), calibrated against DINS from 5 Sonoma fires (AUC " +
         m.auc_roc.toFixed(3) +
         ").",
       "Replacement value: USACE NSI v2 val_struct (full total-loss assumption — see limitations).",
-      "Caveat: burn_probability appears in both terms with opposite signs (conditioning effect), compressing the EAL spread. See `packages/validation/reports/wildfire_loss/methodology.md` for the full discussion.",
+      "Caveat: wildfire_likelihood appears in both terms with opposite signs (conditioning effect), compressing the risk-estimate spread. See `packages/validation/reports/wildfire_loss/methodology.md` for the full discussion.",
     ].join(" "),
   };
 }
