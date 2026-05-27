@@ -15,7 +15,10 @@ interface ChatMessage {
 }
 
 interface Props {
-  onResult: (r: QueryResult) => void;
+  // The original question is passed alongside the result so the parent can
+  // decide map-click context (wildfire vs site-suitability) from the query
+  // text, not just the returned SQL.
+  onResult: (r: QueryResult, question: string) => void;
   onSiteReportRequest: (address: string) => Promise<void>;
   loading: boolean;
   setLoading: (v: boolean) => void;
@@ -60,7 +63,7 @@ export function ChatPanel({ onResult, onSiteReportRequest, loading, setLoading }
 
       try {
         const result = await postQuery(q);
-        onResult(result);
+        onResult(result, q);
 
         let reply: string;
         if (result.type === "error" || result.type === "sql_error") {

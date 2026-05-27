@@ -31,6 +31,22 @@ function inSonomaCounty(lat: number, lng: number): boolean {
   );
 }
 
+// The bbox alone misses two cases: (a) wildfire results in western/coastal
+// Sonoma fall outside the lng −123.1 cutoff, and (b) a user who explicitly
+// asked about wildfire/fire/risk/burn expects every click to read as
+// wildfire even before we know the coordinates. So a query is flagged as
+// "wildfire context" when its text OR generated SQL mentions any of those
+// terms — "wildfire" also covers the wildfire_* table names in the SQL.
+function isWildfireQuery(question: string, sql: string | undefined): boolean {
+  const hay = `${question} ${sql ?? ""}`.toLowerCase();
+  return (
+    hay.includes("wildfire") ||
+    hay.includes("fire") ||
+    hay.includes("risk") ||
+    hay.includes("burn")
+  );
+}
+
 // Report state is a discriminated union so only one panel can be open at
 // a time and TypeScript narrows the right shape per branch.
 type ReportState =
@@ -103,9 +119,14 @@ export default function Home() {
   const [report, setReport] = useState<ReportState>(null);
   const [reportLoading, setReportLoading] = useState(false);
   const [exporting, setExporting] = useState(false);
+  // Whether the most recent spatial query was wildfire-related. Drives
+  // map-click routing alongside the Sonoma bbox check.
+  const [wildfireContext, setWildfireContext] = useState(false);
 
-  const handleResult = useCallback((r: QueryResult) => {
+  const handleResult = useCallback((r: QueryResult, question: string) => {
     setResult(r);
+    const sql = r.sql ?? r.generated_sql ?? r.metadata?.sql;
+    setWildfireContext(isWildfireQuery(question, sql));
 
     // Build a renderable FeatureCollection from either a normal feature
     // result OR the truncated-sample preview embedded in large_result_summary.
@@ -168,12 +189,17 @@ export default function Home() {
 
   const handleMapPick = useCallback(
     (lat: number, lng: number) => {
-      const fn = inSonomaCounty(lat, lng) ? runWildfireReport : runSuitabilityReport;
+      // Wildfire when EITHER the most recent query was wildfire-related OR
+      // the click lands in Sonoma County. MapView always invokes the latest
+      // handleMapPick (it keeps onPointPick in a ref), so reading
+      // wildfireContext from the closure is current.
+      const wildfire = wildfireContext || inSonomaCounty(lat, lng);
+      const fn = wildfire ? runWildfireReport : runSuitabilityReport;
       fn({ latitude: lat, longitude: lng }).catch((err) => {
         console.error(err);
       });
     },
-    [runSuitabilityReport, runWildfireReport],
+    [wildfireContext, runSuitabilityReport, runWildfireReport],
   );
 
   // Chat-driven site-report requests stay on the suitability flow — the

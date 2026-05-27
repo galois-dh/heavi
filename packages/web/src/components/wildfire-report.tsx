@@ -55,7 +55,7 @@ export function WildfireReportPanel({ report, onClose, onExport, exporting }: Pr
     <div className="absolute inset-y-0 right-0 z-20 flex w-[520px] flex-col border-l border-zinc-200 bg-white text-zinc-900 shadow-2xl">
       <div className="flex items-center justify-between border-b border-zinc-200 bg-zinc-50 px-5 py-2.5">
         <span className="text-xs font-medium uppercase tracking-wider text-zinc-500">
-          Property Risk Assessment
+          Wildfire Risk Assessment
         </span>
         <div className="flex items-center gap-2">
           <button
@@ -376,7 +376,7 @@ function NoCoveragePanel({
     <div className="absolute inset-y-0 right-0 z-20 flex w-[520px] flex-col border-l border-zinc-200 bg-white text-zinc-900 shadow-2xl">
       <div className="flex items-center justify-between border-b border-zinc-200 bg-zinc-50 px-5 py-2.5">
         <span className="text-xs font-medium uppercase tracking-wider text-zinc-500">
-          Property Risk Assessment
+          Wildfire Risk Assessment
         </span>
         <button
           onClick={onClose}
