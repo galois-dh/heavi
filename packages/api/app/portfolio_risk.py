@@ -18,7 +18,9 @@ import asyncio
 import csv
 import io
 import math
+import os
 import time
+import urllib.parse
 import uuid
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
@@ -35,7 +37,11 @@ from .wildfire_loss import (
 )
 
 MAX_ROWS = 500
-NOMINATIM_QPS = 1.0  # absolute upper bound; we sleep 1.05 s between calls
+# Nominatim ToS: ≤1 req/s with a stable User-Agent. Only enforced when we
+# fall back to Nominatim (MAPBOX_TOKEN unset). Mapbox geocoding has no
+# per-second cap at the public-token tier (~600 req/min ceiling), so we
+# loop unthrottled when it's the active provider.
+NOMINATIM_QPS = 1.0
 JOB_TTL = timedelta(hours=1)
 
 # 5 mi in metres for the FRAP-proximity query. The number is exact to PostGIS
@@ -166,9 +172,49 @@ def parse_csv(raw: bytes) -> list[InputRow]:
 # ─── Geocoding loop ───────────────────────────────────────────────────────
 
 
-async def _geocode_one(
+def _active_geocoder() -> str:
+    """Single source of truth for which geocoder this run will use.
+    Decided once per run_portfolio invocation; if the operator changes
+    MAPBOX_TOKEN mid-flight we still use whatever was set at loop start."""
+    return "mapbox" if os.getenv("MAPBOX_TOKEN") else "nominatim"
+
+
+async def _geocode_mapbox(
+    client: httpx.AsyncClient, address: str, token: str
+) -> tuple[float, float, str] | None:
+    """Mapbox Geocoding API v5. Better US address coverage than Nominatim
+    and no per-second rate limit at the public-token tier."""
+    url = (
+        "https://api.mapbox.com/geocoding/v5/mapbox.places/"
+        f"{urllib.parse.quote(address)}.json"
+    )
+    try:
+        r = await client.get(
+            url,
+            params={"access_token": token, "limit": 1, "country": "us"},
+        )
+    except httpx.HTTPError:
+        return None
+    if r.status_code != 200:
+        return None
+    try:
+        data = r.json()
+    except ValueError:
+        return None
+    features = data.get("features") or []
+    if not features:
+        return None
+    f = features[0]
+    coords = f.get("center") or (f.get("geometry") or {}).get("coordinates")
+    if not coords or len(coords) < 2:
+        return None
+    return float(coords[1]), float(coords[0]), f.get("place_name") or address
+
+
+async def _geocode_nominatim(
     client: httpx.AsyncClient, address: str
 ) -> tuple[float, float, str] | None:
+    """OSM Nominatim — used as the fallback when MAPBOX_TOKEN is unset."""
     try:
         r = await client.get(
             "https://nominatim.openstreetmap.org/search",
@@ -178,6 +224,7 @@ async def _geocode_one(
                 "limit": 1,
                 "countrycodes": "us",
             },
+            headers={"User-Agent": NOMINATIM_UA},
         )
     except httpx.HTTPError:
         return None
@@ -187,6 +234,17 @@ async def _geocode_one(
     if not data:
         return None
     return float(data[0]["lat"]), float(data[0]["lon"]), data[0]["display_name"]
+
+
+async def _geocode_one(
+    client: httpx.AsyncClient, address: str
+) -> tuple[float, float, str] | None:
+    """Dispatcher — picks Mapbox if MAPBOX_TOKEN is set, otherwise Nominatim.
+    Same return shape regardless of provider so callers don't care."""
+    token = os.getenv("MAPBOX_TOKEN")
+    if token:
+        return await _geocode_mapbox(client, address, token)
+    return await _geocode_nominatim(client, address)
 
 
 async def _resolve_row(
@@ -289,23 +347,29 @@ _COUNTY_BENCHMARK_CACHE: dict[str, Any] | None = None
 
 
 async def run_portfolio(pool: asyncpg.Pool, rows: list[InputRow]) -> PortfolioJob:
-    """Geocode + score every row, then aggregate. Sleeps 1.05 s between
-    Nominatim calls; rows with lat/lng don't burn quota. DB lookups
-    (score_property + fire_history) are sub-100 ms each via the GIST index."""
+    """Geocode + score every row, then aggregate.
+
+    Geocoding provider is decided once at the top of the loop:
+      * MAPBOX_TOKEN set   → Mapbox Geocoding v5, no per-second throttle
+      * MAPBOX_TOKEN unset → Nominatim, 1.05 s sleep between requests
+    Rows that come in with explicit lat/lng skip geocoding entirely.
+
+    DB lookups (score_property + fire_history) are sub-100 ms each via the
+    GIST index, so the loop's wall time is dominated by geocoding latency
+    when addresses are present."""
 
     per_property: list[dict[str, Any]] = []
     benchmark = await _county_benchmark(pool)
+    geocoder = _active_geocoder()
+    throttle = geocoder == "nominatim"
 
-    async with httpx.AsyncClient(
-        timeout=15.0, headers={"User-Agent": NOMINATIM_UA}
-    ) as client:
+    async with httpx.AsyncClient(timeout=15.0) as client:
         last_geocode_t = 0.0
         for row in rows:
             need_geocode = row.address is not None and (
                 row.latitude is None or row.longitude is None
             )
-            if need_geocode:
-                # Throttle to ≤1 req/s globally across the loop.
+            if need_geocode and throttle:
                 elapsed = time.perf_counter() - last_geocode_t
                 if elapsed < 1.05:
                     await asyncio.sleep(1.05 - elapsed)
