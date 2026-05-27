@@ -38,6 +38,10 @@ MAX_ROWS = 500
 NOMINATIM_QPS = 1.0  # absolute upper bound; we sleep 1.05 s between calls
 JOB_TTL = timedelta(hours=1)
 
+# 5 mi in metres for the FRAP-proximity query. The number is exact to PostGIS
+# precision; the user-facing prose still says "within 5 miles".
+FIRE_PROXIMITY_M = 8047
+
 
 # ─── Job cache (process-local, TTL-pruned) ────────────────────────────────
 
@@ -49,6 +53,10 @@ class PortfolioJob:
     per_property: list[dict[str, Any]]
     portfolio_summary: dict[str, Any]
     top_10_highest_risk: list[dict[str, Any]]
+    # Cache of Mapbox static-API tile bytes keyed by "lat,lng" rounded to
+    # six decimals. Populated lazily on first PDF render so repeated
+    # report downloads don't hammer Mapbox.
+    satellite_image_cache: dict[str, bytes | None] = field(default_factory=dict)
 
 
 JOBS: dict[str, PortfolioJob] = {}
@@ -197,15 +205,97 @@ async def _resolve_row(
     return lat, lng, display, None
 
 
+# ─── Fire-history query (FRAP perimeters within 5 mi) ─────────────────────
+
+
+# Single point ↔ all-near-perimeters query. Returns up to 10 nearest fires
+# with a flag for whether the property point falls inside that perimeter.
+# distance_miles is positive even for contained points (PostGIS returns 0,
+# which is correct geographically).
+_FIRE_HISTORY_SQL = """
+SELECT
+    fire_name,
+    year_,
+    gis_acres,
+    ST_Distance(
+        geometry::geography,
+        ST_SetSRID(ST_MakePoint($1, $2), 4326)::geography
+    ) / 1609.34 AS distance_miles,
+    ST_Contains(
+        geometry,
+        ST_SetSRID(ST_MakePoint($1, $2), 4326)
+    ) AS contains_point
+FROM wildfire_frap_perimeters
+WHERE ST_DWithin(
+    geometry::geography,
+    ST_SetSRID(ST_MakePoint($1, $2), 4326)::geography,
+    $3
+)
+ORDER BY distance_miles
+LIMIT 10
+"""
+
+_COUNTY_BENCHMARK_SQL = """
+SELECT AVG(expected_annual_loss)::float AS mean_eal,
+       COUNT(*)::int                     AS n_structures
+FROM wildfire_nsi_structures
+WHERE expected_annual_loss IS NOT NULL
+"""
+
+
+async def _fire_history(
+    conn: asyncpg.Connection, lat: float, lng: float
+) -> list[dict[str, Any]]:
+    """Pre-format the FRAP rows so the PDF layer can consume them directly.
+    Distance is rounded to 2 decimal places; fire_name normalised to Title
+    Case for display."""
+    rows = await conn.fetch(_FIRE_HISTORY_SQL, lng, lat, FIRE_PROXIMITY_M)
+    out = []
+    for r in rows:
+        fname = (r["fire_name"] or "").strip().title() if r["fire_name"] else "Unknown"
+        out.append(
+            {
+                "fire_name": fname,
+                "year": int(r["year_"]) if r["year_"] is not None else None,
+                "gis_acres": float(r["gis_acres"] or 0.0),
+                "distance_miles": round(float(r["distance_miles"] or 0.0), 2),
+                "contains_point": bool(r["contains_point"]),
+            }
+        )
+    return out
+
+
+async def _county_benchmark(pool: asyncpg.Pool) -> dict[str, Any]:
+    """One-shot county-wide mean EAL benchmark from the persisted
+    wildfire_nsi_structures.expected_annual_loss column. Cached on the
+    JOBS module via a sentinel so repeated portfolio runs in the same
+    process don't re-query."""
+    global _COUNTY_BENCHMARK_CACHE
+    if _COUNTY_BENCHMARK_CACHE is not None:
+        return _COUNTY_BENCHMARK_CACHE
+    async with pool.acquire() as conn:
+        row = await conn.fetchrow(_COUNTY_BENCHMARK_SQL)
+    _COUNTY_BENCHMARK_CACHE = {
+        "mean_eal": float(row["mean_eal"] or 0.0),
+        "n_structures": int(row["n_structures"] or 0),
+    }
+    return _COUNTY_BENCHMARK_CACHE
+
+
+_COUNTY_BENCHMARK_CACHE: dict[str, Any] | None = None
+
+
 # ─── Portfolio runner ─────────────────────────────────────────────────────
 
 
 async def run_portfolio(pool: asyncpg.Pool, rows: list[InputRow]) -> PortfolioJob:
     """Geocode + score every row, then aggregate. Sleeps 1.05 s between
-    Nominatim calls; rows with lat/lng don't burn quota. DB lookups are
-    sub-100ms each (GIST index)."""
+    Nominatim calls; rows with lat/lng don't burn quota. DB lookups
+    (score_property + fire_history) are sub-100 ms each via the GIST index."""
 
     per_property: list[dict[str, Any]] = []
+    benchmark = await _county_benchmark(pool)
+
     async with httpx.AsyncClient(
         timeout=15.0, headers={"User-Agent": NOMINATIM_UA}
     ) as client:
@@ -236,6 +326,8 @@ async def run_portfolio(pool: asyncpg.Pool, rows: list[InputRow]) -> PortfolioJo
                 record["status"] = "error"
                 record["error"] = error
                 record["annual_risk_usd"] = None
+                record["fire_history"] = []
+                record["in_historical_perimeter"] = False
                 per_property.append(record)
                 continue
 
@@ -246,10 +338,24 @@ async def run_portfolio(pool: asyncpg.Pool, rows: list[InputRow]) -> PortfolioJo
                 record["status"] = "error"
                 record["error"] = f"scoring failed: {e}"
                 record["annual_risk_usd"] = None
+                record["fire_history"] = []
+                record["in_historical_perimeter"] = False
                 per_property.append(record)
                 continue
 
             record.update(core)
+
+            # Fire history: one round-trip per property. Cheap (GIST + ANALYZE
+            # already in place) and the result feeds both the per-property
+            # PDF cards and the portfolio-level validation count.
+            try:
+                async with pool.acquire() as conn:
+                    fires = await _fire_history(conn, lat, lng)
+            except Exception:
+                fires = []
+            record["fire_history"] = fires
+            record["in_historical_perimeter"] = any(f["contains_point"] for f in fires)
+
             if core.get("match") is None:
                 record["status"] = "no_coverage"
                 record["annual_risk_usd"] = None
@@ -262,7 +368,7 @@ async def run_portfolio(pool: asyncpg.Pool, rows: list[InputRow]) -> PortfolioJo
                 record["annual_risk_usd"] = eal
             per_property.append(record)
 
-    summary = _summarize(per_property)
+    summary = _summarize(per_property, benchmark=benchmark)
     top10 = sorted(
         (r for r in per_property if r.get("annual_risk_usd") is not None),
         key=lambda r: r["annual_risk_usd"] or 0,
@@ -305,28 +411,71 @@ def _bucket_for(eal: float) -> str:
     return _BUCKETS[-1][0]
 
 
-def _summarize(per_property: list[dict[str, Any]]) -> dict[str, Any]:
+def _tier_for(eal: float | None) -> str:
+    if eal is None:
+        return "unscored"
+    if eal > 500:
+        return "high"
+    if eal >= 50:
+        return "moderate"
+    return "low"
+
+
+def _summarize(
+    per_property: list[dict[str, Any]],
+    *,
+    benchmark: dict[str, Any] | None = None,
+) -> dict[str, Any]:
     eals = [
         r["annual_risk_usd"] for r in per_property if r.get("annual_risk_usd") is not None
     ]
     n = len(per_property)
     n_scored = len(eals)
+    base: dict[str, Any] = {
+        "property_count": n,
+        "scored_count": n_scored,
+        "county_benchmark_mean_eal": (benchmark or {}).get("mean_eal", 0.0),
+        "county_benchmark_n_structures": (benchmark or {}).get("n_structures", 0),
+    }
+
+    # Validation: count properties that fall inside ANY historical FRAP
+    # perimeter, and the tier mix among them. The argument the PDF will make
+    # is "the model assigned X% of these to High/Moderate" — concrete evidence
+    # that the predictions correspond to where fires actually burned.
+    in_perim = [
+        r for r in per_property if r.get("in_historical_perimeter")
+        and r.get("annual_risk_usd") is not None
+    ]
+    n_in_perim = len(in_perim)
+    n_in_perim_high_or_mod = sum(
+        1 for r in in_perim if _tier_for(r.get("annual_risk_usd")) in {"high", "moderate"}
+    )
+    base["in_perimeter_count"] = n_in_perim
+    base["in_perimeter_high_or_moderate_count"] = n_in_perim_high_or_mod
+    base["in_perimeter_high_or_moderate_share"] = (
+        round(n_in_perim_high_or_mod / n_in_perim, 4) if n_in_perim else None
+    )
+
     if not eals:
-        return {
-            "property_count": n,
-            "scored_count": 0,
-            "total_annual_risk": 0.0,
-            "mean_risk": 0.0,
-            "median_risk": 0.0,
-            "risk_distribution": [{"bucket": b[0], "n": 0} for b in _BUCKETS],
-            "high_risk_count": 0,
-            "moderate_risk_count": 0,
-            "low_risk_count": 0,
-            "error_count": sum(1 for r in per_property if r.get("status") == "error"),
-            "no_coverage_count": sum(
-                1 for r in per_property if r.get("status") == "no_coverage"
-            ),
-        }
+        base.update(
+            {
+                "total_annual_risk": 0.0,
+                "mean_risk": 0.0,
+                "median_risk": 0.0,
+                "min_risk": 0.0,
+                "max_risk": 0.0,
+                "p95_risk": 0.0,
+                "risk_distribution": [{"bucket": b[0], "n": 0} for b in _BUCKETS],
+                "high_risk_count": 0,
+                "moderate_risk_count": 0,
+                "low_risk_count": 0,
+                "error_count": sum(1 for r in per_property if r.get("status") == "error"),
+                "no_coverage_count": sum(
+                    1 for r in per_property if r.get("status") == "no_coverage"
+                ),
+            }
+        )
+        return base
 
     eals_sorted = sorted(eals)
     mid = n_scored // 2
@@ -340,28 +489,29 @@ def _summarize(per_property: list[dict[str, Any]]) -> dict[str, Any]:
     for v in eals:
         bucket_counts[_bucket_for(v)] += 1
 
-    return {
-        "property_count": n,
-        "scored_count": n_scored,
-        "total_annual_risk": round(sum(eals), 2),
-        "mean_risk": round(sum(eals) / n_scored, 2),
-        "median_risk": round(median, 2),
-        "min_risk": round(min(eals), 2),
-        "max_risk": round(max(eals), 2),
-        "p95_risk": round(eals_sorted[int(n_scored * 0.95)], 2)
-        if n_scored > 1
-        else round(eals_sorted[0], 2),
-        "risk_distribution": [
-            {"bucket": b[0], "n": bucket_counts[b[0]]} for b in _BUCKETS
-        ],
-        "high_risk_count": sum(1 for v in eals if v > 500),
-        "moderate_risk_count": sum(1 for v in eals if 50 <= v <= 500),
-        "low_risk_count": sum(1 for v in eals if v < 50),
-        "error_count": sum(1 for r in per_property if r.get("status") == "error"),
-        "no_coverage_count": sum(
-            1 for r in per_property if r.get("status") == "no_coverage"
-        ),
-    }
+    base.update(
+        {
+            "total_annual_risk": round(sum(eals), 2),
+            "mean_risk": round(sum(eals) / n_scored, 2),
+            "median_risk": round(median, 2),
+            "min_risk": round(min(eals), 2),
+            "max_risk": round(max(eals), 2),
+            "p95_risk": round(eals_sorted[int(n_scored * 0.95)], 2)
+            if n_scored > 1
+            else round(eals_sorted[0], 2),
+            "risk_distribution": [
+                {"bucket": b[0], "n": bucket_counts[b[0]]} for b in _BUCKETS
+            ],
+            "high_risk_count": sum(1 for v in eals if v > 500),
+            "moderate_risk_count": sum(1 for v in eals if 50 <= v <= 500),
+            "low_risk_count": sum(1 for v in eals if v < 50),
+            "error_count": sum(1 for r in per_property if r.get("status") == "error"),
+            "no_coverage_count": sum(
+                1 for r in per_property if r.get("status") == "no_coverage"
+            ),
+        }
+    )
+    return base
 
 
 def job_to_response(job: PortfolioJob) -> dict[str, Any]:
