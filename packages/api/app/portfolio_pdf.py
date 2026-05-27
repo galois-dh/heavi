@@ -21,6 +21,7 @@ Page sequence:
 from __future__ import annotations
 
 import io
+import math
 import os
 import statistics
 from datetime import datetime
@@ -275,17 +276,84 @@ def _fetch_satellite(lat: float, lng: float, cache: dict[str, bytes | None]) -> 
     return None
 
 
+def _fetch_basemap(
+    center_lng: float, center_lat: float, zoom: float, pixel_w: int, pixel_h: int
+) -> bytes | None:
+    """Fetch a Mapbox light-v11 basemap centered on (lng, lat) at the given
+    zoom. Used as the underlay for the portfolio map. Returns None on any
+    failure so the caller falls back to the blank-background scatter."""
+    token = os.getenv("MAPBOX_TOKEN")
+    if not token:
+        return None
+    # Mapbox caps width/height at 1280 each; we stay well under that. The @2x
+    # suffix doubles the rendered pixel count without changing the geographic
+    # extent so the basemap is crisp on the PDF page.
+    url = (
+        "https://api.mapbox.com/styles/v1/mapbox/light-v11/static/"
+        f"{center_lng},{center_lat},{zoom:.2f},0,0/"
+        f"{pixel_w}x{pixel_h}@2x?access_token={token}"
+    )
+    try:
+        with httpx.Client(timeout=15.0) as client:
+            r = client.get(url)
+        if r.status_code == 200 and r.headers.get("content-type", "").startswith("image/"):
+            return r.content
+    except httpx.HTTPError:
+        pass
+    return None
+
+
+# Web-Mercator helpers for translating a Mapbox static-map response back
+# into a (lon_min, lon_max, lat_min, lat_max) extent. The Mapbox API renders
+# in Web Mercator; latitude bounds need the inverse-Mercator function so the
+# basemap aligns with the scatter points (which are in raw lat/lng).
+def _lat_to_mercator_y(lat_deg: float, world_pixels: float) -> float:
+    lat_rad = math.radians(lat_deg)
+    return world_pixels * (
+        0.5 - math.log(math.tan(math.pi / 4 + lat_rad / 2)) / (2 * math.pi)
+    )
+
+
+def _mercator_y_to_lat(y: float, world_pixels: float) -> float:
+    n = math.pi * (1 - 2 * y / world_pixels)
+    return math.degrees(math.atan(math.sinh(n)))
+
+
+def _image_extent_from_center(
+    center_lng: float, center_lat: float, zoom: float, pixel_w: int, pixel_h: int
+) -> tuple[float, float, float, float]:
+    """Return (lon_min, lon_max, lat_min, lat_max) for a Mapbox image of
+    pixel_w × pixel_h pixels centred on (center_lng, center_lat) at the
+    given zoom. Longitude uses the linear Mercator equation; latitude uses
+    the inverse Mercator so the bottom and top edges line up with the
+    actual rendered geography (matters more as the extent grows)."""
+    world_pixels = 256.0 * (2 ** zoom)
+    half_lon = (pixel_w / 2) * 360.0 / world_pixels
+    cy_pixel = _lat_to_mercator_y(center_lat, world_pixels)
+    lat_top = _mercator_y_to_lat(cy_pixel - pixel_h / 2, world_pixels)
+    lat_bot = _mercator_y_to_lat(cy_pixel + pixel_h / 2, world_pixels)
+    return (center_lng - half_lon, center_lng + half_lon, lat_bot, lat_top)
+
+
 # ─── Matplotlib portfolio map ────────────────────────────────────────────
 
 
 def _portfolio_map_png(job: PortfolioJob) -> bytes | None:
-    """Render the portfolio scatter as a PNG byte string. Returns None if
-    matplotlib import fails (e.g. dependency missing in slim environments)
-    so the rest of the PDF still generates."""
+    """Render the portfolio map as a PNG byte string.
+
+    When MAPBOX_TOKEN is set we fetch a Mapbox light-v11 basemap covering
+    the property bounding box and lay the risk-tier scatter dots on top.
+    When the token is unset or the fetch fails we fall back to the
+    previous white-background scatter with the Sonoma bbox in grey. Either
+    way the function is allowed to return None only if matplotlib itself
+    is missing — the PDF caller treats that as "skip this page" and the
+    rest of the document still renders.
+    """
     try:
         import matplotlib
 
         matplotlib.use("Agg")  # no display server
+        import matplotlib.image as mpimg
         import matplotlib.patches as mpatches
         import matplotlib.pyplot as plt
     except Exception:
@@ -306,57 +374,107 @@ def _portfolio_map_png(job: PortfolioJob) -> bytes | None:
         else:
             low.append(point)
 
+    all_pts = high + mod + low + unscored
+    SONOMA_BBOX = (-123.55, 38.05, -122.35, 38.86)
+
+    # Compute a padded bbox around the points (or fall back to Sonoma).
+    if all_pts:
+        xs = [p[0] for p in all_pts]
+        ys = [p[1] for p in all_pts]
+        bbox = [min(xs), min(ys), max(xs), max(ys)]
+    else:
+        bbox = list(SONOMA_BBOX)
+    pad_x = max(0.06, (bbox[2] - bbox[0]) * 0.15)
+    pad_y = max(0.06, (bbox[3] - bbox[1]) * 0.15)
+    bbox = (bbox[0] - pad_x, bbox[1] - pad_y, bbox[2] + pad_x, bbox[3] + pad_y)
+
+    center_lng = (bbox[0] + bbox[2]) / 2
+    center_lat = (bbox[1] + bbox[3]) / 2
+    lon_span = max(bbox[2] - bbox[0], 1e-6)
+    lat_span = max(bbox[3] - bbox[1], 1e-6)
+
+    pixel_w, pixel_h = 720, 540  # matches the 7.0 × 5.0 inch figsize at 102 dpi
+    # Zoom that exactly fits the bbox in each dimension; min of the two so the
+    # whole bbox is visible. The minus-0.2 padding shrinks the zoom slightly so
+    # the edge points aren't pinned to the image border.
+    lon_zoom = math.log2(360.0 * pixel_w / (256.0 * lon_span))
+    lat_zoom = math.log2(
+        360.0 * pixel_h * math.cos(math.radians(center_lat)) / (256.0 * lat_span)
+    )
+    zoom = max(0.0, min(18.0, min(lon_zoom, lat_zoom) - 0.2))
+
+    basemap_bytes = _fetch_basemap(center_lng, center_lat, zoom, pixel_w, pixel_h)
+
     fig, ax = plt.subplots(figsize=(7.0, 5.0), dpi=160)
 
-    # Sonoma County extent rectangle for visual context. Approximate — the
-    # county isn't axis-aligned but the bbox is plenty for "here's the
-    # county, here are your dots".
-    SONOMA_BBOX = (-123.55, 38.05, -122.35, 38.86)
-    rect = mpatches.Rectangle(
-        (SONOMA_BBOX[0], SONOMA_BBOX[1]),
-        SONOMA_BBOX[2] - SONOMA_BBOX[0],
-        SONOMA_BBOX[3] - SONOMA_BBOX[1],
-        linewidth=1.0,
-        edgecolor="#9ca3af",
-        facecolor="#f3f4f6",
-        zorder=1,
-    )
-    ax.add_patch(rect)
+    if basemap_bytes is not None:
+        # Layer the basemap underneath the scatter. We pin aspect='auto' and
+        # the axis limits to the image extent so the points plot in the same
+        # lat/lng coordinates the basemap was rendered with.
+        try:
+            img = mpimg.imread(io.BytesIO(basemap_bytes), format="png")
+            extent = _image_extent_from_center(
+                center_lng, center_lat, zoom, pixel_w, pixel_h
+            )
+            ax.imshow(img, extent=extent, origin="upper", aspect="auto", zorder=0)
+            ax.set_xlim(extent[0], extent[1])
+            ax.set_ylim(extent[2], extent[3])
+            # Hide tick labels — the basemap provides geographic context.
+            ax.set_xticks([])
+            ax.set_yticks([])
+            ax.set_xlabel("")
+            ax.set_ylabel("")
+            for spine in ax.spines.values():
+                spine.set_color("#9ca3af")
+                spine.set_linewidth(0.6)
+        except Exception:
+            # PNG decode failed for some reason — fall through to plain bg.
+            basemap_bytes = None
+
+    if basemap_bytes is None:
+        # Fallback: previous white-background scatter with the Sonoma bbox.
+        rect = mpatches.Rectangle(
+            (SONOMA_BBOX[0], SONOMA_BBOX[1]),
+            SONOMA_BBOX[2] - SONOMA_BBOX[0],
+            SONOMA_BBOX[3] - SONOMA_BBOX[1],
+            linewidth=1.0,
+            edgecolor="#9ca3af",
+            facecolor="#f3f4f6",
+            zorder=1,
+        )
+        ax.add_patch(rect)
+        ax.set_xlim(bbox[0], bbox[2])
+        ax.set_ylim(bbox[1], bbox[3])
+        ax.set_aspect("equal", adjustable="datalim")
+        ax.set_xlabel("Longitude", fontsize=8, color="#6b7280")
+        ax.set_ylabel("Latitude", fontsize=8, color="#6b7280")
+        ax.tick_params(labelsize=7, colors="#6b7280")
+        for spine in ax.spines.values():
+            spine.set_color("#d1d5db")
+            spine.set_linewidth(0.6)
+        ax.grid(True, color="#e5e7eb", linewidth=0.4, zorder=0)
 
     def _scatter(points, color, label):
         if not points:
             return
         xs = [p[0] for p in points]
         ys = [p[1] for p in points]
-        ax.scatter(xs, ys, c=color, s=44, edgecolors="white", linewidths=0.6, zorder=3, label=label)
+        ax.scatter(
+            xs,
+            ys,
+            c=color,
+            s=44,
+            edgecolors="white",
+            linewidths=0.6,
+            zorder=3,
+            label=label,
+        )
 
     _scatter(high, MAP_HIGH, f"High ({len(high)})")
     _scatter(mod, MAP_MED, f"Moderate ({len(mod)})")
     _scatter(low, MAP_LOW, f"Low ({len(low)})")
     if unscored:
         _scatter(unscored, "#64748b", f"Unscored ({len(unscored)})")
-
-    # Auto-fit to points with padding, but never tighter than 0.15° on a side.
-    all_pts = high + mod + low + unscored
-    if all_pts:
-        xs = [p[0] for p in all_pts]
-        ys = [p[1] for p in all_pts]
-        pad_x = max(0.08, (max(xs) - min(xs)) * 0.12)
-        pad_y = max(0.08, (max(ys) - min(ys)) * 0.12)
-        ax.set_xlim(min(xs) - pad_x, max(xs) + pad_x)
-        ax.set_ylim(min(ys) - pad_y, max(ys) + pad_y)
-    else:
-        ax.set_xlim(SONOMA_BBOX[0], SONOMA_BBOX[2])
-        ax.set_ylim(SONOMA_BBOX[1], SONOMA_BBOX[3])
-
-    ax.set_aspect("equal", adjustable="datalim")
-    ax.set_xlabel("Longitude", fontsize=8, color="#6b7280")
-    ax.set_ylabel("Latitude", fontsize=8, color="#6b7280")
-    ax.tick_params(labelsize=7, colors="#6b7280")
-    for spine in ax.spines.values():
-        spine.set_color("#d1d5db")
-        spine.set_linewidth(0.6)
-    ax.grid(True, color="#e5e7eb", linewidth=0.4, zorder=0)
 
     leg = ax.legend(
         loc="upper right",
