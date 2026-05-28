@@ -62,10 +62,9 @@ function scoreDestruction(features: {
 // ─── Natural-language summary ─────────────────────────────────────────────
 const METHODOLOGY_NOTE =
   "Annual risk estimate computed from USFS wildfire likelihood data, a " +
-  "CAL FIRE-validated vulnerability model (AUC 0.76), and USACE structure " +
-  "replacement values. Methodology follows Klugman, Panjer & Willmot " +
-  "frequency-severity framework. See methodology documentation for full " +
-  "data lineage and known limitations.";
+  "vulnerability model validated against CAL FIRE damage inspections " +
+  "(AUC 0.76), and USACE structure replacement values. See methodology " +
+  "documentation for full data lineage and known limitations.";
 
 function titleCase(s: string): string {
   return s.toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase());
@@ -79,7 +78,7 @@ function factorPhrases(f: {
   burn_probability: number;
 }): string[] {
   const ranked: [number, string][] = [];
-  if (f.distance_to_fuel_m === 0) ranked.push([1, "direct adjacency to wildland fuel"]);
+  if (f.distance_to_fuel_m === 0) ranked.push([1, "direct adjacency to wildland fuel (0m from fuel)"]);
   else if (f.distance_to_fuel_m < 30) ranked.push([2, "close proximity to wildland fuel"]);
   if (f.burn_probability > 0.002) ranked.push([3, "elevated wildfire likelihood"]);
   if (f.slope_degrees > 15) ranked.push([4, "steep terrain"]);
@@ -216,7 +215,7 @@ export async function wildfireLoss(input: WildfireLossInput) {
     is_res1,
   };
   const { p_destroyed, log_odds } = scoreDestruction(features);
-  const val_struct = Number(nsi.val_struct ?? 0);
+  const val_struct = Math.max(0, Number(nsi.val_struct ?? 0));
   const lambda_destroy = features.burn_probability * p_destroyed;
   const eal_recomputed = lambda_destroy * val_struct;
   const persisted = nsi.expected_annual_loss;

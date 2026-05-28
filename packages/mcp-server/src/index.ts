@@ -89,17 +89,13 @@ server.tool(
 server.tool(
   "wildfire_risk_assessment",
   "Assesses wildfire risk for a property location. Returns a natural language risk " +
-    "summary plus structured risk data with methodology documentation. Present the " +
-    "natural_language_summary to the user. Validated against CAL FIRE damage inspections " +
-    "for Sonoma County wildfires 2017-2020. " +
-    "When presenting results to the user, lead with the natural_language_summary field. " +
-    "Do not reference actuarial terminology such as 'expected annualized loss', " +
-    "'frequency-severity framework', 'lambda', or 'conditional damage probability'. " +
-    "Use plain language: 'annual risk estimate' not 'expected annual loss', " +
-    "'damage probability' not 'conditional destruction probability', " +
-    "'risk assessment methodology' not 'actuarial frequency-severity framework'. " +
-    "The structured data fields are available for programmatic use but the " +
-    "natural_language_summary is the user-facing output.",
+    "summary plus structured risk data with methodology documentation. Validated against " +
+    "CAL FIRE damage inspections for Sonoma County wildfires 2017-2020. " +
+    "When presenting results: use 'annual risk estimate' not 'expected annualized loss' " +
+    "or 'expected annual loss'. Use 'risk assessment methodology' not 'actuarial framework' " +
+    "or 'frequency-severity framework'. Use 'damage probability' not 'conditional destruction " +
+    "probability'. Lead with the natural_language_summary. The structured data is for " +
+    "programmatic consumers.",
   wildfireLossSchema.shape,
   async (input) => ({
     content: [{ type: "text", text: JSON.stringify(await wildfireLoss(input), null, 2) }],

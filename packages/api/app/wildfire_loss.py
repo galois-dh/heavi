@@ -139,10 +139,9 @@ LIMIT 1
 
 METHODOLOGY_NOTE = (
     "Annual risk estimate computed from USFS wildfire likelihood data, a "
-    "CAL FIRE-validated vulnerability model (AUC 0.76), and USACE structure "
-    "replacement values. Methodology follows Klugman, Panjer & Willmot "
-    "frequency-severity framework. See methodology documentation for full "
-    "data lineage and known limitations."
+    "vulnerability model validated against CAL FIRE damage inspections "
+    "(AUC 0.76), and USACE structure replacement values. See methodology "
+    "documentation for full data lineage and known limitations."
 )
 
 # Nearest FRAP fire perimeter within 5 mi, preferring one that CONTAINS the
@@ -174,7 +173,7 @@ def _factor_phrases(features: dict[str, Any]) -> list[str]:
 
     ranked: list[tuple[int, str]] = []
     if dist == 0:
-        ranked.append((1, "direct adjacency to wildland fuel"))
+        ranked.append((1, "direct adjacency to wildland fuel (0m from fuel)"))
     elif dist < 30:
         ranked.append((2, "close proximity to wildland fuel"))
     if likelihood > 0.002:
@@ -270,7 +269,10 @@ async def score_property(
         "is_res1": is_res1,
     }
     damage_probability, log_odds = _score_destruction(features)
-    val_struct = float(row["val_struct"] or 0.0)
+    # Guard against a negative NSI val_struct flowing into both the
+    # replacement_value_usd field and the risk estimate; NSI values should
+    # always be ≥ 0.
+    val_struct = max(0.0, float(row["val_struct"] or 0.0))
     annual_damage_frequency = features["burn_probability"] * damage_probability
     annual_risk_estimate = annual_damage_frequency * val_struct
 
