@@ -30,7 +30,7 @@ import asyncpg
 import httpx
 
 from .wildfire_loss import (
-    METHODOLOGY_SUMMARY,
+    METHODOLOGY_NOTE,
     MODEL,
     NOMINATIM_UA,
     score_property,
@@ -424,12 +424,12 @@ async def run_portfolio(pool: asyncpg.Pool, rows: list[InputRow]) -> PortfolioJo
                 record["status"] = "no_coverage"
                 record["annual_risk_usd"] = None
             else:
-                eal = (
-                    core["loss_estimate"].get("expected_annual_loss_usd_persisted")
-                    or core["loss_estimate"]["expected_annual_loss_usd_recomputed"]
+                risk = (
+                    core["risk_estimate"].get("annual_risk_estimate_usd_persisted")
+                    or core["risk_estimate"]["annual_risk_estimate_usd"]
                 )
                 record["status"] = "scored"
-                record["annual_risk_usd"] = eal
+                record["annual_risk_usd"] = risk
             per_property.append(record)
 
     summary = _summarize(per_property, benchmark=benchmark)
@@ -582,7 +582,7 @@ def job_to_response(job: PortfolioJob) -> dict[str, Any]:
     return {
         "job_id": job.job_id,
         "generated_at": job.created_at.isoformat(),
-        "methodology_summary": METHODOLOGY_SUMMARY,
+        "methodology_note": METHODOLOGY_NOTE,
         "model": {
             "run_id": MODEL["run_id"],
             "auc_roc": MODEL["auc_roc"],
@@ -596,7 +596,9 @@ def job_to_response(job: PortfolioJob) -> dict[str, Any]:
 
 def _summarize_row_for_response(r: dict[str, Any]) -> dict[str, Any]:
     """Trim per-property records for JSON transport — drop the embedded
-    methodology_summary (already attached at top level), keep everything
-    useful for the table view."""
-    out = {k: v for k, v in r.items() if k != "methodology_summary"}
+    methodology_note and natural_language_summary (the note is attached once
+    at top level; the per-row NL summary would bloat the payload), keep
+    everything useful for the table view."""
+    drop = {"methodology_note", "natural_language_summary"}
+    out = {k: v for k, v in r.items() if k not in drop}
     return out

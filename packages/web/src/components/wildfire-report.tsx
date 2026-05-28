@@ -41,13 +41,13 @@ export function WildfireReportPanel({ report, onClose, onExport, exporting }: Pr
 
   // No NSI structure within the search radius — explain rather than render
   // an empty assessment with $0 EAL (which is technically true but useless).
-  if (!report.match || !report.features || !report.loss_estimate || !report.vulnerability_score) {
+  if (!report.match || !report.features || !report.risk_estimate || !report.property_vulnerability) {
     return <NoCoveragePanel report={report} onClose={onClose} />;
   }
 
   const eal =
-    report.loss_estimate.expected_annual_loss_usd_persisted ??
-    report.loss_estimate.expected_annual_loss_usd_recomputed;
+    report.risk_estimate.annual_risk_estimate_usd_persisted ??
+    report.risk_estimate.annual_risk_estimate_usd;
   const tier = riskTier(eal);
   const filename = `wildfire-risk-${wildfireKey(report)}.pdf`;
 
@@ -156,8 +156,8 @@ function buildFactors(report: WildfireRiskAssessment): FactorRow[] {
   return [
     {
       label: "Wildfire Likelihood",
-      display: f.burn_probability.toFixed(4),
-      fraction: clamp(f.burn_probability / 0.01),
+      display: f.wildfire_likelihood.toFixed(4),
+      fraction: clamp(f.wildfire_likelihood / 0.01),
       description: "Annual probability the parcel burns (USFS WRC FSim).",
     },
     {
@@ -231,10 +231,10 @@ function RiskFactors({ report }: { report: WildfireRiskAssessment }) {
 }
 
 function PropertyDetails({ report }: { report: WildfireRiskAssessment }) {
-  const v = report.vulnerability_score!;
-  const l = report.loss_estimate!;
+  const v = report.property_vulnerability!;
+  const l = report.risk_estimate!;
   const replacement = report.match!.replacement_value_usd;
-  const rp = l.return_period_for_total_loss_years;
+  const rp = l.return_period_years;
   return (
     <div className="mb-6">
       <h3 className="mb-2.5 text-xs font-semibold uppercase tracking-wider text-zinc-500">
@@ -242,14 +242,14 @@ function PropertyDetails({ report }: { report: WildfireRiskAssessment }) {
       </h3>
       <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-xs">
         <Detail label="Replacement Value" value={`$${replacement.toLocaleString(undefined, { maximumFractionDigits: 0 })}`} />
-        <Detail label="Damage Probability" value={`${(v.p_destroyed * 100).toFixed(1)}%`} />
+        <Detail label="Damage Probability" value={`${(v.damage_probability * 100).toFixed(1)}%`} />
         <Detail
           label="Return Period"
           value={rp ? `${rp.toLocaleString()} years` : "—"}
         />
         <Detail
           label="Above Optimal Threshold"
-          value={v.exceeds_optimal_threshold ? "Yes" : "No"}
+          value={v.exceeds_risk_threshold ? "Yes" : "No"}
         />
       </dl>
     </div>
@@ -267,7 +267,7 @@ function Detail({ label, value }: { label: string; value: string }) {
 
 function MethodologySection({ report }: { report: WildfireRiskAssessment }) {
   const [open, setOpen] = useState(false);
-  const v = report.vulnerability_score!;
+  const v = report.property_vulnerability!;
   return (
     <div className="mb-6 rounded-lg border border-zinc-200 bg-zinc-50 px-4 py-2.5">
       <button
@@ -281,7 +281,7 @@ function MethodologySection({ report }: { report: WildfireRiskAssessment }) {
         <div className="mt-3 space-y-2 text-xs leading-relaxed text-zinc-700">
           <p>
             Validated against CAL FIRE damage inspections (AUC:{" "}
-            <span className="tabular-nums font-semibold">{v.model_auc_roc.toFixed(2)}</span>) for
+            <span className="tabular-nums font-semibold">{v.validation_auc_roc.toFixed(2)}</span>) for
             five Sonoma fires (Tubbs, Nuns, Kincade, Glass, LNU Lightning Complex).
           </p>
           <p>
@@ -294,8 +294,8 @@ function MethodologySection({ report }: { report: WildfireRiskAssessment }) {
               {v.methodology_hash.slice(0, 16)}…
             </code>
           </p>
-          {report.methodology_summary && (
-            <p className="text-[11px] italic text-zinc-600">{report.methodology_summary}</p>
+          {report.methodology_note && (
+            <p className="text-[11px] italic text-zinc-600">{report.methodology_note}</p>
           )}
         </div>
       )}

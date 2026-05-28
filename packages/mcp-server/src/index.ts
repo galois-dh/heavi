@@ -28,7 +28,7 @@ import { siteSuitability, siteSuitabilitySchema } from "./tools/site-suitability
 import { bufferAnalysis, bufferAnalysisSchema } from "./tools/buffer-analysis.js";
 import { dataLayers } from "./tools/data-layers.js";
 import { enrichLocation, enrichLocationSchema } from "./tools/enrich-location.js";
-import { wildfireLoss, wildfireLossSchema } from "./tools/wildfire-loss.js";
+import { wildfireLoss, wildfireLossSchema } from "./tools/wildfire-risk-assessment.js";
 
 const server = new McpServer({
   name: "heavi",
@@ -88,8 +88,10 @@ server.tool(
 
 server.tool(
   "wildfire_risk_assessment",
-  "Assesses wildfire risk for a property location. Returns calibrated risk estimate " +
-    "with methodology documentation validated against CAL FIRE damage inspections.",
+  "Assesses wildfire risk for a property location. Returns a natural language risk " +
+    "summary plus structured risk data with methodology documentation. Present the " +
+    "natural_language_summary to the user. Validated against CAL FIRE damage inspections " +
+    "for Sonoma County wildfires 2017-2020.",
   wildfireLossSchema.shape,
   async (input) => ({
     content: [{ type: "text", text: JSON.stringify(await wildfireLoss(input), null, 2) }],

@@ -87,7 +87,7 @@ export async function postSiteReport(
 // Shape mirrors packages/api/app/wildfire_loss.py exactly.
 
 export interface WildfireFeatures {
-  burn_probability: number;
+  wildfire_likelihood: number;
   distance_to_fuel_m: number;
   canopy_cover_30m: number;
   canopy_cover_100m: number;
@@ -105,21 +105,21 @@ export interface WildfireMatch {
   tract_fips: string | null;
 }
 
-export interface WildfireVulnerabilityScore {
-  p_destroyed: number;
+export interface WildfirePropertyVulnerability {
+  damage_probability: number;
   log_odds: number;
-  exceeds_optimal_threshold: boolean;
+  exceeds_risk_threshold: boolean;
   optimal_threshold: number;
-  model_auc_roc: number;
+  validation_auc_roc: number;
   model_run_id: string;
   methodology_hash: string;
 }
 
-export interface WildfireLossEstimate {
-  lambda_destroy_per_year: number;
-  expected_annual_loss_usd_recomputed: number;
-  expected_annual_loss_usd_persisted: number | null;
-  return_period_for_total_loss_years: number | null;
+export interface WildfireRiskEstimate {
+  annual_damage_frequency: number;
+  annual_risk_estimate_usd: number;
+  annual_risk_estimate_usd_persisted: number | null;
+  return_period_years: number | null;
 }
 
 export interface WildfireRiskAssessment {
@@ -132,9 +132,10 @@ export interface WildfireRiskAssessment {
   };
   match: WildfireMatch | null;
   features?: WildfireFeatures;
-  vulnerability_score?: WildfireVulnerabilityScore;
-  loss_estimate?: WildfireLossEstimate;
-  methodology_summary?: string;
+  property_vulnerability?: WildfirePropertyVulnerability;
+  risk_estimate?: WildfireRiskEstimate;
+  methodology_note?: string;
+  natural_language_summary?: string;
   message?: string;
 }
 
@@ -167,8 +168,8 @@ export interface PortfolioRow {
   annual_risk_usd: number | null;
   match?: WildfireMatch | null;
   features?: WildfireFeatures;
-  vulnerability_score?: WildfireVulnerabilityScore;
-  loss_estimate?: WildfireLossEstimate;
+  property_vulnerability?: WildfirePropertyVulnerability;
+  risk_estimate?: WildfireRiskEstimate;
   message?: string;
 }
 
@@ -197,7 +198,7 @@ export interface PortfolioSummary {
 export interface PortfolioResponse {
   job_id: string;
   generated_at: string;
-  methodology_summary: string;
+  methodology_note: string;
   model: { run_id: string; auc_roc: number; methodology_hash: string };
   portfolio_summary: PortfolioSummary;
   top_10_highest_risk: PortfolioRow[];

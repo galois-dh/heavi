@@ -616,7 +616,7 @@ def _page_executive_summary(job: PortfolioJob, styles: dict[str, ParagraphStyle]
         "before broader portfolio-wide treatment.",
         "All estimates use the Heavi Sonoma wildfire model v0.1, validated against "
         "CAL FIRE damage inspections from the 2017–2020 Sonoma fire cohort "
-        f"(model AUC {job.portfolio_summary.get('model_auc_roc', MODEL_AUC_FALLBACK):.2f} "
+        f"(model AUC {job.portfolio_summary.get("validation_auc_roc", MODEL_AUC_FALLBACK):.2f} "
         "when available). See Methodology page for the full data lineage.",
     ]
     for p in paragraphs:
@@ -774,9 +774,9 @@ def _factor_drivers(
             return abs(value)
         return (value - median) / abs(median)
 
-    # burn_probability: higher = riskier
-    bp = float(f.get("burn_probability", 0) or 0)
-    m = medians.get("burn_probability", 0) or 1e-9
+    # wildfire_likelihood: higher = riskier
+    bp = float(f.get("wildfire_likelihood", 0) or 0)
+    m = medians.get("wildfire_likelihood", 0) or 1e-9
     candidates.append((_norm(bp, m), "elevated wildfire likelihood", f"{bp:.4f}"))
 
     # distance_to_fuel_m: LOWER = riskier (invert direction)
@@ -806,7 +806,7 @@ def _factor_drivers(
 def _portfolio_medians(job: PortfolioJob) -> dict[str, float]:
     """Median feature values across SCORED properties — used as a baseline
     for the per-property narrative."""
-    keys = ["burn_probability", "distance_to_fuel_m", "canopy_cover_100m", "slope_degrees"]
+    keys = ["wildfire_likelihood", "distance_to_fuel_m", "canopy_cover_100m", "slope_degrees"]
     medians: dict[str, float] = {}
     for k in keys:
         vals = [
@@ -916,7 +916,7 @@ def _property_card(
     eal = float(record.get("annual_risk_usd") or 0)
     tier = "high" if eal > 500 else "moderate" if eal >= 50 else "low"
     feats = record.get("features") or {}
-    vs = record.get("vulnerability_score") or {}
+    vs = record.get("property_vulnerability") or {}
     match = record.get("match") or {}
 
     # Top row: rank · address · tier chip.
@@ -975,8 +975,8 @@ def _property_card(
     # Factor table.
     feature_rows = [
         ["Annual Risk", _money(eal)],
-        ["P(destroy)", f"{(vs.get('p_destroyed', 0) * 100):.1f}%"],
-        ["Wildfire Likelihood", f"{feats.get('burn_probability', 0):.4f}"],
+        ["P(destroy)", f"{(vs.get('damage_probability', 0) * 100):.1f}%"],
+        ["Wildfire Likelihood", f"{feats.get('wildfire_likelihood', 0):.4f}"],
         ["Distance to Fuel", f"{feats.get('distance_to_fuel_m', 0):.0f} m"],
         ["Canopy (100m)", f"{feats.get('canopy_cover_100m', 0):.0f}%"],
         ["Slope", f"{feats.get('slope_degrees', 0):.1f}°"],
@@ -1126,7 +1126,7 @@ def _page_methodology(job: PortfolioJob, styles: dict[str, ParagraphStyle]) -> l
     flowables.append(src)
 
     flowables.append(Paragraph("VALIDATION", styles["h2"]))
-    auc = job.portfolio_summary.get("model_auc_roc") or MODEL_AUC_FALLBACK
+    auc = job.portfolio_summary.get("validation_auc_roc") or MODEL_AUC_FALLBACK
     flowables.append(
         Paragraph(
             f"Calibrated logistic-regression vulnerability model with AUC-ROC "
