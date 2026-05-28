@@ -244,6 +244,9 @@ export async function wildfireLoss(input: WildfireLossInput) {
     : null;
 
   return {
+    // First field so the agent sees the user-facing summary before the
+    // structured data (key order is preserved by JSON.stringify).
+    natural_language_summary: naturalLanguageSummary(headlineRisk ?? 0, features, fire),
     query: {
       latitude: lat,
       longitude: lng,
@@ -284,6 +287,5 @@ export async function wildfireLoss(input: WildfireLossInput) {
       return_period_years: lambda_destroy > 0 ? Math.round(1.0 / lambda_destroy) : null,
     },
     methodology_note: METHODOLOGY_NOTE,
-    natural_language_summary: naturalLanguageSummary(headlineRisk ?? 0, features, fire),
   };
 }
