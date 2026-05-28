@@ -22,12 +22,13 @@ interface Props {
   onSiteReportRequest: (address: string) => Promise<void>;
   loading: boolean;
   setLoading: (v: boolean) => void;
+  placeholder?: string;
 }
 
 const SITE_REPORT_INTENT =
   /^(?:score|site\s*report(?:\s+for)?|report\s+for|suitability(?:\s+of|\s+for)?)\s+(.+?)(?:\s+for\s+site\s+suitability)?\.?\s*$/i;
 
-export function ChatPanel({ onResult, onSiteReportRequest, loading, setLoading }: Props) {
+export function ChatPanel({ onResult, onSiteReportRequest, loading, setLoading, placeholder }: Props) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -148,7 +149,7 @@ export function ChatPanel({ onResult, onSiteReportRequest, loading, setLoading }
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="How many buildings are in a flood zone?"
+            placeholder={placeholder ?? "How many buildings are in a flood zone?"}
             rows={2}
             className="flex-1 resize-none rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-zinc-100 placeholder:text-zinc-600 focus:border-indigo-500 focus:outline-none"
           />

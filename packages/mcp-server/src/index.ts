@@ -87,12 +87,9 @@ server.tool(
 );
 
 server.tool(
-  "wildfire_loss",
-  "Estimate the wildfire annual risk for a Sonoma County property. " +
-    "Accepts lat/lng or address, finds the nearest USACE NSI structure within the search radius, " +
-    "and returns the wildfire likelihood, vulnerability-model destruction probability, " +
-    "replacement value, all raster enrichment features, and the resulting risk estimate. " +
-    "Frequency-severity decomposition (Klugman/Panjer/Willmot); see methodology summary in the response.",
+  "wildfire_risk_assessment",
+  "Assesses wildfire risk for a property location. Returns calibrated risk estimate " +
+    "with methodology documentation validated against CAL FIRE damage inspections.",
   wildfireLossSchema.shape,
   async (input) => ({
     content: [{ type: "text", text: JSON.stringify(await wildfireLoss(input), null, 2) }],

@@ -20,7 +20,7 @@ const STYLE: maplibregl.StyleSpecification = {
   layers: [{ id: "carto-tiles", type: "raster", source: "carto" }],
 };
 
-// Alameda County center
+// Alameda County center (default)
 const CENTER: [number, number] = [-122.05, 37.68];
 
 export interface MapHandle {
@@ -32,9 +32,16 @@ export interface MapHandle {
 
 interface Props {
   onPointPick?: (lat: number, lng: number) => void;
+  // Optional initial camera — defaults to Alameda County. The wildfire page
+  // passes a Sonoma center/zoom. Read once at mount.
+  center?: [number, number];
+  zoom?: number;
 }
 
-export const MapView = forwardRef<MapHandle, Props>(function MapView({ onPointPick }, ref) {
+export const MapView = forwardRef<MapHandle, Props>(function MapView(
+  { onPointPick, center, zoom },
+  ref,
+) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
   const markerRef = useRef<maplibregl.Marker | null>(null);
@@ -48,8 +55,8 @@ export const MapView = forwardRef<MapHandle, Props>(function MapView({ onPointPi
     const map = new maplibregl.Map({
       container: containerRef.current,
       style: STYLE,
-      center: CENTER,
-      zoom: 10.5,
+      center: center ?? CENTER,
+      zoom: zoom ?? 10.5,
     });
 
     map.addControl(new maplibregl.NavigationControl(), "top-right");

@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import Link from "next/link";
+import { TopNav } from "../../components/top-nav";
 import maplibregl from "maplibre-gl";
 import {
   postPortfolioRisk,
@@ -245,17 +245,13 @@ export default function PortfolioPage() {
 
   return (
     <div className="flex h-full flex-col bg-zinc-50 text-zinc-900">
-      {/* Header */}
+      <TopNav active="portfolio" />
+      {/* Page sub-header */}
       <header className="flex items-center justify-between border-b border-zinc-200 bg-white px-6 py-3">
         <div>
           <h1 className="text-lg font-semibold tracking-tight">Portfolio Risk Assessment</h1>
           <p className="text-xs text-zinc-500">Upload a property portfolio → wildfire risk per property + portfolio PDF</p>
         </div>
-        <nav className="flex items-center gap-3 text-sm">
-          <Link href="/" className="rounded-md px-3 py-1.5 text-zinc-600 transition hover:bg-zinc-100">
-            ← Map
-          </Link>
-        </nav>
       </header>
 
       <main className="grid flex-1 grid-cols-1 gap-0 overflow-hidden lg:grid-cols-[480px_1fr]">

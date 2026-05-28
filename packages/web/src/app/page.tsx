@@ -1,330 +1,115 @@
-"use client";
-
-import { useRef, useState, useCallback } from "react";
 import Link from "next/link";
-import { MapView, type MapHandle } from "../components/map-view";
-import { ChatPanel } from "../components/chat-panel";
-import { DataTable } from "../components/data-table";
-import { SqlPanel } from "../components/sql-panel";
-import { SiteReportPanel, siteKey } from "../components/site-report";
-import { WildfireReportPanel } from "../components/wildfire-report";
-import {
-  postSiteReport,
-  postWildfireLoss,
-  type QueryResult,
-  type SiteReport,
-  type WildfireRiskAssessment,
-} from "../lib/api";
-
-// Sonoma County bbox (per product spec). Click inside → wildfire risk
-// assessment; click outside → site-suitability report. The bbox is
-// generous on purpose — better to misroute a few edge clicks toward the
-// wildfire model (which gracefully handles "no NSI within 500 m") than to
-// silently strand Sonoma users in the Alameda-tuned suitability flow.
-const SONOMA_BBOX = { latMin: 38.1, latMax: 38.9, lngMin: -123.1, lngMax: -122.3 };
-function inSonomaCounty(lat: number, lng: number): boolean {
-  return (
-    lat >= SONOMA_BBOX.latMin &&
-    lat <= SONOMA_BBOX.latMax &&
-    lng >= SONOMA_BBOX.lngMin &&
-    lng <= SONOMA_BBOX.lngMax
-  );
-}
-
-// The bbox alone misses two cases: (a) wildfire results in western/coastal
-// Sonoma fall outside the lng −123.1 cutoff, and (b) a user who explicitly
-// asked about wildfire/fire/risk/burn expects every click to read as
-// wildfire even before we know the coordinates. So a query is flagged as
-// "wildfire context" when its text OR generated SQL mentions any of those
-// terms — "wildfire" also covers the wildfire_* table names in the SQL.
-function isWildfireQuery(question: string, sql: string | undefined): boolean {
-  const hay = `${question} ${sql ?? ""}`.toLowerCase();
-  return (
-    hay.includes("wildfire") ||
-    hay.includes("fire") ||
-    hay.includes("risk") ||
-    hay.includes("burn")
-  );
-}
-
-// Report state is a discriminated union so only one panel can be open at
-// a time and TypeScript narrows the right shape per branch.
-type ReportState =
-  | { kind: "suitability"; data: SiteReport }
-  | { kind: "wildfire"; data: WildfireRiskAssessment }
-  | null;
-
-// html2canvas's color parser pre-dates CSS Color Level 4, so any oklch(...)
-// value blows up. Fix in two passes: rewrite <style> text so Tailwind's
-// custom properties and pseudo-element rules emit rgb instead of oklch, then
-// pin any remaining oklch computed values (e.g. from external stylesheets)
-// as inline styles. html2canvas also reads html/body backgrounds directly
-// for the page-background fallback, so normalize those too — not just the
-// capture subtree.
-//
-// Note: canvas.fillStyle accepts oklch in modern Chrome but serializes it
-// back as oklch(...). To force a real sRGB conversion we rasterize a 1x1
-// pixel and read back its bytes.
-function normalizeOklchColors(doc: Document, root: HTMLElement): void {
-  const win = doc.defaultView;
-  if (!win) return;
-  const canvas = doc.createElement("canvas");
-  canvas.width = 1;
-  canvas.height = 1;
-  const ctx = canvas.getContext("2d", { willReadFrequently: true });
-  if (!ctx) return;
-
-  const toRgb = (text: string): string =>
-    text.replace(/oklch\([^)]+\)/gi, (match) => {
-      try {
-        ctx.clearRect(0, 0, 1, 1);
-        ctx.fillStyle = "#000";
-        ctx.fillStyle = match;
-        ctx.fillRect(0, 0, 1, 1);
-        const [r, g, b, a] = ctx.getImageData(0, 0, 1, 1).data;
-        return a === 255
-          ? `rgb(${r}, ${g}, ${b})`
-          : `rgba(${r}, ${g}, ${b}, ${(a / 255).toFixed(3)})`;
-      } catch {
-        return match;
-      }
-    });
-
-  doc.querySelectorAll<HTMLStyleElement>("style").forEach((s) => {
-    const t = s.textContent;
-    if (t && t.includes("oklch")) s.textContent = toRgb(t);
-  });
-
-  const visit = (el: HTMLElement) => {
-    const cs = win.getComputedStyle(el);
-    for (let i = 0; i < cs.length; i++) {
-      const prop = cs[i];
-      const val = cs.getPropertyValue(prop);
-      if (val.includes("oklch")) {
-        el.style.setProperty(prop, toRgb(val));
-      }
-    }
-  };
-
-  if (doc.documentElement) visit(doc.documentElement);
-  if (doc.body) visit(doc.body);
-  visit(root);
-  root.querySelectorAll<HTMLElement>("*").forEach(visit);
-}
+import { TopNav } from "../components/top-nav";
 
 export default function Home() {
-  const mapRef = useRef<MapHandle>(null);
-  const [result, setResult] = useState<QueryResult | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [report, setReport] = useState<ReportState>(null);
-  const [reportLoading, setReportLoading] = useState(false);
-  const [exporting, setExporting] = useState(false);
-  // Whether the most recent spatial query was wildfire-related. Drives
-  // map-click routing alongside the Sonoma bbox check.
-  const [wildfireContext, setWildfireContext] = useState(false);
-
-  const handleResult = useCallback((r: QueryResult, question: string) => {
-    setResult(r);
-    const sql = r.sql ?? r.generated_sql ?? r.metadata?.sql;
-    setWildfireContext(isWildfireQuery(question, sql));
-
-    // Build a renderable FeatureCollection from either a normal feature
-    // result OR the truncated-sample preview embedded in large_result_summary.
-    // For the sample case, sample_rows entries are full GeoJSON Features
-    // (see api.ts QueryResult). We filter to ones that carry geometry so
-    // plain-row samples (aggregate-shaped) don't poison setGeoJSON.
-    let features: GeoJSON.Feature[] = [];
-    if (r.type === "FeatureCollection" && r.features?.length) {
-      features = r.features;
-    } else if (r.type === "large_result_summary" && r.sample_rows?.length) {
-      // sample_rows is typed as Record<string,unknown>[] (it can also carry
-      // plain row dicts for non-feature queries) — cast through unknown so
-      // TS accepts the filter narrowing.
-      features = (r.sample_rows as unknown[]).filter((row): row is GeoJSON.Feature => {
-        if (row === null || typeof row !== "object") return false;
-        const rec = row as Record<string, unknown>;
-        const geom = rec.geometry as { type?: string } | null | undefined;
-        return !!geom && typeof geom === "object" && typeof geom.type === "string";
-      });
-    }
-
-    if (features.length) {
-      mapRef.current?.setGeoJSON({ type: "FeatureCollection", features });
-    } else {
-      mapRef.current?.clearGeoJSON();
-    }
-  }, []);
-
-  const runSuitabilityReport = useCallback(
-    async (body: { address?: string; latitude?: number; longitude?: number }) => {
-      setReportLoading(true);
-      try {
-        const r = await postSiteReport(body);
-        setReport({ kind: "suitability", data: r });
-        mapRef.current?.setMarker(r.location.latitude, r.location.longitude);
-      } finally {
-        setReportLoading(false);
-      }
-    },
-    [],
-  );
-
-  const runWildfireReport = useCallback(
-    async (body: { address?: string; latitude?: number; longitude?: number }) => {
-      setReportLoading(true);
-      try {
-        const r = await postWildfireLoss(body);
-        setReport({ kind: "wildfire", data: r });
-        // For wildfire we drop the marker on the *match* location (NSI snap)
-        // when available, falling back to the click coord.
-        const lat = r.match?.nsi_location.latitude ?? r.query.latitude;
-        const lng = r.match?.nsi_location.longitude ?? r.query.longitude;
-        mapRef.current?.setMarker(lat, lng);
-      } finally {
-        setReportLoading(false);
-      }
-    },
-    [],
-  );
-
-  const handleMapPick = useCallback(
-    (lat: number, lng: number) => {
-      // Wildfire when EITHER the most recent query was wildfire-related OR
-      // the click lands in Sonoma County. MapView always invokes the latest
-      // handleMapPick (it keeps onPointPick in a ref), so reading
-      // wildfireContext from the closure is current.
-      const wildfire = wildfireContext || inSonomaCounty(lat, lng);
-      const fn = wildfire ? runWildfireReport : runSuitabilityReport;
-      fn({ latitude: lat, longitude: lng }).catch((err) => {
-        console.error(err);
-      });
-    },
-    [wildfireContext, runSuitabilityReport, runWildfireReport],
-  );
-
-  // Chat-driven site-report requests stay on the suitability flow — the
-  // intent matcher explicitly captures "score X" / "site report for X",
-  // which are suitability semantics. Only map clicks branch by geography.
-  const handleSiteReportRequest = useCallback(
-    async (address: string) => {
-      await runSuitabilityReport({ address });
-    },
-    [runSuitabilityReport],
-  );
-
-  const handleCloseReport = useCallback(() => {
-    setReport(null);
-    mapRef.current?.clearMarker();
-  }, []);
-
-  // Generalized PDF export — each panel passes the element to rasterize and
-  // the desired filename. Decouples export from any specific report shape.
-  const handleExport = useCallback(
-    async (el: HTMLElement, filename: string) => {
-      setExporting(true);
-      try {
-        const [{ default: html2canvas }, jsPDFModule] = await Promise.all([
-          import("html2canvas"),
-          import("jspdf"),
-        ]);
-        const canvas = await html2canvas(el, {
-          backgroundColor: "#ffffff",
-          scale: 2,
-          useCORS: true,
-          logging: false,
-          onclone: (doc, cloned) => {
-            normalizeOklchColors(doc, cloned as HTMLElement);
-          },
-        });
-        const imgData = canvas.toDataURL("image/png");
-        const pdf = new jsPDFModule.jsPDF({
-          unit: "pt",
-          format: "letter",
-          orientation: "portrait",
-        });
-        const pageW = pdf.internal.pageSize.getWidth();
-        const pageH = pdf.internal.pageSize.getHeight();
-        const margin = 32;
-        const maxW = pageW - margin * 2;
-        const maxH = pageH - margin * 2;
-        const ratio = Math.min(maxW / canvas.width, maxH / canvas.height);
-        const drawW = canvas.width * ratio;
-        const drawH = canvas.height * ratio;
-        pdf.addImage(imgData, "PNG", (pageW - drawW) / 2, margin, drawW, drawH);
-        pdf.save(filename);
-      } finally {
-        setExporting(false);
-      }
-    },
-    [],
-  );
-
   return (
-    <div className="flex h-full">
-      {/* Left sidebar */}
-      <div className="flex w-[420px] shrink-0 flex-col border-r border-zinc-800 bg-zinc-900">
-        <div className="flex items-start justify-between gap-3 border-b border-zinc-800 px-4 py-3">
-          <div>
-            <h1 className="text-lg font-semibold tracking-tight">Heavi</h1>
-            <p className="text-xs text-zinc-500">Spatial decision intelligence</p>
+    <div className="flex h-full flex-col">
+      <TopNav />
+
+      <main className="flex flex-1 flex-col items-center overflow-y-auto px-6 py-12">
+        <div className="w-full max-w-4xl">
+          {/* Hero */}
+          <div className="mb-10 text-center">
+            <h1 className="text-4xl font-bold tracking-tight text-white">HEAVI</h1>
+            <p className="mt-2 text-sm uppercase tracking-[0.2em] text-blue-400">
+              Spatial decision intelligence
+            </p>
+            <p className="mx-auto mt-4 max-w-xl text-sm leading-relaxed text-zinc-400">
+              Module-based geospatial risk and suitability analytics. Pick a module to begin.
+            </p>
           </div>
-          <Link
-            href="/portfolio"
-            className="shrink-0 rounded-md border border-zinc-700 px-2.5 py-1 text-[11px] font-medium text-zinc-300 transition hover:border-zinc-500 hover:text-white"
-          >
-            Portfolio →
-          </Link>
+
+          {/* Module cards */}
+          <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
+            <ModuleCard
+              title="Wildfire Risk Assessment"
+              status="LIVE"
+              region="Sonoma County"
+              blurb="Calibrated annual-loss estimates per structure, validated against CAL FIRE damage inspections."
+            >
+              <CardButton href="/wildfire" primary>
+                Assess Single Property
+              </CardButton>
+              <CardButton href="/portfolio">Score Portfolio</CardButton>
+            </ModuleCard>
+
+            <ModuleCard
+              title="Site Suitability Scoring"
+              status="LIVE"
+              region="Alameda County"
+              blurb="Composite suitability across flood risk, demographics, transit access, environmental and competition factors."
+            >
+              <CardButton href="/suitability" primary>
+                Explore Map
+              </CardButton>
+            </ModuleCard>
+          </div>
+
+          {/* Footer */}
+          <div className="mt-10 text-center">
+            <p className="text-xs text-zinc-500">
+              More modules coming: Flood Risk, Seismic Risk, Trade Area Analytics
+            </p>
+            <Link
+              href="/query"
+              className="mt-4 inline-block text-xs font-medium text-zinc-400 transition hover:text-blue-300"
+            >
+              Advanced: Natural Language Spatial Query →
+            </Link>
+          </div>
         </div>
-
-        <ChatPanel
-          onResult={handleResult}
-          onSiteReportRequest={handleSiteReportRequest}
-          loading={loading}
-          setLoading={setLoading}
-        />
-
-        {result?.sql || result?.generated_sql || result?.metadata?.sql ? (
-          <SqlPanel sql={(result.sql ?? result.generated_sql ?? result.metadata?.sql)!} />
-        ) : null}
-
-        <DataTable result={result} />
-      </div>
-
-      {/* Map */}
-      <div className="relative flex-1">
-        <MapView ref={mapRef} onPointPick={handleMapPick} />
-        {(loading || reportLoading) && (
-          <div className="absolute left-1/2 top-4 -translate-x-1/2 rounded-full bg-zinc-900/90 px-4 py-1.5 text-xs text-zinc-300 shadow-lg">
-            {reportLoading ? "Scoring site..." : "Querying..."}
-          </div>
-        )}
-        {!report && !reportLoading && (
-          <div className="pointer-events-none absolute bottom-4 left-1/2 -translate-x-1/2 rounded-full bg-white/90 px-3 py-1 text-[11px] font-medium text-zinc-700 shadow">
-            Click any point — Alameda → site report · Sonoma → wildfire risk
-          </div>
-        )}
-
-        {report?.kind === "suitability" && (
-          <SiteReportPanel
-            key={`s:${siteKey(report.data)}`}
-            report={report.data}
-            onClose={handleCloseReport}
-            onExport={(el) =>
-              handleExport(el, `site-report-${siteKey(report.data)}.pdf`)
-            }
-            exporting={exporting}
-          />
-        )}
-        {report?.kind === "wildfire" && (
-          <WildfireReportPanel
-            key={`w:${report.data.query.latitude.toFixed(5)},${report.data.query.longitude.toFixed(5)}`}
-            report={report.data}
-            onClose={handleCloseReport}
-            onExport={handleExport}
-            exporting={exporting}
-          />
-        )}
-      </div>
+      </main>
     </div>
+  );
+}
+
+function ModuleCard({
+  title,
+  status,
+  region,
+  blurb,
+  children,
+}: {
+  title: string;
+  status: string;
+  region: string;
+  blurb: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="flex flex-col rounded-xl border border-zinc-800 bg-zinc-900 p-6 transition hover:border-zinc-700">
+      <div className="mb-3 flex items-center gap-2">
+        <span className="rounded-full bg-green-500/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-green-400">
+          {status}
+        </span>
+        <span className="text-[11px] uppercase tracking-wider text-zinc-500">{region}</span>
+      </div>
+      <h2 className="text-lg font-semibold text-white">{title}</h2>
+      <p className="mt-2 flex-1 text-sm leading-relaxed text-zinc-400">{blurb}</p>
+      <div className="mt-5 flex flex-wrap gap-2">{children}</div>
+    </div>
+  );
+}
+
+function CardButton({
+  href,
+  children,
+  primary = false,
+}: {
+  href: string;
+  children: React.ReactNode;
+  primary?: boolean;
+}) {
+  return (
+    <Link
+      href={href}
+      className={`rounded-md px-3.5 py-2 text-sm font-medium transition ${
+        primary
+          ? "bg-blue-600 text-white hover:bg-blue-500"
+          : "border border-zinc-700 text-zinc-200 hover:border-zinc-500 hover:bg-zinc-800"
+      }`}
+    >
+      {children}
+    </Link>
   );
 }
