@@ -34,6 +34,18 @@ export default function Home() {
             </ModuleCard>
 
             <ModuleCard
+              title="Solar Site Suitability"
+              status="LIVE"
+              region="Kern County, California"
+              blurb="Multi-criteria solar development site scoring validated against EIA Form 860 installations."
+            >
+              <CardButton href="/solar" primary>
+                Discover Sites
+              </CardButton>
+              <CardButton href="/solar?mode=score">Score Your Parcels</CardButton>
+            </ModuleCard>
+
+            <ModuleCard
               title="Site Suitability Scoring"
               status="LIVE"
               region="Alameda County"

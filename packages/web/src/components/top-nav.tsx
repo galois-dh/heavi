@@ -2,10 +2,11 @@
 
 import Link from "next/link";
 
-type NavKey = "wildfire" | "portfolio" | "suitability" | "query";
+type NavKey = "wildfire" | "solar" | "portfolio" | "suitability" | "query";
 
 const PRIMARY: { key: NavKey; label: string; href: string }[] = [
   { key: "wildfire", label: "Wildfire", href: "/wildfire" },
+  { key: "solar", label: "Solar", href: "/solar" },
   { key: "portfolio", label: "Portfolio", href: "/portfolio" },
   { key: "suitability", label: "Suitability", href: "/suitability" },
 ];

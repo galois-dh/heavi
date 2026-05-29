@@ -223,3 +223,125 @@ export function portfolioReportUrl(jobId: string): string {
 export function portfolioSampleCsvUrl(): string {
   return `${API_BASE}/portfolio-risk/sample.csv`;
 }
+
+// ─── Solar site suitability ────────────────────────────────────────────────
+// Shapes mirror packages/api/app/solar_scoring.py.
+
+export type SolarRating = "High" | "Moderate" | "Low";
+
+export interface SolarCriteria {
+  solar_irradiance_ghi_kwh_m2_day: number | null;
+  solar_irradiance_score: number;
+  grid_distance_km: number | null;
+  grid_proximity_score: number;
+  slope_degrees: number | null;
+  slope_percent: number | null;
+  slope_score: number;
+  aspect_deviation_from_south_degrees: number | null;
+  aspect_score: number;
+  soil_capability_class: number | null;
+  soil_score: number;
+  road_distance_km: number | null;
+  road_access_score: number;
+  land_use_category: string | null;
+  land_use_score: number;
+}
+
+export interface SolarConstraints {
+  min_acreage: boolean;
+  max_slope: boolean;
+  flood_zone_clear: boolean;
+  wetlands_clear: boolean;
+  protected_lands_clear: boolean;
+}
+
+export interface SolarResult {
+  parcel_id: string;
+  suitability_score: number;
+  suitability_rating: SolarRating;
+  acreage: number | null;
+  estimated_capacity_mw: number;
+  location: { longitude: number | null; latitude: number | null };
+  criteria_scores: SolarCriteria;
+  constraints_passed: SolarConstraints;
+  constraints_all_passed: boolean;
+  natural_language_summary: string;
+  methodology: {
+    summary: string;
+    weights_source: string;
+    capacity_method: string;
+    environmental_constraints: string;
+    data_sources: string[];
+  };
+  data_notes?: string[];
+}
+
+export interface SolarPortfolioSummary {
+  total_parcels_evaluated: number;
+  parcels_passing_constraints: number;
+  total_estimated_capacity_mw: number;
+  score_distribution: { High: number; Moderate: number; Low: number };
+  returned: number;
+}
+
+export interface SolarConfig {
+  min_acreage: number;
+  max_slope_pct: number;
+  grid_max_distance_km: number;
+  road_max_distance_km: number;
+  high_threshold: number;
+  moderate_threshold: number;
+  acres_per_mw: number;
+  weights: Record<string, number>;
+}
+
+export interface SolarDiscoverResponse {
+  mode: "discover";
+  geography: string | { bbox: number[] };
+  portfolio_summary: SolarPortfolioSummary;
+  results: SolarResult[];
+  config: SolarConfig;
+  methodology_endpoint: string;
+  notes: string[];
+  // present only when the geography isn't pre-loaded
+  error?: string;
+  available_geographies?: string[];
+}
+
+export interface SolarScoreResponse {
+  mode: "score";
+  parcel_count: number;
+  scored_count: number;
+  results: SolarResult[];
+  config: SolarConfig;
+  methodology_endpoint: string;
+}
+
+export async function postSolarDiscover(body: {
+  geography: string | number[];
+  top_n?: number;
+  min_acreage?: number;
+  max_slope?: number;
+}): Promise<SolarDiscoverResponse> {
+  const res = await fetch(`${API_BASE}/solar/discover`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`Solar discover failed (${res.status}): ${text}`);
+  }
+  return res.json();
+}
+
+export async function postSolarScore(file: File): Promise<SolarScoreResponse> {
+  const form = new FormData();
+  form.append("file", file);
+  const res = await fetch(`${API_BASE}/solar/score`, { method: "POST", body: form });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`Solar score failed (${res.status}): ${text}`);
+  }
+  return res.json();
+}
