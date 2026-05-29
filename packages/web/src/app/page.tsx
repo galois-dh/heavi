@@ -44,17 +44,6 @@ export default function Home() {
               </CardButton>
               <CardButton href="/solar?mode=score">Score Your Parcels</CardButton>
             </ModuleCard>
-
-            <ModuleCard
-              title="Site Suitability Scoring"
-              status="LIVE"
-              region="Alameda County"
-              blurb="Composite suitability across flood risk, demographics, transit access, environmental and competition factors."
-            >
-              <CardButton href="/suitability" primary>
-                Explore Map
-              </CardButton>
-            </ModuleCard>
           </div>
 
           {/* Footer */}
