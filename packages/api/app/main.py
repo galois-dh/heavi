@@ -5,8 +5,9 @@ import os
 from pathlib import Path
 
 import asyncpg
+import httpx
 from dotenv import load_dotenv
-from fastapi import FastAPI, File, HTTPException, UploadFile
+from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response
 from pydantic import BaseModel
@@ -20,6 +21,14 @@ from .portfolio_risk import (
     run_portfolio,
 )
 from .site_report import geocode, reverse_geocode, site_report
+from .solar_scoring import (
+    build_config,
+    methodology_doc,
+    parse_csv_addresses,
+    parse_geojson,
+    run_discover_mode,
+    run_score_mode,
+)
 from .spatial_query import spatial_query
 from .wildfire_loss import wildfire_loss
 
@@ -247,6 +256,103 @@ async def portfolio_report_endpoint(job_id: str) -> Response:
 async def portfolio_limits_endpoint() -> dict:
     """Public knobs for the upload UI so the form can show 'up to N rows'."""
     return {"max_rows": MAX_ROWS}
+
+
+# ─── Solar site suitability ───────────────────────────────────────────────
+
+
+@app.post("/solar/score")
+async def solar_score_endpoint(
+    file: UploadFile = File(...),
+    options: str | None = Form(default=None),
+) -> dict:
+    """Score Mode. Accepts a GeoJSON FeatureCollection (.geojson/.json) of parcel
+    polygons or points, or a CSV of addresses / lat-lng pairs. `options` is an
+    optional JSON string of config overrides (min_acreage, max_slope, weights, …)."""
+    if not pool:
+        raise HTTPException(503, "Database pool not initialized")
+    raw = await file.read()
+    if not raw:
+        raise HTTPException(400, "Empty upload")
+    if len(raw) > 25 * 1024 * 1024:
+        raise HTTPException(413, "Upload exceeds 25 MB.")
+
+    overrides = None
+    if options:
+        try:
+            overrides = json.loads(options)
+        except ValueError:
+            raise HTTPException(400, "`options` is not valid JSON.")
+    cfg = build_config(overrides)
+
+    name = (file.filename or "").lower()
+    stripped = raw.lstrip()
+    is_geojson = name.endswith((".geojson", ".json")) or stripped[:1] in (b"{", b"[")
+    try:
+        if is_geojson:
+            parcels = parse_geojson(raw)
+            to_geocode: list[tuple[str, str]] = []
+        else:
+            parcels, to_geocode = parse_csv_addresses(raw)
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+
+    if len(parcels) > 1000:
+        raise HTTPException(413, f"{len(parcels)} parcels exceeds the 1000-per-request cap.")
+
+    # Forward-geocode address-only rows (Nominatim ≤1 req/s when no Mapbox token).
+    if to_geocode:
+        import asyncio
+        import time
+
+        from .portfolio_risk import _active_geocoder
+        from .solar_scoring import _geocode
+
+        by_id = {p.parcel_id: p for p in parcels}
+        throttle = _active_geocoder() == "nominatim"
+        async with httpx.AsyncClient(timeout=20.0) as client:
+            last = 0.0
+            for pid, address in to_geocode:
+                if throttle:
+                    elapsed = time.perf_counter() - last
+                    if elapsed < 1.05:
+                        await asyncio.sleep(1.05 - elapsed)
+                    last = time.perf_counter()
+                g = await _geocode(client, address)
+                if g and pid in by_id:
+                    by_id[pid].lat, by_id[pid].lng = g[0], g[1]
+                elif pid in by_id:
+                    by_id[pid].note = f"geocoding failed: {address!r}"
+
+    return await run_score_mode(pool, parcels, cfg)
+
+
+class SolarDiscoverRequest(BaseModel):
+    geography: str | list[float] = "kern"
+    top_n: int = 25
+    min_acreage: float | None = None
+    max_slope: float | None = None
+    weights: dict[str, float] | None = None
+
+
+@app.post("/solar/discover")
+async def solar_discover_endpoint(req: SolarDiscoverRequest) -> dict:
+    """Discover Mode. Identify candidate parcels within a geography ("kern" or a
+    [min_lng, min_lat, max_lng, max_lat] bbox) and return the top-N ranked."""
+    if not pool:
+        raise HTTPException(503, "Database pool not initialized")
+    cfg = build_config(
+        {"min_acreage": req.min_acreage, "max_slope": req.max_slope, "weights": req.weights}
+    )
+    top_n = max(1, min(req.top_n, 200))
+    return await run_discover_mode(pool, req.geography, cfg, top_n=top_n)
+
+
+@app.get("/solar/methodology")
+async def solar_methodology_endpoint() -> dict:
+    """Full methodology: citations, weight justification, data sources with
+    vintages, configurable thresholds with defaults/rationale, and limitations."""
+    return methodology_doc()
 
 
 @app.get("/portfolio-risk/sample.csv")
