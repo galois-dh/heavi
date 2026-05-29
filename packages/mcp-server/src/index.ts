@@ -29,6 +29,10 @@ import { bufferAnalysis, bufferAnalysisSchema } from "./tools/buffer-analysis.js
 import { dataLayers } from "./tools/data-layers.js";
 import { enrichLocation, enrichLocationSchema } from "./tools/enrich-location.js";
 import { wildfireLoss, wildfireLossSchema } from "./tools/wildfire-risk-assessment.js";
+import {
+  solarSiteSuitability,
+  solarSiteSuitabilitySchema,
+} from "./tools/solar-site-suitability.js";
 
 const server = new McpServer({
   name: "heavi",
@@ -99,6 +103,24 @@ server.tool(
   wildfireLossSchema.shape,
   async (input) => ({
     content: [{ type: "text", text: JSON.stringify(await wildfireLoss(input), null, 2) }],
+  }),
+);
+
+server.tool(
+  "solar_site_suitability",
+  "Scores parcels for solar development suitability or discovers candidate sites in a geography. " +
+    "Two modes: provide coordinates or an address for scoring (works anywhere with data coverage), " +
+    "or specify 'kern' to discover top-ranked parcels in Kern County. Returns multi-criteria " +
+    "suitability scores with methodology documentation. Validated against EIA Form 860 solar " +
+    "installations. " +
+    "When presenting results: lead with the natural_language_summary. Use 'suitability score' not " +
+    "technical criterion names. For discover mode, summarize the top results conversationally: " +
+    "'I found X high-suitability parcels in Kern County, with the best scoring Y out of 1.0. The " +
+    "top site is a Z-acre parcel with estimated capacity of W MW, driven by excellent grid access " +
+    "and flat terrain.' Cite Doorga et al. (2019) for the methodology framework.",
+  solarSiteSuitabilitySchema.shape,
+  async (input) => ({
+    content: [{ type: "text", text: JSON.stringify(await solarSiteSuitability(input), null, 2) }],
   }),
 );
 
