@@ -12,6 +12,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response
 from pydantic import BaseModel
 
+from .flood_scoring import assess_flood_risk
+from .flood_scoring import methodology_doc as flood_methodology_doc
 from .portfolio_pdf import render_pdf
 from .portfolio_risk import (
     MAX_ROWS,
@@ -256,6 +258,50 @@ async def portfolio_report_endpoint(job_id: str) -> Response:
 async def portfolio_limits_endpoint() -> dict:
     """Public knobs for the upload UI so the form can show 'up to N rows'."""
     return {"max_rows": MAX_ROWS}
+
+
+# ─── Flood risk ────────────────────────────────────────────────────────────
+
+
+class FloodRiskRequest(BaseModel):
+    latitude: float | None = None
+    longitude: float | None = None
+    address: str | None = None
+
+
+@app.post("/flood/risk")
+async def flood_risk_endpoint(req: FloodRiskRequest) -> dict:
+    """Single-property flood risk assessment (lat/lng or address). Hazard and
+    exposure data are queried on-demand from FEMA NFHL, USACE NSI, and USGS 3DEP."""
+    if not pool:
+        raise HTTPException(503, "Database pool not initialized")
+    lat = req.latitude
+    lng = req.longitude
+    resolved_address = None
+    if lat is None or lng is None:
+        if not req.address:
+            raise HTTPException(400, "Provide either address or latitude+longitude")
+        from .portfolio_risk import _geocode_one
+
+        async with httpx.AsyncClient(timeout=20.0) as client:
+            g = await _geocode_one(client, req.address)
+        if not g:
+            raise HTTPException(404, f"Could not geocode: {req.address}")
+        lat, lng, resolved_address = g
+    return await assess_flood_risk(
+        pool,
+        latitude=lat,
+        longitude=lng,
+        address=req.address,
+        resolved_address=resolved_address,
+    )
+
+
+@app.get("/flood/methodology")
+async def flood_methodology_endpoint() -> dict:
+    """Full flood methodology: pipeline, data sources, HAZUS citations,
+    annual-probability assumptions, configurable defaults, and limitations."""
+    return flood_methodology_doc()
 
 
 # ─── Solar site suitability ───────────────────────────────────────────────
