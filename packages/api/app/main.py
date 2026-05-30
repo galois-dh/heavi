@@ -32,6 +32,8 @@ from .solar_scoring import (
     run_score_mode,
 )
 from .spatial_query import spatial_query
+from .trade_area_scoring import methodology_doc as trade_area_methodology_doc
+from .trade_area_scoring import score_trade_area
 from .wildfire_loss import wildfire_loss
 
 # Best-effort .env load — for local dev where the file lives at the monorepo
@@ -258,6 +260,52 @@ async def portfolio_report_endpoint(job_id: str) -> Response:
 async def portfolio_limits_endpoint() -> dict:
     """Public knobs for the upload UI so the form can show 'up to N rows'."""
     return {"max_rows": MAX_ROWS}
+
+
+# ─── Trade area analysis ─────────────────────────────────────────────────────
+
+
+class TradeAreaRequest(BaseModel):
+    latitude: float | None = None
+    longitude: float | None = None
+    address: str | None = None
+    thresholds: list[float] | None = None  # drive-time minutes; default 5/10/15
+
+
+@app.post("/trade-area/score")
+async def trade_area_score_endpoint(req: TradeAreaRequest) -> dict:
+    """Score Mode (Week 1): for a location, compute drive-time isochrones and the
+    area-weighted demographics, daytime jobs, and POI counts per ring."""
+    if not pool:
+        raise HTTPException(503, "Database pool not initialized")
+    lat, lng, resolved = req.latitude, req.longitude, None
+    if lat is None or lng is None:
+        if not req.address:
+            raise HTTPException(400, "Provide either address or latitude+longitude")
+        from .portfolio_risk import _geocode_one
+
+        async with httpx.AsyncClient(timeout=20.0) as client:
+            g = await _geocode_one(client, req.address)
+        if not g:
+            raise HTTPException(404, f"Could not geocode: {req.address}")
+        lat, lng, resolved = g
+    try:
+        return await score_trade_area(
+            pool,
+            latitude=lat,
+            longitude=lng,
+            address=req.address,
+            resolved_address=resolved,
+            thresholds=req.thresholds,
+        )
+    except RuntimeError as e:
+        raise HTTPException(502, str(e))
+
+
+@app.get("/trade-area/methodology")
+async def trade_area_methodology_endpoint() -> dict:
+    """Trade-area methodology: pipeline, data sources, ACS variables, limitations."""
+    return trade_area_methodology_doc()
 
 
 # ─── Flood risk ────────────────────────────────────────────────────────────
