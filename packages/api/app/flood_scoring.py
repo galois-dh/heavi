@@ -494,7 +494,12 @@ def methodology_doc() -> dict[str, Any]:
             "NSI exposure is modeled (occupancy/value estimates), not a site survey.",
             "Zone X residual risk is a flat assumption; ~25% of NFIP claims historically "
             "originate outside the mapped SFHA.",
-            "No pluvial (rainfall) or future-conditions flooding — NFHL fluvial/coastal only.",
+            "The model assesses fluvial and coastal flood risk based on FEMA NFHL "
+            "hazard zones. Pluvial (rainfall) flooding outside mapped flood zones is "
+            "estimated from historical residual rates but is not hydraulically modeled. "
+            "The Harris County validation (discrimination 0.13) reflects this "
+            "limitation: Hurricane Harvey's damage was predominantly pluvial, occurring "
+            "outside mapped SFHA zones.",
         ],
         "validation": validation,
     }
