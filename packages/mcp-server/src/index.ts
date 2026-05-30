@@ -33,6 +33,10 @@ import {
   solarSiteSuitability,
   solarSiteSuitabilitySchema,
 } from "./tools/solar-site-suitability.js";
+import {
+  floodRiskAssessment,
+  floodRiskAssessmentSchema,
+} from "./tools/flood-risk-assessment.js";
 
 const server = new McpServer({
   name: "heavi",
@@ -121,6 +125,20 @@ server.tool(
   solarSiteSuitabilitySchema.shape,
   async (input) => ({
     content: [{ type: "text", text: JSON.stringify(await solarSiteSuitability(input), null, 2) }],
+  }),
+);
+
+server.tool(
+  "flood_risk_assessment",
+  "Assesses flood risk for any US property. Returns annual risk estimate in dollars " +
+    "with FEMA flood zone, depth analysis, and HAZUS-based damage estimates. Works " +
+    "nationally — no pre-loading required. " +
+    "When presenting results: lead with the natural_language_summary. Use 'annual flood " +
+    "risk estimate' not 'expected annual loss'. Mention the FEMA flood zone and whether " +
+    "the property is above or below the base flood elevation. Cite HAZUS methodology.",
+  floodRiskAssessmentSchema.shape,
+  async (input) => ({
+    content: [{ type: "text", text: JSON.stringify(await floodRiskAssessment(input), null, 2) }],
   }),
 );
 

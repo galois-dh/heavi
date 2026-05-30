@@ -407,7 +407,27 @@ async def assess_flood_risk(
 # ─── Methodology documentation ───────────────────────────────────────────────
 
 
+def _load_validation() -> dict[str, Any] | None:
+    """Load the Harris County backtest results (written by validate_flood_harris.py)
+    if present, so GET /flood/methodology can surface the validation evidence."""
+    import json
+    from pathlib import Path
+
+    path = Path(__file__).resolve().parent / "flood_validation.json"
+    if path.exists():
+        try:
+            return json.loads(path.read_text())
+        except (ValueError, OSError):
+            return None
+    return None
+
+
 def methodology_doc() -> dict[str, Any]:
+    validation = _load_validation() or {
+        "status": "pending",
+        "method": "Tract-level backtest against OpenFEMA NFIP redacted claims for "
+        "Harris County, TX (flood_nfip_claims_harris).",
+    }
     return {
         "summary": (
             "On-demand national flood-risk assessment combining FEMA NFHL hazard "
@@ -476,6 +496,5 @@ def methodology_doc() -> dict[str, Any]:
             "originate outside the mapped SFHA.",
             "No pluvial (rainfall) or future-conditions flooding — NFHL fluvial/coastal only.",
         ],
-        "validation": "Predicted losses to be validated against OpenFEMA NFIP redacted "
-        "claims for Harris County, TX (flood_nfip_claims_harris).",
+        "validation": validation,
     }

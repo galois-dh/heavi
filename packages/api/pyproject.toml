@@ -38,4 +38,4 @@ select = ["E", "F", "I", "N", "UP"]
 # `pip install .` builders like Nixpacks/Railway. Without this, only .py
 # files get copied into site-packages and the runtime cannot find them.
 [tool.setuptools.package-data]
-app = ["sample_portfolio.csv", "wildfire_vulnerability_model.json"]
+app = ["sample_portfolio.csv", "wildfire_vulnerability_model.json", "flood_validation.json"]

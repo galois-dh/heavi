@@ -44,6 +44,17 @@ export default function Home() {
               </CardButton>
               <CardButton href="/solar?mode=score">Score Your Parcels</CardButton>
             </ModuleCard>
+
+            <ModuleCard
+              title="Flood Risk Assessment"
+              status="LIVE"
+              region="National Coverage"
+              blurb="HAZUS-based property flood risk assessment with FEMA flood zone analysis. Works for any US address."
+            >
+              <CardButton href="/flood" primary>
+                Assess Property
+              </CardButton>
+            </ModuleCard>
           </div>
 
           {/* Footer */}

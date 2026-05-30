@@ -345,3 +345,73 @@ export async function postSolarScore(file: File): Promise<SolarScoreResponse> {
   }
   return res.json();
 }
+
+// ─── Flood risk ─────────────────────────────────────────────────────────────
+// Shape mirrors packages/api/app/flood_scoring.py assess_flood_risk().
+
+export interface FloodRiskAssessment {
+  natural_language_summary: string;
+  query: {
+    latitude: number;
+    longitude: number;
+    address: string | null;
+    resolved_address: string | null;
+  };
+  flood_zone: {
+    zone: string | null;
+    zone_subtype: string | null;
+    static_bfe_ft: number | null;
+    in_special_flood_hazard_area: boolean;
+    annual_exceedance_probability: number;
+    return_period_years: number;
+  };
+  structure: {
+    match_distance_m: number;
+    occupancy_type: string | null;
+    hazus_occupancy_class: string;
+    foundation_type: string | null;
+    num_stories: number | null;
+    first_floor_height_ft: number;
+    replacement_value_structure_usd: number;
+    replacement_value_contents_usd: number;
+    structure_location: { latitude: number; longitude: number };
+  } | null;
+  elevation: {
+    ground_elevation_ft: number | null;
+    first_floor_height_ft: number;
+    flood_depth_above_first_floor_ft: number | null;
+    depth_basis: string;
+  };
+  damage: {
+    hazus_occupancy_class: string;
+    structural_damage_pct: number;
+    contents_damage_pct: number;
+    structural_loss_usd: number;
+    contents_loss_usd: number;
+    total_loss_usd: number;
+  };
+  risk_estimate: {
+    annual_risk_estimate_usd: number;
+    risk_tier: "HIGH" | "MODERATE" | "LOW";
+    annual_exceedance_probability: number;
+    return_period_years: number;
+  };
+  methodology_note: string;
+}
+
+export async function postFloodRisk(body: {
+  address?: string;
+  latitude?: number;
+  longitude?: number;
+}): Promise<FloodRiskAssessment> {
+  const res = await fetch(`${API_BASE}/flood/risk`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`Flood risk failed (${res.status}): ${text}`);
+  }
+  return res.json();
+}
