@@ -19,6 +19,11 @@ from typing import Any
 import asyncpg
 import httpx
 
+from .decision_trail import RequestContext
+
+MODULE_NAME = "flood_risk"
+MODULE_VERSION = "0.2.0"  # decision-trail instrumentation added
+
 # ─── Federal services ──────────────────────────────────────────────────────
 # The public NFHL service lives under /arcgis/ (the /gis/ host sits behind an
 # auth gateway). Layer 28 = "Flood Hazard Zones" (S_FLD_HAZ_AR).
@@ -279,14 +284,40 @@ def natural_language_summary(
 
 
 async def assess_flood_risk(
-    pool: asyncpg.Pool,
+    ctx: RequestContext,
     *,
     latitude: float,
     longitude: float,
     address: str | None = None,
     resolved_address: str | None = None,
 ) -> dict[str, Any]:
-    async with httpx.AsyncClient(timeout=30.0) as client:
+    trail = ctx.trail
+    trail.data_source(
+        "FEMA NFHL (S_FLD_HAZ_AR)",
+        source="hazards.fema.gov",
+        vintage="2024",
+        kind="federal HTTP",
+    )
+    trail.data_source(
+        "USACE NSI",
+        source="nsi.sec.usace.army.mil",
+        vintage="2024",
+        kind="federal HTTP",
+    )
+    trail.data_source(
+        "USGS 3DEP Elevation",
+        source="elevation.nationalmap.gov",
+        vintage="2023",
+        kind="federal HTTP",
+    )
+    trail.data_source(
+        "FEMA HAZUS Flood Model depth-damage functions",
+        source="flood_hazus_ddfs",
+        vintage="HAZUS Flood TM 2022",
+        kind="postgis lookup table",
+    )
+
+    async with ctx.http_client(timeout=30.0) as client:
         nfhl = await query_nfhl(client, longitude, latitude)
         nsi = await query_nsi(client, longitude, latitude)
         ground_ft = await query_3dep_ground_ft(client, longitude, latitude)
@@ -294,6 +325,44 @@ async def assess_flood_risk(
     zone = nfhl["flood_zone"]
     zinfo = classify_zone(zone, nfhl["zone_subtype"])
     bfe = nfhl["static_bfe"]
+
+    # ── Trail: flood-zone lookup ───────────────────────────────────────────
+    trail.step(
+        "flood_zone_lookup",
+        source="FEMA NFHL S_FLD_HAZ_AR (Layer 28)",
+        value=zone,
+        units=None,
+        threshold={
+            "op": "in",
+            "value": ["A", "AE", "AH", "AO", "AR", "A99", "V", "VE"],
+            "label": "Special Flood Hazard Area",
+        },
+        result="pass" if zinfo["is_sfha"] else "outside_sfha",
+        zone_subtype=nfhl["zone_subtype"],
+        annual_exceedance_probability=zinfo["annual_probability"],
+        return_period_years=zinfo["return_period_years"],
+    )
+
+    # ── Trail: structure exposure ──────────────────────────────────────────
+    if nsi:
+        trail.step(
+            "structure_match",
+            source="USACE National Structure Inventory",
+            value=f"{nsi.get('occtype')} ({nsi.get('found_type') or 'unknown found'})",
+            units=None,
+            threshold={"op": "≤", "value": 500, "label": "match distance (m)"},
+            result="pass" if nsi["distance_m"] <= 500 else "warn",
+            match_distance_m=round(nsi["distance_m"], 1),
+            replacement_value_structure_usd=nsi.get("val_struct"),
+            replacement_value_contents_usd=nsi.get("val_cont"),
+        )
+    else:
+        trail.advisory(
+            "No structure within 500 m in USACE NSI — using national default occupancy "
+            "(RES1-1SNB) and zero exposure values.",
+            severity="warning",
+            name="no_structure_match",
+        )
 
     # First-floor height above grade (NSI), with a national default fallback.
     ffh = (
@@ -303,6 +372,22 @@ async def assess_flood_risk(
     )
     if ground_ft is None and nsi and nsi.get("ground_elv_ft") is not None:
         ground_ft = float(nsi["ground_elv_ft"])
+
+    trail.step(
+        "ground_elevation",
+        source="USGS 3DEP" if ground_ft is not None else "NSI fallback",
+        value=round(ground_ft, 2) if ground_ft is not None else None,
+        units="ft",
+        result="resolved" if ground_ft is not None else "missing",
+    )
+    trail.step(
+        "first_floor_height",
+        source=("USACE NSI (found_ht)" if nsi and nsi.get("found_ht") is not None
+                else f"default {DEFAULT_FIRST_FLOOR_HEIGHT_FT} ft"),
+        value=ffh,
+        units="ft",
+        result="resolved",
+    )
 
     # Flood depth relative to the first floor (positive = water above first floor).
     depth_ft: float | None
@@ -316,9 +401,24 @@ async def assess_flood_risk(
             f"nominal {DEFAULT_SFHA_DEPTH_ABOVE_GRADE_FT:.0f} ft 100-yr depth above "
             "grade (no static BFE published) minus first-floor height"
         )
+        trail.advisory(
+            "SFHA parcel but NFHL has no published static BFE for this point — "
+            f"falling back to nominal {DEFAULT_SFHA_DEPTH_ABOVE_GRADE_FT} ft "
+            "100-yr depth above grade. Verify with the FIRM panel if precision matters.",
+            severity="warning",
+            name="bfe_unavailable",
+        )
     else:
-        depth_ft = None  # not in an SFHA → no modeled 100/500-yr inundation
+        depth_ft = None
         depth_basis = "outside the Special Flood Hazard Area — no modeled inundation"
+
+    trail.step(
+        "flood_depth",
+        source=depth_basis,
+        value=round(depth_ft, 2) if depth_ft is not None else None,
+        units="ft above first floor",
+        result="modeled" if depth_ft is not None else "n/a (outside SFHA)",
+    )
 
     occupancy_class = (
         map_occupancy_class(nsi.get("occtype"), nsi.get("num_story"), nsi.get("found_type"))
@@ -332,15 +432,35 @@ async def assess_flood_risk(
     struct_pct = cont_pct = 0.0
     ddf = None
     if depth_ft is not None:
-        ddf = await ddf_lookup(pool, occupancy_class, depth_ft)
+        ddf = await ddf_lookup(ctx.pool, occupancy_class, depth_ft)
         if ddf:
             struct_pct = float(ddf["structural_damage_pct"])
             cont_pct = float(ddf["contents_damage_pct"])
+
+    trail.step(
+        "hazus_damage_lookup",
+        source="flood_hazus_ddfs (HAZUS Flood Model depth-damage)",
+        value={"occupancy_class": occupancy_class,
+               "structural_pct": struct_pct, "contents_pct": cont_pct},
+        result="matched" if ddf else "skipped",
+    )
 
     structural_loss = round(val_struct * struct_pct / 100.0, 2)
     contents_loss = round(val_cont * cont_pct / 100.0, 2)
     total_loss = round(structural_loss + contents_loss, 2)
     annual_risk = round(total_loss * zinfo["annual_probability"], 2)
+
+    trail.factor("structural_loss_usd", value=structural_loss,
+                 source="val_struct × structural_pct / 100")
+    trail.factor("contents_loss_usd",   value=contents_loss,
+                 source="val_cont × contents_pct / 100")
+    trail.factor("total_event_loss_usd", value=total_loss)
+    trail.factor(
+        "annual_risk_usd",
+        value=annual_risk,
+        source=f"total_event_loss × AEP ({zinfo['annual_probability']})",
+        risk_tier=_tier(annual_risk),
+    )
 
     summary = natural_language_summary(annual_risk, zone, depth_ft)
 

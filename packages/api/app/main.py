@@ -12,8 +12,11 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response
 from pydantic import BaseModel
 
+from .decision_trail import RequestContext, persist_trail
 from .earthquake_scoring import assess_earthquake_risk
 from .earthquake_scoring import methodology_doc as earthquake_methodology_doc
+from .flood_scoring import MODULE_NAME as FLOOD_MODULE
+from .flood_scoring import MODULE_VERSION as FLOOD_VERSION
 from .flood_scoring import assess_flood_risk
 from .flood_scoring import methodology_doc as flood_methodology_doc
 from .portfolio_pdf import render_pdf
@@ -374,7 +377,9 @@ class FloodRiskRequest(BaseModel):
 @app.post("/flood/risk")
 async def flood_risk_endpoint(req: FloodRiskRequest) -> dict:
     """Single-property flood risk assessment (lat/lng or address). Hazard and
-    exposure data are queried on-demand from FEMA NFHL, USACE NSI, and USGS 3DEP."""
+    exposure data are queried on-demand from FEMA NFHL, USACE NSI, and USGS 3DEP.
+    Every call produces a decision trail (returned on the response and persisted
+    to the decision_trails audit table)."""
     if not pool:
         raise HTTPException(503, "Database pool not initialized")
     lat = req.latitude
@@ -390,13 +395,22 @@ async def flood_risk_endpoint(req: FloodRiskRequest) -> dict:
         if not g:
             raise HTTPException(404, f"Could not geocode: {req.address}")
         lat, lng, resolved_address = g
-    return await assess_flood_risk(
-        pool,
+
+    ctx = RequestContext.begin(pool, module=FLOOD_MODULE, module_version=FLOOD_VERSION)
+    result = await assess_flood_risk(
+        ctx,
         latitude=lat,
         longitude=lng,
         address=req.address,
         resolved_address=resolved_address,
     )
+    finalized = ctx.finalize(scored_output=result)
+    inputs = {
+        "address": req.address, "latitude": lat, "longitude": lng,
+        "resolved_address": resolved_address,
+    }
+    await persist_trail(pool, finalized=finalized, inputs=inputs)
+    return {**result, "decision_trail": finalized}
 
 
 @app.get("/flood/methodology")
