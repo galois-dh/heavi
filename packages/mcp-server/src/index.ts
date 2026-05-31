@@ -38,6 +38,10 @@ import {
   floodRiskAssessmentSchema,
 } from "./tools/flood-risk-assessment.js";
 import {
+  earthquakeRiskAssessment,
+  earthquakeRiskAssessmentSchema,
+} from "./tools/earthquake-risk-assessment.js";
+import {
   tradeAreaAnalysis,
   tradeAreaAnalysisSchema,
 } from "./tools/trade-area-analysis.js";
@@ -143,6 +147,27 @@ server.tool(
   floodRiskAssessmentSchema.shape,
   async (input) => ({
     content: [{ type: "text", text: JSON.stringify(await floodRiskAssessment(input), null, 2) }],
+  }),
+);
+
+server.tool(
+  "earthquake_risk_assessment",
+  "Assesses earthquake risk for any US property. Returns annual risk estimate " +
+    "with seismic hazard analysis, site amplification, and HAZUS damage state " +
+    "probabilities. Uses USGS 2023 National Seismic Hazard Model (served via " +
+    "the ASCE 7-22 Design Maps web service). Works nationally — no pre-loading " +
+    "required. " +
+    "When presenting results: lead with the natural_language_summary. Mention " +
+    "the PGA (bedrock and site-adjusted), the NEHRP site class, and the " +
+    "building vulnerability (HAZUS type and code level). Cite USGS NSHM and HAZUS.",
+  earthquakeRiskAssessmentSchema.shape,
+  async (input) => ({
+    content: [
+      {
+        type: "text",
+        text: JSON.stringify(await earthquakeRiskAssessment(input), null, 2),
+      },
+    ],
   }),
 );
 

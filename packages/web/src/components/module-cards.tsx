@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-export type ModuleId = "wildfire" | "solar" | "flood" | "trade_area";
+export type ModuleId = "wildfire" | "solar" | "flood" | "earthquake" | "trade_area";
 
 interface ModuleDef {
   title: string;
@@ -40,6 +40,14 @@ export const MODULES: Record<ModuleId, ModuleDef> = {
     blurb:
       "HAZUS-based property flood risk assessment with FEMA flood zone analysis. Works for any US address.",
     buttons: [{ href: "/flood", label: "Assess Property", primary: true }],
+  },
+  earthquake: {
+    title: "Earthquake Risk Assessment",
+    status: "LIVE",
+    region: "National Coverage",
+    blurb:
+      "HAZUS-based property earthquake risk with USGS NSHM ground motion, site-class amplification, and fragility-curve damage estimates.",
+    buttons: [{ href: "/earthquake", label: "Assess Property", primary: true }],
   },
   trade_area: {
     title: "Trade Area Analysis",

@@ -420,6 +420,78 @@ export async function postFloodRisk(body: {
   return res.json();
 }
 
+// ─── Earthquake risk ────────────────────────────────────────────────────────
+// Shape mirrors packages/api/app/earthquake_scoring.py assess_earthquake_risk().
+
+export interface EarthquakeRiskAssessment {
+  natural_language_summary: string;
+  query: {
+    latitude: number;
+    longitude: number;
+    address: string | null;
+    resolved_address: string | null;
+  };
+  hazard: {
+    bedrock_pga_g: number;
+    adjusted_pga_g: number;
+    hazard_level: string;
+    return_period_years: number;
+    annual_exceedance_probability: number;
+  };
+  site: {
+    vs30_m_per_s: number;
+    site_class: string;
+    site_description: string;
+    amplification_factor: number;
+    slope_m_per_m: number | null;
+    slope_basis: string;
+  };
+  structure: {
+    match_distance_m: number;
+    occupancy_type: string | null;
+    nsi_building_type: string | null;
+    hazus_building_type: string;
+    code_level: string;
+    num_stories: number | null;
+    median_year_built: number | null;
+    replacement_value_structure_usd: number;
+    replacement_value_contents_usd: number;
+    structure_location: { latitude: number; longitude: number };
+  } | null;
+  damage_state_probabilities: {
+    exceedance: { slight: number; moderate: number; extensive: number; complete: number };
+    exclusive: { slight: number; moderate: number; extensive: number; complete: number };
+    expected_damage_ratio: number;
+  };
+  risk_estimate: {
+    annual_risk_estimate_usd: number;
+    risk_tier: "HIGH" | "MODERATE" | "LOW";
+    structural_loss_at_hazard_usd: number;
+    contents_loss_at_hazard_usd: number;
+    total_loss_at_hazard_usd: number;
+    annual_exceedance_probability: number;
+    return_period_years: number;
+  };
+  methodology_note: string;
+}
+
+export async function postEarthquakeRisk(body: {
+  address?: string;
+  latitude?: number;
+  longitude?: number;
+}): Promise<EarthquakeRiskAssessment> {
+  const res = await fetch(`${API_BASE}/earthquake/risk`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`Earthquake risk failed (${res.status}): ${text}`);
+  }
+  return res.json();
+}
+
 // ─── Trade area analysis ─────────────────────────────────────────────────────
 // Shapes mirror packages/api/app/trade_area_scoring.py.
 

@@ -3,12 +3,13 @@
 import Link from "next/link";
 
 type NavKey =
-  | "wildfire" | "solar" | "flood" | "trade-area" | "portfolio" | "suitability" | "query";
+  | "wildfire" | "solar" | "flood" | "earthquake" | "trade-area" | "portfolio" | "suitability" | "query";
 
 const PRIMARY: { key: NavKey; label: string; href: string }[] = [
   { key: "wildfire", label: "Wildfire", href: "/wildfire" },
-  { key: "solar", label: "Solar", href: "/solar" },
   { key: "flood", label: "Flood", href: "/flood" },
+  { key: "earthquake", label: "Earthquake", href: "/earthquake" },
+  { key: "solar", label: "Solar", href: "/solar" },
   { key: "trade-area", label: "Trade Area", href: "/trade-area" },
   { key: "portfolio", label: "Portfolio", href: "/portfolio" },
   { key: "suitability", label: "Suitability", href: "/suitability" },

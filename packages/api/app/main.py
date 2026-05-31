@@ -12,6 +12,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response
 from pydantic import BaseModel
 
+from .earthquake_scoring import assess_earthquake_risk
+from .earthquake_scoring import methodology_doc as earthquake_methodology_doc
 from .flood_scoring import assess_flood_risk
 from .flood_scoring import methodology_doc as flood_methodology_doc
 from .portfolio_pdf import render_pdf
@@ -402,6 +404,51 @@ async def flood_methodology_endpoint() -> dict:
     """Full flood methodology: pipeline, data sources, HAZUS citations,
     annual-probability assumptions, configurable defaults, and limitations."""
     return flood_methodology_doc()
+
+
+# ─── Earthquake risk ───────────────────────────────────────────────────────
+
+
+class EarthquakeRiskRequest(BaseModel):
+    latitude: float | None = None
+    longitude: float | None = None
+    address: str | None = None
+
+
+@app.post("/earthquake/risk")
+async def earthquake_risk_endpoint(req: EarthquakeRiskRequest) -> dict:
+    """Single-property earthquake risk assessment (lat/lng or address). Hazard
+    (USGS ASCE 7-22), site amplification (3DEP + Wald & Allen), and exposure
+    (USACE NSI) are queried on-demand. No pre-loading required."""
+    lat = req.latitude
+    lng = req.longitude
+    resolved_address = None
+    if lat is None or lng is None:
+        if not req.address:
+            raise HTTPException(400, "Provide either address or latitude+longitude")
+        from .portfolio_risk import _geocode_one
+
+        async with httpx.AsyncClient(timeout=20.0) as client:
+            g = await _geocode_one(client, req.address)
+        if not g:
+            raise HTTPException(404, f"Could not geocode: {req.address}")
+        lat, lng, resolved_address = g
+    try:
+        return await assess_earthquake_risk(
+            latitude=lat,
+            longitude=lng,
+            address=req.address,
+            resolved_address=resolved_address,
+        )
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+
+
+@app.get("/earthquake/methodology")
+async def earthquake_methodology_endpoint() -> dict:
+    """Full earthquake methodology: USGS ASCE 7-22 + Wald & Allen VS30 + HAZUS
+    fragility curves, citations, code-level defaults, and known limitations."""
+    return earthquake_methodology_doc()
 
 
 # ─── Solar site suitability ───────────────────────────────────────────────

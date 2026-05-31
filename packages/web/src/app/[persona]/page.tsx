@@ -13,7 +13,7 @@ const PERSONAS: Record<string, Persona> = {
   insurance: {
     title: "Heavi for Insurance",
     subtitle: "Multi-peril property risk intelligence",
-    modules: ["wildfire", "flood"],
+    modules: ["wildfire", "flood", "earthquake"],
   },
   energy: {
     title: "Heavi for Energy",

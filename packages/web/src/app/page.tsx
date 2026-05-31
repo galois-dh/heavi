@@ -20,7 +20,7 @@ export default function Home() {
             </p>
           </div>
 
-          <ModuleGrid ids={["wildfire", "solar", "flood", "trade_area"]} />
+          <ModuleGrid ids={["wildfire", "flood", "earthquake", "solar", "trade_area"]} />
 
           {/* Footer */}
           <div className="mt-10 text-center">
