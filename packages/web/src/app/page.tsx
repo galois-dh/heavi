@@ -55,6 +55,18 @@ export default function Home() {
                 Assess Property
               </CardButton>
             </ModuleCard>
+
+            <ModuleCard
+              title="Trade Area Analysis"
+              status="LIVE"
+              region="Dallas County, Texas"
+              blurb="Demographic, competitive, and accessibility scoring for site selection."
+            >
+              <CardButton href="/trade-area" primary>
+                Score Location
+              </CardButton>
+              <CardButton href="/trade-area?mode=discover">Discover Sites</CardButton>
+            </ModuleCard>
           </div>
 
           {/* Footer */}

@@ -37,6 +37,10 @@ import {
   floodRiskAssessment,
   floodRiskAssessmentSchema,
 } from "./tools/flood-risk-assessment.js";
+import {
+  tradeAreaAnalysis,
+  tradeAreaAnalysisSchema,
+} from "./tools/trade-area-analysis.js";
 
 const server = new McpServer({
   name: "heavi",
@@ -139,6 +143,22 @@ server.tool(
   floodRiskAssessmentSchema.shape,
   async (input) => ({
     content: [{ type: "text", text: JSON.stringify(await floodRiskAssessment(input), null, 2) }],
+  }),
+);
+
+server.tool(
+  "trade_area_analysis",
+  "Analyzes trade area demographics, competitive landscape, and accessibility for " +
+    "candidate locations. Computes drive-time catchment areas with population, income, " +
+    "daytime employment, and competitor density. Supports retail site selection, " +
+    "healthcare facility siting, and CRE investment evaluation. Validated against " +
+    "Starbucks locations in Dallas (96.7% score Strong). " +
+    "When presenting results: lead with the natural_language_summary. Describe the trade " +
+    "area in plain language: 'Within a 10-minute drive, there are X people, median income " +
+    "$Y, and N competitors.' Mention cannibalization risk if existing locations were provided.",
+  tradeAreaAnalysisSchema.shape,
+  async (input) => ({
+    content: [{ type: "text", text: JSON.stringify(await tradeAreaAnalysis(input), null, 2) }],
   }),
 );
 

@@ -543,7 +543,9 @@ async def score_trade_area(
         comp = await _competitive_ring(
             pool, ring["geometry"], exact, prefix, prof["population"], ref_density
         )
-        profiles.append({"drive_time_minutes": ring["minutes"], **prof, **comp})
+        profiles.append(
+            {"drive_time_minutes": ring["minutes"], "isochrone": ring["geometry"], **prof, **comp}
+        )
 
     nearest = await _nearest_competitor_m(pool, latitude, longitude, exact, prefix)
     road_dist, road_score = await _road_proximity(pool, latitude, longitude)

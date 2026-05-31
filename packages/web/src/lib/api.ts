@@ -415,3 +415,113 @@ export async function postFloodRisk(body: {
   }
   return res.json();
 }
+
+// ─── Trade area analysis ─────────────────────────────────────────────────────
+// Shapes mirror packages/api/app/trade_area_scoring.py.
+
+export type TradeAreaRating = "Strong" | "Moderate" | "Weak";
+
+export interface TradeAreaRing {
+  drive_time_minutes: number;
+  isochrone: GeoJSON.Polygon;
+  population: number;
+  households: number;
+  median_household_income: number | null;
+  daytime_jobs: number;
+  poi_count: number;
+  competitor_count: number;
+  complementary_count: number;
+  competitive_density_per_10k: number;
+  competitive_gap: number;
+}
+
+export interface TradeAreaScoreResponse {
+  query: {
+    latitude: number;
+    longitude: number;
+    address: string | null;
+    resolved_address: string | null;
+    business_category: string;
+  };
+  geography: string;
+  suitability_score: number;
+  suitability_rating: TradeAreaRating;
+  criteria_scores: Record<string, number>;
+  competitive_analysis: {
+    business_category: string;
+    reference_density_per_10k: number;
+    nearest_competitor_m: number | null;
+    road_proximity_m: number | null;
+    in_flood_zone: boolean;
+    per_ring: Array<{
+      drive_time_minutes: number;
+      competitor_count: number;
+      complementary_count: number;
+      competitive_density_per_10k: number;
+      competitive_gap: number;
+    }>;
+  };
+  cannibalization: {
+    cannibalization_risk: string;
+    nearest_existing_km: number | null;
+    max_cannibalization_estimate: number;
+    per_existing_location: Array<Record<string, unknown>>;
+  } | null;
+  trade_area_rings: TradeAreaRing[];
+  natural_language_summary: string;
+  methodology_note: string;
+}
+
+export interface TradeAreaCandidate {
+  latitude: number;
+  longitude: number;
+  approx_population_1mi: number;
+  competitor_count_1mi: number;
+  competitive_density_per_10k: number;
+  lightweight_score: number;
+}
+
+export interface TradeAreaDiscoverResponse {
+  geography: string | { bbox: number[] };
+  business_category: string;
+  grid_points_evaluated: number;
+  candidates_passing_filters: number;
+  results: TradeAreaCandidate[];
+  note: string;
+}
+
+export async function postTradeAreaScore(body: {
+  address?: string;
+  latitude?: number;
+  longitude?: number;
+  business_category: string;
+  existing_locations?: Array<{ latitude: number; longitude: number; name?: string }>;
+}): Promise<TradeAreaScoreResponse> {
+  const res = await fetch(`${API_BASE}/trade-area/score`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`Trade area score failed (${res.status}): ${text}`);
+  }
+  return res.json();
+}
+
+export async function postTradeAreaDiscover(body: {
+  geography?: string | number[];
+  business_category: string;
+  top_n?: number;
+}): Promise<TradeAreaDiscoverResponse> {
+  const res = await fetch(`${API_BASE}/trade-area/discover`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`Trade area discover failed (${res.status}): ${text}`);
+  }
+  return res.json();
+}
