@@ -22,6 +22,7 @@ from .portfolio_risk import (
     parse_csv,
     run_portfolio,
 )
+from .regulator_pdf import render_methodology_filing
 from .site_report import geocode, reverse_geocode, site_report
 from .solar_scoring import (
     build_config,
@@ -212,6 +213,21 @@ async def wildfire_loss_endpoint(req: WildfireLossRequest) -> dict:
         )
     except ValueError as e:
         raise HTTPException(400, str(e))
+
+
+@app.get("/wildfire/methodology-filing")
+async def wildfire_methodology_filing_endpoint() -> Response:
+    """Regulatory-filing methodology PDF for the wildfire risk module."""
+    pdf = render_methodology_filing()
+    return Response(
+        content=pdf,
+        media_type="application/pdf",
+        headers={
+            "Content-Disposition": (
+                'attachment; filename="heavi-wildfire-methodology-filing.pdf"'
+            ),
+        },
+    )
 
 
 @app.post("/portfolio-risk")

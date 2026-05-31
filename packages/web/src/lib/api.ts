@@ -139,6 +139,10 @@ export interface WildfireRiskAssessment {
   message?: string;
 }
 
+export function wildfireMethodologyFilingUrl(): string {
+  return `${API_BASE}/wildfire/methodology-filing`;
+}
+
 export async function postWildfireLoss(
   body: { address?: string; latitude?: number; longitude?: number; search_radius_m?: number },
 ): Promise<WildfireRiskAssessment> {
