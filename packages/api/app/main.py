@@ -32,8 +32,8 @@ from .solar_scoring import (
     run_score_mode,
 )
 from .spatial_query import spatial_query
+from .trade_area_scoring import discover_trade_area, score_trade_area
 from .trade_area_scoring import methodology_doc as trade_area_methodology_doc
-from .trade_area_scoring import score_trade_area
 from .wildfire_loss import wildfire_loss
 
 # Best-effort .env load — for local dev where the file lives at the monorepo
@@ -269,13 +269,19 @@ class TradeAreaRequest(BaseModel):
     latitude: float | None = None
     longitude: float | None = None
     address: str | None = None
+    business_category: str = "coffee_shop"
+    custom_categories: list[str] | None = None
+    existing_locations: list[dict] | None = None  # [{latitude, longitude, name?}]
     thresholds: list[float] | None = None  # drive-time minutes; default 5/10/15
+    weights: dict[str, float] | None = None
+    huff_beta: float = 2.0
 
 
 @app.post("/trade-area/score")
 async def trade_area_score_endpoint(req: TradeAreaRequest) -> dict:
-    """Score Mode (Week 1): for a location, compute drive-time isochrones and the
-    area-weighted demographics, daytime jobs, and POI counts per ring."""
+    """Score Mode: drive-time isochrones → area-weighted demographics + daytime
+    jobs + competitive analysis → weighted composite score, with optional Huff
+    cannibalization vs. existing_locations."""
     if not pool:
         raise HTTPException(503, "Database pool not initialized")
     lat, lng, resolved = req.latitude, req.longitude, None
@@ -294,12 +300,42 @@ async def trade_area_score_endpoint(req: TradeAreaRequest) -> dict:
             pool,
             latitude=lat,
             longitude=lng,
+            business_category=req.business_category,
+            custom_categories=req.custom_categories,
+            existing_locations=req.existing_locations,
             address=req.address,
             resolved_address=resolved,
             thresholds=req.thresholds,
+            weights=req.weights,
+            huff_beta=req.huff_beta,
         )
     except RuntimeError as e:
         raise HTTPException(502, str(e))
+
+
+class TradeAreaDiscoverRequest(BaseModel):
+    geography: str | list[float] = "dallas"
+    business_category: str = "coffee_shop"
+    min_population: float = 30000.0
+    max_competitive_density: float | None = None
+    top_n: int = 25
+
+
+@app.post("/trade-area/discover")
+async def trade_area_discover_endpoint(req: TradeAreaDiscoverRequest) -> dict:
+    """Discover Mode: grid-scan a geography for promising candidate locations using
+    straight-line-buffer proxies (no external API calls). Returns top_n candidates."""
+    if not pool:
+        raise HTTPException(503, "Database pool not initialized")
+    top_n = max(1, min(req.top_n, 200))
+    return await discover_trade_area(
+        pool,
+        geography=req.geography,
+        business_category=req.business_category,
+        min_population=req.min_population,
+        max_competitive_density=req.max_competitive_density,
+        top_n=top_n,
+    )
 
 
 @app.get("/trade-area/methodology")
