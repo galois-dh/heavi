@@ -6,7 +6,7 @@ SQL/HTTP tracing + decision-trail event emission) and returns a structured
 
 Stage inventory (per deep_module_specifications.md, see docs/):
   Stage 1  Solar Resource Assessment       (this file)
-  Stage 2  Terrain Optimization            (TBD)
+  Stage 2  Terrain Optimization            (this file)
   Stage 3  Buildable Area Calculation      (TBD)
   Stage 4  Interconnection Analysis        (TBD)
   Stage 5  Geotechnical Screening          (TBD)
@@ -21,13 +21,14 @@ remains as the Discover-mode demo for Kern parcels until Stage 8 is in place.
 
 from __future__ import annotations
 
+import math
 from typing import Any
 
 from .decision_trail import RequestContext
-from .integrations import pvwatts_v8
+from .integrations import elev_multipoint_m, pvwatts_v8, slope_aspect_from_grid
 
 MODULE_NAME = "solar_site_feasibility_deep"
-MODULE_VERSION = "0.1.0"
+MODULE_VERSION = "0.2.0"  # Stage 2 (terrain) added
 
 
 # ─── Stage 1 — Solar Resource Assessment ──────────────────────────────────
@@ -249,7 +250,6 @@ async def stage1_solar_resource(
         )
     if station.get("latitude") is not None:
         # Crude great-circle distance to the weather station.
-        import math
         dlat = math.radians(latitude - float(station["latitude"]))
         dlng = math.radians(longitude - float(station["longitude"]))
         avg_lat = math.radians((latitude + float(station["latitude"])) / 2)
@@ -277,4 +277,329 @@ async def stage1_solar_resource(
             "solrad_annual_kwh_per_m2_per_day": round(solrad, 2),
         },
         "interpretation":      interpretation,
+    }
+
+
+# ─── Stage 2 — Terrain Optimization ───────────────────────────────────────
+
+
+# Grid sampling defaults. 5×5 = 25 elevations from one 3DEP multipoint call;
+# 3×3 interior cells supply slope + aspect via central differences. The grid
+# is laid out as a square covering the parcel bounding box derived from
+# acreage (assumes roughly square parcel — true for utility-scale ground-
+# mount sites which favour rectangular layouts).
+TERRAIN_GRID_N = 5  # rows == cols; 25 sample points
+
+# Aspect / slope qualitative thresholds.
+ASPECT_SOUTH_DEG       = 180.0
+ASPECT_DEVIATION_WARN  = 30.0   # advise re-running PVWatts beyond this
+SLOPE_MODERATE_PCT     = 5.0    # grading costs increase
+SLOPE_LIKELY_EXCLUDE_PCT = 15.0 # likely excluded for utility-scale
+ASPECT_FACTOR_FLOOR    = 0.7    # clamp lower bound for aspect-adjusted irradiance
+# Below this slope, aspect is mathematically defined but practically irrelevant
+# for solar production (essentially flat — any azimuth performs equivalently).
+# Used to silence false-positive aspect advisories on flat parcels.
+ASPECT_MEANINGFUL_SLOPE_PCT = 1.0
+
+
+def _parcel_side_m(acreage: float) -> float:
+    """Convert acreage → side length (m) of a square of equal area."""
+    area_m2 = acreage * 4046.8564224  # international acre
+    return math.sqrt(area_m2)
+
+
+def _make_grid_points(
+    *, latitude: float, longitude: float, side_m: float, n: int
+) -> list[tuple[float, float]]:
+    """Return ``n × n`` (lng, lat) pairs covering the parcel bbox, row-major.
+
+    Row 0 is the SOUTHERNMOST row; column 0 is the WESTERNMOST column. This
+    matches the contract of slope_aspect_from_grid (north up)."""
+    side_lat_deg = side_m / 111_320.0
+    side_lng_deg = side_m / (111_320.0 * max(math.cos(math.radians(latitude)), 0.1))
+    points: list[tuple[float, float]] = []
+    for i in range(n):  # row (south → north)
+        lat = latitude - side_lat_deg / 2 + side_lat_deg * i / (n - 1)
+        for j in range(n):  # col (west → east)
+            lng = longitude - side_lng_deg / 2 + side_lng_deg * j / (n - 1)
+            points.append((lng, lat))
+    return points
+
+
+def _aspect_deviation_from_south(aspect_deg: float | None) -> float | None:
+    if aspect_deg is None:
+        return None
+    dev = abs(aspect_deg - ASPECT_SOUTH_DEG)
+    return round(min(dev, 360.0 - dev), 1)
+
+
+def _aspect_irradiance_factor(deviation_deg: float | None) -> float:
+    """Cosine of aspect deviation, clamped to [0.7, 1.0]. South-facing → 1.0,
+    east/west → ~0.7, north → 0.7 (clamped floor)."""
+    if deviation_deg is None:
+        return 1.0
+    f = math.cos(math.radians(deviation_deg))
+    return round(max(ASPECT_FACTOR_FLOOR, min(1.0, f)), 3)
+
+
+def _terrain_rating(uniformity_m: float) -> str:
+    if uniformity_m < 2.0:
+        return "flat"
+    if uniformity_m < 5.0:
+        return "gently rolling"
+    if uniformity_m < 15.0:
+        return "variable"
+    return "steep/irregular"
+
+
+async def stage2_terrain_optimization(
+    ctx: RequestContext,
+    *,
+    latitude: float,
+    longitude: float,
+    parcel_acreage: float,
+    grid_n: int = TERRAIN_GRID_N,
+) -> dict[str, Any]:
+    """Stage 2 — Terrain Optimization via USGS 3DEP elevation sampling.
+
+    Computes three metrics across a parcel-bbox grid:
+      1. Mean slope (% grade)
+      2. Slope-weighted dominant aspect (compass degrees) + deviation from south
+         + aspect-adjusted irradiance factor (cos of deviation, [0.7, 1.0])
+      3. Terrain variability — standard deviation of elevation across the grid
+         (qualitative rating: flat / gently rolling / variable / steep-irregular)
+
+    Emits to the trail:
+      - data_source         USGS 3DEP 1/3 arc-second DEM
+      - step                terrain_sampling (n×n grid, bbox extent, samples)
+      - factor              mean_slope_pct, dominant_aspect_deg,
+                            aspect_deviation_from_south_deg, aspect_irradiance_factor,
+                            terrain_uniformity_m, terrain_rating
+      - advisory (cond.)    azimuth_recommendation — if aspect deviates > 30°
+                            from 180°, advises re-running Stage 1 PVWatts with
+                            the terrain-optimal azimuth
+      - advisory (cond.)    steep_slope — if mean slope > 15% (likely exclusion)
+      - advisory (cond.)    irregular_terrain — if uniformity rating is
+                            "steep/irregular" (recommend site survey)
+    """
+    if parcel_acreage <= 0:
+        raise ValueError("Stage 2 needs parcel_acreage > 0 to size the bbox grid.")
+    trail = ctx.trail
+
+    side_m = _parcel_side_m(parcel_acreage)
+    dx_m = side_m / (grid_n - 1)
+    dy_m = side_m / (grid_n - 1)
+    points = _make_grid_points(
+        latitude=latitude, longitude=longitude, side_m=side_m, n=grid_n
+    )
+
+    # ── Data source declaration ────────────────────────────────────────────
+    trail.data_source(
+        "USGS 3DEP 1/3 arc-second DEM",
+        source="elevation.nationalmap.gov",
+        vintage="2024 (continuous national elevation product, ~10 m resolution)",
+        kind="federal HTTP ArcGIS ImageServer",
+        license="public",
+    )
+
+    # ── 3DEP multipoint sample (single HTTP call for N² elevations) ────────
+    async with ctx.http_client(timeout=30.0) as client:
+        elevs = await elev_multipoint_m(client, points)
+    have = sum(1 for e in elevs if e is not None)
+
+    bbox = {
+        "south": round(min(p[1] for p in points), 6),
+        "north": round(max(p[1] for p in points), 6),
+        "west":  round(min(p[0] for p in points), 6),
+        "east":  round(max(p[0] for p in points), 6),
+        "side_m": round(side_m, 1),
+    }
+    trail.step(
+        "terrain_sampling",
+        source="USGS 3DEP getSamples (multipoint)",
+        value={"samples": have, "grid_n": grid_n, "spacing_m": round(dx_m, 1)},
+        units="elevations",
+        result="resolved" if have == len(points) else "partial",
+        bbox=bbox,
+    )
+
+    if have < grid_n * grid_n:
+        trail.advisory(
+            f"3DEP returned {have} of {grid_n * grid_n} elevations — "
+            "grid points outside CONUS or in data gaps were skipped.",
+            severity="warning",
+            name="terrain_data_gap",
+        )
+
+    # ── Slope, aspect, uniformity ──────────────────────────────────────────
+    grid = [elevs[i * grid_n : (i + 1) * grid_n] for i in range(grid_n)]
+    _, summary = slope_aspect_from_grid(grid, dx_m=dx_m, dy_m=dy_m)
+    valid_elevs = [e for e in elevs if e is not None]
+    if len(valid_elevs) >= 2:
+        mean_elev = sum(valid_elevs) / len(valid_elevs)
+        uniformity_m = math.sqrt(
+            sum((e - mean_elev) ** 2 for e in valid_elevs) / len(valid_elevs)
+        )
+    else:
+        mean_elev = valid_elevs[0] if valid_elevs else None
+        uniformity_m = 0.0
+    uniformity_m = round(uniformity_m, 2)
+    terrain_rating = _terrain_rating(uniformity_m)
+
+    mean_slope_pct      = summary["mean_slope_pct"]
+    mean_slope_deg      = summary["mean_slope_deg"]
+    dominant_aspect_deg = summary["dominant_aspect_deg"]
+    # Below the meaningful-slope threshold, aspect is reported but not acted on:
+    # the parcel is effectively flat and any azimuth produces equivalent yield.
+    aspect_is_meaningful = (
+        mean_slope_pct is not None
+        and mean_slope_pct >= ASPECT_MEANINGFUL_SLOPE_PCT
+    )
+    aspect_dev_deg = (
+        _aspect_deviation_from_south(dominant_aspect_deg)
+        if aspect_is_meaningful else None
+    )
+    aspect_factor = (
+        _aspect_irradiance_factor(aspect_dev_deg)
+        if aspect_is_meaningful else 1.0
+    )
+
+    # ── Factor events ──────────────────────────────────────────────────────
+    trail.factor("mean_slope_pct", value=mean_slope_pct, source="3DEP grid central diff")
+    trail.factor("mean_slope_deg", value=mean_slope_deg, source="3DEP grid central diff")
+    trail.factor(
+        "dominant_aspect_deg", value=dominant_aspect_deg,
+        source="slope-weighted circular mean of grid aspects",
+    )
+    trail.factor(
+        "aspect_deviation_from_south_deg", value=aspect_dev_deg,
+        source="|aspect − 180°| with wraparound",
+    )
+    trail.factor(
+        "aspect_irradiance_factor", value=aspect_factor,
+        source=(
+            f"cos(deviation), clamped to [{ASPECT_FACTOR_FLOOR}, 1.0]"
+            if aspect_is_meaningful
+            else f"parcel mean slope {mean_slope_pct}% < "
+                 f"{ASPECT_MEANINGFUL_SLOPE_PCT}% — aspect not meaningful, factor pinned to 1.0"
+        ),
+    )
+    trail.factor(
+        "terrain_uniformity_m", value=uniformity_m,
+        source="stdev of elevation across grid",
+        rating=terrain_rating, mean_elev_m=round(mean_elev, 1) if mean_elev else None,
+    )
+    trail.factor(
+        "terrain_rating", value=terrain_rating,
+        source=f"qualitative bucket from terrain_uniformity_m={uniformity_m} m",
+    )
+
+    # ── Conditional advisories ─────────────────────────────────────────────
+    # Slope-driven exclusions
+    if mean_slope_pct is not None:
+        if mean_slope_pct >= SLOPE_LIKELY_EXCLUDE_PCT:
+            trail.advisory(
+                f"Mean slope {mean_slope_pct:.1f}% exceeds the {SLOPE_LIKELY_EXCLUDE_PCT}% "
+                "utility-scale threshold — parcel is likely excluded from fixed-tilt "
+                "development. Consider single-axis tracking or a different site.",
+                severity="warning", name="steep_slope",
+                mean_slope_pct=mean_slope_pct,
+            )
+        elif mean_slope_pct >= SLOPE_MODERATE_PCT:
+            trail.advisory(
+                f"Mean slope {mean_slope_pct:.1f}% is moderate (above the {SLOPE_MODERATE_PCT}% "
+                "threshold) — expect higher grading costs in Stage 6 LCOE.",
+                severity="info", name="moderate_slope",
+                mean_slope_pct=mean_slope_pct,
+            )
+
+    # Aspect-driven cross-stage recommendation (this is the key Stage 1 → Stage 2 loop)
+    if (
+        aspect_is_meaningful
+        and dominant_aspect_deg is not None
+        and aspect_dev_deg is not None
+        and aspect_dev_deg > ASPECT_DEVIATION_WARN
+    ):
+        trail.advisory(
+            f"Terrain aspect {dominant_aspect_deg:.0f}° deviates {aspect_dev_deg:.0f}° from "
+            f"south (180°). Consider re-running Stage 1 PVWatts with "
+            f"azimuth={dominant_aspect_deg:.0f}° for a terrain-aligned production estimate. "
+            f"The aspect-adjusted irradiance factor is {aspect_factor} "
+            f"(1.0 = south-facing optimal).",
+            severity="warning", name="azimuth_recommendation",
+            recommended_azimuth_deg=dominant_aspect_deg,
+            aspect_deviation_deg=aspect_dev_deg,
+            aspect_irradiance_factor=aspect_factor,
+            cross_stage="Stage 1 PVWatts re-run candidate",
+        )
+
+    # Variability-driven exclusions
+    if terrain_rating == "steep/irregular":
+        trail.advisory(
+            f"Terrain variability {uniformity_m:.1f} m (rating: {terrain_rating}) "
+            "indicates irregular terrain. Recommend a topographic site survey "
+            "before committing capital.",
+            severity="warning", name="irregular_terrain",
+            terrain_uniformity_m=uniformity_m, terrain_rating=terrain_rating,
+        )
+
+    # ── Stage 2 result ─────────────────────────────────────────────────────
+    interpretation_parts = []
+    if mean_slope_pct is not None:
+        interpretation_parts.append(
+            f"Mean slope {mean_slope_pct:.2f}% ({mean_slope_deg:.2f}°)."
+        )
+    if dominant_aspect_deg is not None and aspect_is_meaningful:
+        interpretation_parts.append(
+            f"Dominant aspect {dominant_aspect_deg:.0f}° "
+            f"(dev {aspect_dev_deg:.0f}° from south; irradiance factor {aspect_factor})."
+        )
+    elif dominant_aspect_deg is not None:
+        interpretation_parts.append(
+            f"Dominant aspect {dominant_aspect_deg:.0f}° but slope is below "
+            f"{ASPECT_MEANINGFUL_SLOPE_PCT}% — effectively flat, any azimuth equivalent."
+        )
+    interpretation_parts.append(
+        f"Terrain variability {uniformity_m:.1f} m — {terrain_rating}."
+    )
+    interpretation = " ".join(interpretation_parts)
+
+    return {
+        "stage":      2,
+        "stage_name": "Terrain Optimization",
+        "inputs": {
+            "latitude": latitude, "longitude": longitude,
+            "parcel_acreage": parcel_acreage,
+            "grid_n": grid_n, "grid_spacing_m": round(dx_m, 1),
+            "bbox": bbox,
+        },
+        "samples": {
+            "requested":            grid_n * grid_n,
+            "returned":             have,
+            "mean_elevation_m":     round(mean_elev, 1) if mean_elev else None,
+        },
+        "factors": {
+            "mean_slope_pct":                   mean_slope_pct,
+            "mean_slope_deg":                   mean_slope_deg,
+            "dominant_aspect_deg":              dominant_aspect_deg,
+            "aspect_deviation_from_south_deg":  aspect_dev_deg,
+            "aspect_irradiance_factor":         aspect_factor,
+            "terrain_uniformity_m":             uniformity_m,
+            "terrain_rating":                   terrain_rating,
+        },
+        "recommendations": {
+            # The Stage 1 → Stage 2 azimuth loop. Stage 1 (or a Stage 8
+            # composite) can choose to re-run PVWatts using this azimuth —
+            # but only when slope makes aspect operationally meaningful.
+            "azimuth_deg_terrain_optimized": (
+                dominant_aspect_deg if aspect_is_meaningful else None
+            ),
+            "should_rerun_pvwatts":         (
+                aspect_is_meaningful
+                and aspect_dev_deg is not None
+                and aspect_dev_deg > ASPECT_DEVIATION_WARN
+            ),
+            "aspect_is_meaningful": aspect_is_meaningful,
+        },
+        "interpretation": interpretation,
     }

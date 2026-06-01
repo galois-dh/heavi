@@ -35,6 +35,7 @@ from .nrel_pvwatts import pvwatts_v8
 from .openfema import disaster_declarations, nfip_claims_by_zip
 from .usda_ssurgo import sda_point
 from .usfws_critical_habitat import critical_habitat_at_point
+from .usgs_3dep import elev_multipoint_m, ground_elev_m, slope_aspect_from_grid
 from .usgs_nhdplus import nhdplus_at_point
 from .usgs_padus import padus_at_point
 from .usgs_peak_flow import peak_flows_for_site
@@ -43,8 +44,10 @@ __all__ = [
     "critical_habitat_at_point",
     "disaster_declarations",
     "ejscreen_at_point",
+    "elev_multipoint_m",
     "geocode_block_group",
     "grrr_return_periods",
+    "ground_elev_m",
     "nfip_claims_by_zip",
     "nhdplus_at_point",
     "nlcd_class_at_point",
@@ -52,4 +55,5 @@ __all__ = [
     "peak_flows_for_site",
     "pvwatts_v8",
     "sda_point",
+    "slope_aspect_from_grid",
 ]
