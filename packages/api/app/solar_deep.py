@@ -8,7 +8,7 @@ Stage inventory (per deep_module_specifications.md, see docs/):
   Stage 1  Solar Resource Assessment       (this file)
   Stage 2  Terrain Optimization            (this file)
   Stage 3  Buildable Area Calculation      (this file)
-  Stage 4  Interconnection Analysis        (TBD)
+  Stage 4  Interconnection Analysis        (this file)
   Stage 5  Geotechnical Screening          (TBD)
   Stage 6  LCOE Estimation                 (TBD)
   Stage 7  Environmental Constraint Screen (TBD)
@@ -38,7 +38,7 @@ from .integrations import (
 )
 
 MODULE_NAME = "solar_site_feasibility_deep"
-MODULE_VERSION = "0.3.0"  # Stage 3 (buildable area) added
+MODULE_VERSION = "0.4.0"  # Stage 4 (interconnection) added
 
 
 # ─── Stage 1 — Solar Resource Assessment ──────────────────────────────────
@@ -1255,6 +1255,521 @@ async def stage3_buildable_area(
         "data_quality": {
             "complete":         len(data_quality_issues) == 0,
             "missing_layers":   data_quality_issues,
+        },
+        "interpretation": interpretation,
+    }
+
+
+# ─── Stage 4 — Interconnection Analysis ────────────────────────────────────
+
+
+# OSM substation table coverage. Outside these states the nearest-neighbour
+# query may return a result hundreds of km away — we surface that as a
+# coverage gap rather than pretending the distance is meaningful.
+LOADED_SUB_STATES = {"CA", "TX", "AZ", "NV", "FL", "NC"}
+SUB_COVERAGE_NOTE = (
+    f"OSM substations loaded for {', '.join(sorted(LOADED_SUB_STATES))} "
+    "(top-6 US solar markets). Other states will return a distant or no "
+    "match — see data_loaders_status.md for the Geofabrik expansion path."
+)
+
+# NREL / industry cost factors for gen-tie line, by voltage class.
+# Source: NREL ATB transmission cost estimates (LBNL Solar Industry Trends
+# Report 2023). Values are conservative midpoints in 2023 USD per km.
+_COST_PER_KM_BY_VOLTAGE = [
+    # (max_kv, $/km, label)
+    (69,    310_000,  "<69 kV"),
+    (138,   620_000,  "69-138 kV"),
+    (230,   930_000,  "138-230 kV"),
+    (math.inf, 1_550_000, ">230 kV"),
+]
+
+DEFAULT_EQUIPMENT_COST_USD = 3_500_000  # substation interconnection equipment
+DEFAULT_CONGESTION_RADIUS_KM = 25.0
+HIGH_INTERCONNECTION_COST_PER_MW = 500_000  # $/MW above which we advise
+DISTANT_TRANSMISSION_KM = 16.1  # 10 mi — typical economic-viability threshold
+DISTANT_SUBSTATION_FLAG_KM = 50.0  # results beyond this likely out of coverage
+
+
+def _voltage_cost(voltage_kv: float | None) -> tuple[int, str]:
+    """Return ($/km, label) for the voltage class. Falls back to 69-138 kV when
+    voltage is missing/sentinel — the most common gen-tie scale for utility PV."""
+    if voltage_kv is None or voltage_kv <= 0:
+        return 620_000, "69-138 kV (assumed — source voltage unknown)"
+    for max_kv, cost, label in _COST_PER_KM_BY_VOLTAGE:
+        if voltage_kv < max_kv:
+            return cost, label
+    return _COST_PER_KM_BY_VOLTAGE[-1][1], _COST_PER_KM_BY_VOLTAGE[-1][2]
+
+
+def _resolve_capacity_mw(
+    stage1_result: dict[str, Any] | None,
+    stage3_result: dict[str, Any] | None,
+) -> tuple[float, str]:
+    """Returns (capacity_mw, basis_text). Stage 3 wins (post-exclusion); else
+    Stage 1; else 0 with a basis explaining the gap."""
+    if stage3_result:
+        t = stage3_result.get("totals") or {}
+        cap = t.get("adjusted_capacity_mw")
+        if cap is not None:
+            return (
+                float(cap),
+                f"Stage 3 adjusted_capacity_mw (post-exclusions, "
+                f"buildable={t.get('buildable_acres','?')} ac)",
+            )
+    if stage1_result:
+        inp = stage1_result.get("inputs") or {}
+        kw = inp.get("system_capacity_kw")
+        if kw is not None:
+            return (
+                float(kw) / 1000.0,
+                "Stage 1 system_capacity_kw (no Stage 3 result available — "
+                "exclusions NOT applied)",
+            )
+    return 0.0, "no Stage 1/3 capacity available"
+
+
+def _congestion_risk(total_mw: float) -> tuple[str, str]:
+    if total_mw < 50:
+        return "low", "low congestion risk — limited existing solar generation nearby"
+    if total_mw < 200:
+        return "moderate", (
+            "moderate congestion — existing generation may compete for "
+            "interconnection capacity"
+        )
+    return "high", (
+        "high congestion — significant existing generation nearby; "
+        "interconnection queue delays are likely"
+    )
+
+
+# ─── Per-metric queries ───────────────────────────────────────────────────
+
+
+async def _nearest_transmission(
+    ctx: RequestContext, latitude: float, longitude: float
+) -> dict[str, Any]:
+    """Nearest HIFLD transmission line via PostGIS KNN. Returns voltage class
+    and distance in metres. data_quality is 'ok' if a line was returned within
+    a sane radius (<200 km), else 'partial'."""
+    try:
+        async with ctx.pool.acquire() as conn:
+            row = await conn.fetchrow(
+                """
+                WITH parcel AS (
+                  SELECT ST_SetSRID(ST_MakePoint($1, $2), 4326) AS geom
+                )
+                SELECT
+                  t.objectid, t.voltage, t.volt_class, t.owner,
+                  t.sub_1, t.sub_2,
+                  ST_Distance(t.geometry::geography, p.geom::geography) AS dist_m
+                FROM parcel p, solar_transmission_lines t
+                ORDER BY t.geometry::geography <-> p.geom::geography
+                LIMIT 1
+                """,
+                longitude, latitude,
+            )
+    except Exception as e:  # noqa: BLE001
+        return {"data_quality": "error", "error": str(e), "source": "solar_transmission_lines"}
+    if row is None:
+        return {
+            "data_quality": "unavailable", "feature_count": 0,
+            "source": "solar_transmission_lines",
+            "notes": "no transmission line returned",
+        }
+    dist_m = float(row["dist_m"] or 0)
+    dist_km = round(dist_m / 1000.0, 2)
+    return {
+        "data_quality": "ok",
+        "distance_km":   dist_km,
+        "voltage_kv":    int(row["voltage"]) if row["voltage"] not in (None, 0) else None,
+        "volt_class":    row["volt_class"],
+        "line_id":       int(row["objectid"]) if row["objectid"] is not None else None,
+        "owner":         row["owner"],
+        "endpoints":     [s for s in (row["sub_1"], row["sub_2"]) if s],
+        "source":        "HIFLD Transmission Lines (solar_transmission_lines, 52K national)",
+    }
+
+
+async def _nearest_substation(
+    ctx: RequestContext, latitude: float, longitude: float
+) -> dict[str, Any]:
+    """Nearest OSM substation across the loaded 6 states. If the result is
+    more than ~50 km away, we treat the location as out of dense coverage
+    and surface it as a partial / coverage_gap result rather than reporting
+    a misleading distance."""
+    try:
+        async with ctx.pool.acquire() as conn:
+            row = await conn.fetchrow(
+                """
+                WITH parcel AS (
+                  SELECT ST_SetSRID(ST_MakePoint($1, $2), 4326) AS geom
+                )
+                SELECT
+                  s.osm_id, s.name, s.voltage, s.operator, s.state,
+                  s.substation AS sub_type,
+                  ST_Distance(s.geometry::geography, p.geom::geography) AS dist_m
+                FROM parcel p, substations_osm_us s
+                ORDER BY s.geometry::geography <-> p.geom::geography
+                LIMIT 1
+                """,
+                longitude, latitude,
+            )
+    except Exception as e:  # noqa: BLE001
+        return {"data_quality": "error", "error": str(e), "source": "substations_osm_us"}
+    if row is None:
+        return {
+            "data_quality": "unavailable", "feature_count": 0,
+            "source": "substations_osm_us",
+        }
+    dist_m = float(row["dist_m"] or 0)
+    dist_km = round(dist_m / 1000.0, 2)
+    coverage_gap = (
+        dist_km > DISTANT_SUBSTATION_FLAG_KM
+        or row["state"] not in LOADED_SUB_STATES
+    )
+    return {
+        "data_quality": "partial" if coverage_gap else "ok",
+        "distance_km":  dist_km,
+        "name":         row["name"],
+        "voltage":      row["voltage"],
+        "operator":     row["operator"],
+        "state":        row["state"],
+        "sub_type":     row["sub_type"],
+        "coverage_gap": coverage_gap,
+        "coverage_note": SUB_COVERAGE_NOTE if coverage_gap else None,
+        "source":       "OSM power=substation (substations_osm_us, top-6 solar states)",
+    }
+
+
+async def _congestion_within_radius(
+    ctx: RequestContext, latitude: float, longitude: float, radius_km: float,
+) -> dict[str, Any]:
+    """Existing operating solar generation within ``radius_km`` (EIA Form 860).
+    Returns count + total MW + a sample of the largest nearby plants."""
+    try:
+        async with ctx.pool.acquire() as conn:
+            stats = await conn.fetchrow(
+                """
+                SELECT
+                  COUNT(*) AS n,
+                  COALESCE(SUM(capacity_mw), 0) AS total_mw
+                FROM solar_eia_installations
+                WHERE operating_status = 'OP'
+                  AND ST_DWithin(
+                    geometry::geography,
+                    ST_SetSRID(ST_MakePoint($1, $2), 4326)::geography,
+                    $3
+                  )
+                """,
+                longitude, latitude, float(radius_km * 1000.0),
+            )
+            sample = await conn.fetch(
+                """
+                SELECT plant_name, capacity_mw, county, state,
+                  ST_Distance(geometry::geography,
+                              ST_SetSRID(ST_MakePoint($1, $2), 4326)::geography
+                  ) / 1000.0 AS dist_km
+                FROM solar_eia_installations
+                WHERE operating_status = 'OP'
+                  AND ST_DWithin(
+                    geometry::geography,
+                    ST_SetSRID(ST_MakePoint($1, $2), 4326)::geography,
+                    $3
+                  )
+                ORDER BY capacity_mw DESC NULLS LAST
+                LIMIT 5
+                """,
+                longitude, latitude, float(radius_km * 1000.0),
+            )
+    except Exception as e:  # noqa: BLE001
+        return {"data_quality": "error", "error": str(e), "source": "solar_eia_installations"}
+    total_mw = float(stats["total_mw"] or 0.0)
+    return {
+        "data_quality":   "ok",
+        "radius_km":      radius_km,
+        "feature_count":  int(stats["n"] or 0),
+        "total_mw":       round(total_mw, 1),
+        "largest_nearby": [
+            {
+                "plant":    r["plant_name"],
+                "capacity_mw": round(float(r["capacity_mw"] or 0.0), 1),
+                "county":   r["county"], "state": r["state"],
+                "dist_km":  round(float(r["dist_km"] or 0.0), 1),
+            } for r in sample
+        ],
+        "source": "EIA Form 860 operating PV (solar_eia_installations, 6K national)",
+    }
+
+
+# ─── Stage 4 orchestrator ─────────────────────────────────────────────────
+
+
+async def stage4_interconnection(
+    ctx: RequestContext,
+    *,
+    latitude: float,
+    longitude: float,
+    stage1_result: dict[str, Any] | None = None,
+    stage3_result: dict[str, Any] | None = None,
+    radius_km_congestion: float = DEFAULT_CONGESTION_RADIUS_KM,
+    equipment_cost_usd: float = DEFAULT_EQUIPMENT_COST_USD,
+) -> dict[str, Any]:
+    """Stage 4 — Interconnection feasibility from four data sources.
+
+    Metrics:
+      1. Nearest HIFLD transmission line (distance + voltage class)
+      2. Nearest OSM substation (distance, coverage gap when outside loaded
+         states)
+      3. Estimated interconnection cost (gen-tie $/km × distance + equipment
+         flat cost). The trail emits the full formula expansion, not just the
+         total — anyone reading the trail can verify the arithmetic by hand.
+      4. Congestion assessment (operating MW within ``radius_km_congestion``
+         from EIA Form 860).
+
+    Cross-stage dependency: per-MW cost uses Stage 3's adjusted capacity
+    (post-exclusions); falls back to Stage 1's system capacity if Stage 3
+    is missing. The basis is noted in the trail.
+    """
+    trail = ctx.trail
+    capacity_mw, capacity_basis = _resolve_capacity_mw(stage1_result, stage3_result)
+
+    # Data source declarations
+    trail.data_source(
+        "HIFLD Electric Transmission Lines",
+        source="solar_transmission_lines (PostGIS)",
+        vintage="HIFLD 2024 (52,244 national segments)",
+        kind="postgis lookup table",
+    )
+    trail.data_source(
+        "OSM Power Substations (top-6 solar states)",
+        source="substations_osm_us (PostGIS)",
+        vintage="OSM via Overpass 2026-06-05; CA/TX/AZ/NV/FL/NC",
+        kind="postgis lookup table",
+    )
+    trail.data_source(
+        "EIA Form 860 — Operating Solar Plants",
+        source="solar_eia_installations (PostGIS)",
+        vintage="EIA-860 2023 (6,321 PV plants nationally)",
+        kind="postgis lookup table",
+    )
+
+    # ── 1. Transmission ───────────────────────────────────────────────────
+    tx = await _nearest_transmission(ctx, latitude, longitude)
+    if tx["data_quality"] == "ok":
+        trail.step(
+            "transmission_proximity",
+            source=tx["source"],
+            value={
+                "distance_km": tx["distance_km"],
+                "voltage_kv":  tx["voltage_kv"],
+                "volt_class":  tx["volt_class"],
+                "line_id":     tx["line_id"],
+                "endpoints":   tx["endpoints"],
+            },
+            result="resolved" if tx["distance_km"] <= DISTANT_TRANSMISSION_KM
+                   else "distant",
+            owner=tx.get("owner"),
+        )
+    else:
+        trail.step(
+            "transmission_proximity", source=tx.get("source", "?"),
+            value={"distance_km": None},
+            result=f"data_{tx['data_quality']}",
+            error=tx.get("error"),
+        )
+
+    # ── 2. Substation ─────────────────────────────────────────────────────
+    sb = await _nearest_substation(ctx, latitude, longitude)
+    if sb["data_quality"] in ("ok", "partial"):
+        trail.step(
+            "substation_proximity",
+            source=sb["source"],
+            value={
+                "distance_km": sb["distance_km"],
+                "name":        sb["name"],
+                "voltage":     sb["voltage"],
+                "operator":    sb["operator"],
+                "state":       sb["state"],
+            },
+            result="resolved" if not sb.get("coverage_gap") else "coverage_gap",
+            coverage_note=sb.get("coverage_note"),
+        )
+        if sb.get("coverage_gap"):
+            trail.advisory(
+                f"Nearest OSM substation is {sb['distance_km']} km away — "
+                "this location is likely outside the loaded substation coverage "
+                f"({', '.join(sorted(LOADED_SUB_STATES))}). Substation distance "
+                "is unreliable for cost estimation here.",
+                severity="info", name="substation_coverage_gap",
+                state=sb.get("state"),
+            )
+    else:
+        trail.step(
+            "substation_proximity", source=sb.get("source", "?"),
+            value={"distance_km": None},
+            result=f"data_{sb['data_quality']}",
+            error=sb.get("error"),
+        )
+
+    # ── 3. Cost formula ───────────────────────────────────────────────────
+    if tx["data_quality"] == "ok":
+        distance_km   = tx["distance_km"]
+        cost_per_km, volt_label = _voltage_cost(tx.get("voltage_kv"))
+        gen_tie_cost  = distance_km * cost_per_km
+        total_cost    = gen_tie_cost + equipment_cost_usd
+        cost_per_mw   = (total_cost / capacity_mw) if capacity_mw > 0 else None
+
+        formula = (
+            f"Gen-tie: {distance_km} km × ${cost_per_km/1000:.0f}K/km "
+            f"({volt_label}) = ${gen_tie_cost/1e6:.2f}M. "
+            f"Equipment: ${equipment_cost_usd/1e6:.2f}M. "
+            f"Total: ${total_cost/1e6:.2f}M. "
+            + (f"Per-MW: ${cost_per_mw/1000:.0f}K/MW for a "
+               f"{capacity_mw:.1f} MW system "
+               f"(capacity basis: {capacity_basis})."
+               if cost_per_mw is not None else
+               f"Per-MW: n/a — capacity is {capacity_mw} MW.")
+        )
+
+        trail.step(
+            "interconnection_cost_estimation",
+            source="NREL ATB cost factors + voltage class lookup",
+            value={
+                "gen_tie_cost_usd":   round(gen_tie_cost,  0),
+                "equipment_cost_usd": equipment_cost_usd,
+                "total_cost_usd":     round(total_cost,    0),
+                "cost_per_mw_usd":    round(cost_per_mw, 0) if cost_per_mw else None,
+            },
+            result="estimated",
+            formula=formula,
+            volt_class_used=volt_label,
+            capacity_mw_basis=capacity_basis,
+        )
+    else:
+        cost_per_km, volt_label = 0, "n/a"
+        gen_tie_cost = total_cost = 0
+        cost_per_mw = None
+        trail.step(
+            "interconnection_cost_estimation",
+            source="(deferred — transmission lookup failed)",
+            value={"total_cost_usd": None},
+            result="data_unavailable",
+        )
+
+    # ── 4. Congestion ─────────────────────────────────────────────────────
+    cg = await _congestion_within_radius(ctx, latitude, longitude, radius_km_congestion)
+    if cg["data_quality"] == "ok":
+        risk, risk_note = _congestion_risk(cg["total_mw"])
+        nearby_names = ", ".join(
+            f"{p['plant']} ({p['capacity_mw']} MW @ {p['dist_km']} km)"
+            for p in cg["largest_nearby"][:3]
+        ) or "none"
+        trail.step(
+            "congestion_assessment",
+            source=cg["source"],
+            value={
+                "radius_km":             radius_km_congestion,
+                "existing_plants":       cg["feature_count"],
+                "total_existing_mw":     cg["total_mw"],
+                "risk":                  risk,
+            },
+            result=risk,
+            summary=risk_note,
+            largest_nearby=nearby_names,
+        )
+    else:
+        cg = {"data_quality": cg["data_quality"], "total_mw": 0,
+              "feature_count": 0, "radius_km": radius_km_congestion}
+        risk, risk_note = "unknown", "congestion data unavailable"
+
+    # ── Factor events ─────────────────────────────────────────────────────
+    trail.factor("transmission_distance_km",
+                 value=tx.get("distance_km"),
+                 source="HIFLD nearest line (PostGIS KNN)")
+    trail.factor("substation_distance_km",
+                 value=sb.get("distance_km"),
+                 source="OSM substations nearest (PostGIS KNN)",
+                 coverage_gap=sb.get("coverage_gap", False))
+    trail.factor(
+        "interconnection_cost_total_usd",
+        value=round(total_cost, 0) if total_cost else None,
+        source=(f"gen-tie {volt_label} × distance "
+                f"+ ${equipment_cost_usd/1e6:.1f}M equipment"),
+    )
+    trail.factor("interconnection_cost_per_mw_usd",
+                 value=round(cost_per_mw, 0) if cost_per_mw else None,
+                 source=f"total / {capacity_mw:.1f} MW ({capacity_basis})")
+    trail.factor("congestion_mw_within_25km",
+                 value=cg.get("total_mw"),
+                 source="EIA-860 operating PV within 25 km")
+    trail.factor("congestion_risk",
+                 value=risk,
+                 source=f"based on {cg.get('total_mw')} MW existing nearby")
+
+    # ── Conditional advisories ────────────────────────────────────────────
+    if cost_per_mw and cost_per_mw > HIGH_INTERCONNECTION_COST_PER_MW:
+        trail.advisory(
+            f"Interconnection cost ${cost_per_mw/1000:.0f}K/MW exceeds the "
+            f"${HIGH_INTERCONNECTION_COST_PER_MW/1000:.0f}K/MW threshold. "
+            "Consider a larger system to amortise the gen-tie cost, or look "
+            "for closer parcels.",
+            severity="warning", name="high_interconnection_cost",
+            cost_per_mw=round(cost_per_mw, 0),
+        )
+    if risk == "high":
+        trail.advisory(
+            f"{cg['total_mw']:.0f} MW of existing operating PV within "
+            f"{radius_km_congestion:.0f} km — significant interconnection queue "
+            "delays likely. Verify queue availability with the local utility "
+            "before committing capital.",
+            severity="warning", name="high_congestion",
+            existing_mw=cg["total_mw"],
+        )
+
+    # ── Stage 4 result ────────────────────────────────────────────────────
+    data_quality_complete = (
+        tx.get("data_quality") == "ok"
+        and sb.get("data_quality") in ("ok", "partial")
+        and cg.get("data_quality") == "ok"
+    )
+    interpretation = (
+        f"Nearest transmission: "
+        f"{tx.get('distance_km','n/a')} km ({tx.get('volt_class') or 'voltage unknown'}). "
+        f"Nearest substation: "
+        f"{sb.get('distance_km','n/a')} km "
+        f"({sb.get('name') or 'unnamed'}). "
+        f"Interconnection cost ${total_cost/1e6:.2f}M total"
+        + (f" (${cost_per_mw/1000:.0f}K/MW)" if cost_per_mw else "")
+        + f". {risk_note}."
+    )
+
+    return {
+        "stage":      4,
+        "stage_name": "Interconnection Analysis",
+        "inputs": {
+            "latitude":              latitude,
+            "longitude":             longitude,
+            "capacity_mw":           round(capacity_mw, 2),
+            "capacity_basis":        capacity_basis,
+            "radius_km_congestion":  radius_km_congestion,
+            "equipment_cost_usd":    equipment_cost_usd,
+        },
+        "transmission":         tx,
+        "substation":           sb,
+        "cost_estimate": {
+            "gen_tie_cost_usd":    round(gen_tie_cost, 0),
+            "equipment_cost_usd":  equipment_cost_usd,
+            "total_cost_usd":      round(total_cost, 0),
+            "cost_per_mw_usd":     round(cost_per_mw, 0) if cost_per_mw else None,
+            "volt_class_used":     volt_label,
+        },
+        "congestion":           cg,
+        "data_quality": {
+            "complete":            data_quality_complete,
+            "transmission":        tx.get("data_quality"),
+            "substation":          sb.get("data_quality"),
+            "congestion":          cg.get("data_quality"),
         },
         "interpretation": interpretation,
     }
