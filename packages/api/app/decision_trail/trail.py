@@ -35,6 +35,8 @@ class TrailEvent:
       - ``advisory``    — a contextual note (info / warning / error severity)
       - ``data_source`` — declaration that a layer was consulted, separate from
                           any specific query (e.g. a static lookup table)
+      - ``api_call``    — an outbound model/data API call with inputs + outputs
+                          captured side-by-side (e.g. NREL PVWatts)
     """
 
     kind: str
@@ -47,6 +49,13 @@ class TrailEvent:
     weight_pct: float | None = None
     severity: str | None = None
     message: str | None = None
+    # api_call-specific fields. Separate from `detail` so the consumer can
+    # render parameters and response_summary side-by-side, and so the SQL/HTTP
+    # raw-call records stay decoupled from the business-level summary.
+    provider: str | None = None
+    endpoint: str | None = None
+    parameters: dict[str, Any] | None = None
+    response_summary: dict[str, Any] | None = None
     detail: dict[str, Any] | None = None
 
     def to_dict(self) -> dict[str, Any]:
@@ -133,6 +142,36 @@ class DecisionTrail:
                 name=name,
                 source=source,
                 detail={"vintage": vintage, **detail} if (vintage or detail) else None,
+            )
+        )
+
+    def api_call(
+        self,
+        name: str,
+        *,
+        provider: str,
+        endpoint: str,
+        parameters: dict[str, Any],
+        response_summary: dict[str, Any],
+        message: str | None = None,
+        **detail: Any,
+    ) -> None:
+        """Record an outbound API call to a model/data service.
+
+        Use for rich service calls (NREL PVWatts, USGS StreamStats, etc.)
+        where the audit reader needs to see input parameters and output
+        summary together, not just a single value-vs-threshold check.
+        """
+        self.events.append(
+            TrailEvent(
+                kind="api_call",
+                name=name,
+                provider=provider,
+                endpoint=endpoint,
+                parameters=parameters,
+                response_summary=response_summary,
+                message=message,
+                detail=detail or None,
             )
         )
 
