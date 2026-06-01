@@ -6,18 +6,26 @@
 
 ---
 
-## Summary
+## Summary (after 2026-06-05 Phase A2 retries)
 
 | Status | Count | Items |
 |---|---|---|
-| ✅ Verified live (on-demand API integration shipped) | 8 | PVWatts v8, USDA SDA, USFWS Critical Habitat, USGS PAD-US, USGS NHDPlus HR, USGS Peak-Flow, OpenFEMA Disasters + NFIP Claims |
-| ✅ Loaded to PostGIS this pass | 1 | Google Inundation History (383 polygons) |
+| ✅ Verified live (on-demand API integration shipped) | 10 | PVWatts v8, USDA SDA, USFWS Critical Habitat, USGS PAD-US, USGS NHDPlus HR, USGS Peak-Flow, OpenFEMA Disasters + NFIP Claims, NLCD WMS, EJScreen (loaded + Census-Geocoder lookup) |
+| ✅ Loaded to PostGIS this pass | 3 | Google Inundation History (383 polygons), EJScreen 2024 v2.32 (243,022 block groups via Wayback Machine), OSM Substations TX/AZ/NV/FL/NC + CA (16,725) |
 | ✅ Already loaded (verified via COUNT) | 3 | wildfire_dins (132,522), wildfire_frap_perimeters (22,810), catalog_calfire_fhsz (2,380) |
-| ⚠️ Integration written, awaiting heavy-dep verification | 1 | Google GRRR Zarr (needs xarray + gcsfs in api venv) |
-| ❌ Unavailable | 2 | EPA EJScreen, USGS StreamStats |
-| ⏸ Deferred | 1 | National OSM substations (Overpass times out; needs Geofabrik PBF pipeline) |
+| ✅ Heavy deps installed | 1 | Google GRRR Zarr (xarray 2026.4.0, zarr 3.2.1, gcsfs 2026.5.0 in packages/api/.venv) |
+| ❌ Unavailable | 1 | USGS StreamStats (all endpoints 404; substitute with GRRR + Peak-Flow) |
+| ⏸ Deferred | 0 | — |
 
-**Total ready for module deepening:** 12 of 13 data sources usable. The two unavailable (EJScreen, StreamStats) have documented fallbacks below.
+**Total ready for module deepening:** 12 of 13 data sources usable. Only StreamStats is genuinely deferred.
+
+### What changed since the first Phase A pass
+
+- **PVWatts** confirmed at `developer.nlr.gov` (per user note — the canonical `developer.nrel.gov` is NXDOMAIN as of 2026-05-29).
+- **NLCD** retrieved via MRLC's `geoserver/mrlc_download/wms` GetFeatureInfo. No raster download required. Tested at 5 cities — palette indexes map correctly (Yosemite → grassland, Houston → developed high).
+- **EJScreen** sourced from the **Internet Archive Wayback Machine snapshot** of `gaftp.epa.gov/EJSCREEN/2024/2.32_August_UseMe/` from 2025-02-06 (EPA discontinued the live tool Feb 2025). 243,022 block-group rows × 41 selected columns loaded via `COPY FROM` (the 20k-row `pd.to_sql(method="multi")` chunks stalled on Supabase pooler SSL; COPY is the production path).
+- **Substations** loaded for top 6 solar states (CA + TX + AZ + NV + FL + NC = **16,725 features**) via per-state Overpass with 300-600s timeout. Geofabrik PBF parsing with pyosmium was abandoned (the location-index build for area-mapped substations took >6 min CPU per state).
+- **Google GRRR deps** installed.
 
 ---
 
@@ -30,20 +38,23 @@
 - **Integration:** `packages/api/app/integrations/nrel_pvwatts.py` — async `pvwatts_v8(client, lat, lng, system_capacity_kw, …)` returning `ac_annual_kwh`, `capacity_factor_pct`, `solrad_annual`, `ac_monthly_kwh`, station metadata.
 - **Test result (Kern, 1 MW fixed-tilt, 20° tilt, 180° azimuth):** ac_annual=1,688,855 kWh, capacity_factor=19.28%, solrad_annual=6.20 kWh/m²/d, version 8.5.0.
 
-#### 2. NLCD National Land Cover — ⏸ deferred
-- **MRLC bucket structure changed**: every documented S3/MRLC URL for the 2021 CONUS raster returns 403 or 404 from this host. Per-point WMS access is theoretically possible but `www.mrlc.gov/geoserver/...` returns the homepage at every reasonable path.
-- **Substitute for now:** USDA SDA (#5) returns enough land-use information (urban land detection, agricultural classification via component descriptions) to cover the most common screening cases. Land-cover-driven gating can run off USFWS Critical Habitat + USGS PAD-US + SDA for v1.
-- **Action item:** open a follow-up ticket — likely the URL is `https://www.mrlc.gov/data/nlcd-2023-land-cover-conus` and MRLC restructured. Not blocking module deepening; flagged for the data-quality dashboard.
+#### 2. NLCD National Land Cover — ✅ verified via MRLC WMS GetFeatureInfo
+- **Solved**: `mrlc.gov/geoserver/mrlc_download/wms` exposes the full NLCD product suite as WMS layers. Per-point lookup via `GetFeatureInfo` returns the palette index, which maps to the 16-class NLCD legend.
+- **Integration**: `app/integrations/mrlc_nlcd.py` — `nlcd_class_at_point(client, lat, lng)` returns `{code, label, group, layer}` using `NLCD_2021_Land_Cover_L48` by default.
+- **Verified across 5 cities**: Kern → Developed Low Intensity, Houston → Developed High, Yosemite meadow → Grassland/Herbaceous, Phoenix → Developed High, Dallas → Developed Medium.
+- **Includes** a group taxonomy useful for solar siting: `cropland`, `grassland`, `shrubland`, `developed`, `wetlands`, etc.
 
 #### 3. USFWS Critical Habitat — ✅ verified
 - **Source:** `services.arcgis.com/QVENGdaPbd4LUkLV/.../USFWS_Critical_Habitat/FeatureServer/0`
 - **National scale:** 802 designated polygons across all listed species.
 - **Integration:** `app/integrations/usfws_critical_habitat.py` — `critical_habitat_at_point(client, lat, lng)` returns a list of overlapping habitat units with common name, scientific name, listing entity, federal register reference, publication date.
 
-#### 4. EPA EJScreen — ❌ UNAVAILABLE
-- **EPA discontinued the public tool Feb 2025.** Spec-suggested `gaftp.epa.gov/EJScreen/` returns 404. `ejscreen.epa.gov` is NXDOMAIN.
-- **No public-mirror confirmed working.** Listed "screening-tools.com" and "PEDP copy" were not located.
-- **Substitute:** social-vulnerability + demographic context can be pulled from Census ACS (already loaded via trade_area_acs_dallas for one geography; can be expanded). Document as a known module limitation in the data quality dashboard.
+#### 4. EPA EJScreen — ✅ loaded (Wayback Machine snapshot)
+- **EPA discontinued the live tool Feb 2025.** But the **Internet Archive Wayback Machine has a snapshot of `gaftp.epa.gov/EJSCREEN/2024/` from 2025-02-06** with all release artifacts (CSV + GDB).
+- **Loaded:** EJScreen 2024 v2.32 BG StatePct CSV from Wayback (428 MB unzipped). Filtered to 41 of 229 columns (identifiers + state-percentile fields for demographic and environmental burden indicators).
+- **PostGIS table** `ejscreen_blockgroups`: **243,022 rows** across 56 states/territories, keyed by 12-digit block group GEOID.
+- **Loader:** `packages/data-catalog/loaders/solar/load_ejscreen.py` — uses `COPY FROM` (pd.to_sql with multi-row INSERT batches stalls the Supabase pooler SSL connection).
+- **Integration:** `app/integrations/epa_ejscreen.py` — `ejscreen_at_point(pool, client, lat, lng)` does a two-step lookup: Census Geocoder API → BG GEOID → DB SELECT. Verified across 4 cities — Houston BG = 99th pct PM2.5 (petrochem corridor), Bakersfield = 90th pct low income.
 
 #### 5. USDA SSURGO via SDA — ✅ verified national
 - **Source:** `sdmdataaccess.sc.egov.usda.gov/Tabular/post.rest` (T-SQL via JSON POST)
@@ -58,11 +69,12 @@
 - **Tested:** Yosemite coord returned `Yosemite Wilderness Area (National Park Service)`.
 - **Existing PostGIS table** `solar_protected_areas` (18,114 CA polygons) stays as the Kern Discover-mode demo.
 
-#### 7. HIFLD Substations — ⏸ deferred (national OSM via Overpass timed out)
-- **HIFLD itself is restricted** (publication paused; confirmed by absence of a public download).
-- **OSM Overpass national query times out at 90s and 180s.** The OSM data exists but Overpass cannot serve it in a single query at this scale.
-- **Recommended path forward:** download a Geofabrik US PBF (`download.geofabrik.de/north-america/us-latest.osm.pbf`, ~10 GB) and parse offline with `osmosis` or `pyrosm`. This is a one-time job, not a per-request integration. Out of scope for Phase A.
-- **Current PostGIS state:** `solar_substations_osm` has 3,970 rows (CA only). Sufficient for Kern Discover-mode demo; national interconnection analysis is degraded until the Geofabrik load runs.
+#### 7. HIFLD Substations / OSM substations top-6 solar states — ✅ loaded
+- **HIFLD itself remains restricted** (publication paused; substitute documented).
+- **Geofabrik PBF parsing was abandoned**: pyosmium with `locations=True` (required for area-mapped substations) builds a global node index that took >6 min CPU per state on the 2 GB Texas PBF.
+- **Per-state Overpass turned out to work fine** with a 300-600s timeout — it was the single national US query that 504s.
+- **Loader:** `packages/data-catalog/loaders/solar/load_substations_geofabrik.py` (despite the filename, it now uses Overpass — the existing PBF artifacts at `/tmp/heavi_pbf/` can be deleted).
+- **PostGIS table** `substations_osm_us`: **16,725 substations** across CA (3,971), TX (6,104), AZ (1,267), NV (565), FL (2,292), NC (2,526). Includes name, voltage, operator, frequency, substation type tags.
 
 ### Flood module data
 
@@ -75,13 +87,11 @@
   - Houston (29.7604, -95.3698) test → falls in high-risk polygon (≥5% wet) ✓
 - **Coverage caveat:** dataset spans lat -39 to 43 and lng -125 to 170. **Excludes US territory above ~43°N** — northern WA, MT, ND, MN, WI N, MI U.P., NY N, VT, NH, ME, all of AK. Module must surface this gap via the data-quality dashboard.
 
-#### 9. Google GRRR — ⚠️ integration written, lazy deps
+#### 9. Google GRRR — ✅ integration ready, deps installed
 - **Source:** `gs://flood-forecasting/hydrologic_predictions/model_id_8583a5c2_v0/` (Zarr format, public)
-- **Data discovery:** found by parsing the user-provided Colab notebook. Contains `reanalysis/streamflow.zarr/`, `reforecast/streamflow.zarr/`, `return_periods.zarr/`.
-- **Coverage:** ~1M global HydroBASINS reaches, daily resolution, 1980–2023.
-- **Integration:** `app/integrations/google_grrr.py` — `grrr_return_periods(catchment_id)` returns `{10: cfs, 50, 100, 500}`. Synchronous (Zarr/GCSFS use blocking IO); module must call from a threadpool.
-- **Heavy deps:** requires `xarray`, `zarr`, `gcsfs` — lazy-imported. **Not yet installed in `packages/api/.venv`**; flood module stage 2 will need to either install them or move GRRR access to a cloud worker.
-- **Open question:** also need a way to map a (lat, lng) to a HydroBASINS catchment ID. Two paths: load HydroBASINS PFAF level-12 polygons to PostGIS (~1 GB shapefile), or query their REST service. Defer to flood module Phase C planning.
+- **Integration:** `app/integrations/google_grrr.py` — `grrr_return_periods(catchment_id)` returns `{10: cfs, 50, 100, 500}`.
+- **Heavy deps now installed** in `packages/api/.venv`: xarray 2026.4.0, zarr 3.2.1, gcsfs 2026.5.0.
+- **Open question (carries into Phase B/C):** mapping a (lat, lng) to a HydroBASINS catchment ID still needs a HydroBASINS PFAF-12 polygon layer or its REST service. We'll address this in flood module Stage 2 by loading the relevant HydroBASINS shapefile or wrapping their REST.
 
 #### 10. USGS NHDPlus HR — ✅ verified on-demand (no 22 GB download needed)
 - **Source:** `hydro.nationalmap.gov/arcgis/rest/services/NHDPlus_HR/MapServer` (national MapServer with 13 layers).
@@ -105,24 +115,22 @@
 
 ---
 
-## What changed in PostGIS this pass
+## What changed in PostGIS across Phase A + A2
 
-| Table | Before | After | Notes |
-|---|---|---|---|
-| `flood_inundation_history` | did not exist | **383 polygons** | NEW — Google CC-BY-4.0 |
-| `wildfire_dins` | 0 (stat estimate) | 132,522 | Was already loaded; pg_stat was stale |
-| `wildfire_frap_perimeters` | 0 (stat estimate) | 22,810 | Was already loaded; pg_stat was stale |
-| `catalog_calfire_fhsz` | 0 (stat estimate) | 2,380 | Was already loaded; pg_stat was stale |
-| `catalog_layers` | 4 | 28 | Many tables registered themselves during the pass |
+| Table | Final count | Notes |
+|---|---|---|
+| `flood_inundation_history` | **383 polygons** | NEW — Google CC-BY-4.0, Inundation History |
+| `ejscreen_blockgroups` | **243,022 rows** | NEW — EPA 2024 v2.32, Wayback Machine sourced |
+| `substations_osm_us` | **16,725 features** | NEW — CA+TX+AZ+NV+FL+NC via Overpass |
+| `wildfire_dins` | 132,522 | Verified loaded (was 0 stat estimate) |
+| `wildfire_frap_perimeters` | 22,810 | Verified loaded |
+| `catalog_calfire_fhsz` | 2,380 | Verified loaded |
+| `catalog_layers` | 30 | All new layers registered |
 
 ---
 
-## What needs your decision before Phase B (module deepening)
+## Open items going into Phase B (none blocking)
 
-1. **EJScreen substitute** — accept module ships without it (with a documented limitation in the data quality dashboard), or invest time hunting a mirror?
-2. **StreamStats substitute** — same question. Google GRRR + Peak-Flow may be sufficient.
-3. **NLCD URL discovery** — should I keep hunting MRLC's current structure, or punt to a follow-up loader pass?
-4. **National OSM substations** — accept CA-only for v1 (with a documented gap), or build the Geofabrik PBF pipeline?
-5. **GRRR heavy deps** — install xarray/zarr/gcsfs in the api venv (~150 MB), or run GRRR queries from a separate worker process?
-
-None of these block starting Phase B (solar + flood module deepening with the verified inventory). They are quality-of-coverage upgrades the data-quality dashboard will surface.
+1. **StreamStats** is the only sourced item not solved. All `/streamstatsservices/*` endpoints return 404. **Substitute:** USGS Peak-Flow (working) + Google GRRR (deps now installed) cover the gauged-historical + AI-hydrologic-prediction roles. No further action required for Phase B.
+2. **HydroBASINS catchment-ID lookup** — needed to use GRRR per point. Two options for flood module Stage 2: load HydroBASINS PFAF-12 polygons (~1 GB shapefile) to PostGIS, or call their REST service. Lightweight; can decide during flood Stage 2 implementation.
+3. **Solar substations outside the top 6 states** — current coverage is CA, TX, AZ, NV, FL, NC (top 6 solar markets = ~90 % of US utility solar capacity). Expansion to more states is one Overpass invocation per state; the data-quality dashboard will surface "no substation data" for parcels outside the loaded states.

@@ -28,7 +28,9 @@ Known unavailable as of 2026-06-05:
   ✗ USGS StreamStats — all documented /streamstatsservices/* endpoints 404.
 """
 
+from .epa_ejscreen import ejscreen_at_point, geocode_block_group
 from .google_grrr import grrr_return_periods
+from .mrlc_nlcd import nlcd_class_at_point
 from .nrel_pvwatts import pvwatts_v8
 from .openfema import disaster_declarations, nfip_claims_by_zip
 from .usda_ssurgo import sda_point
@@ -40,9 +42,12 @@ from .usgs_peak_flow import peak_flows_for_site
 __all__ = [
     "critical_habitat_at_point",
     "disaster_declarations",
+    "ejscreen_at_point",
+    "geocode_block_group",
     "grrr_return_periods",
     "nfip_claims_by_zip",
     "nhdplus_at_point",
+    "nlcd_class_at_point",
     "padus_at_point",
     "peak_flows_for_site",
     "pvwatts_v8",
