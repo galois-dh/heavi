@@ -1,0 +1,50 @@
+"""On-demand federal/national data service clients.
+
+Each module in this package wraps a single external service used by one or
+more scoring modules. They share three conventions:
+
+  - Functions take a single point (lat, lng) or a single ID; geometry is
+    serialized internally.
+  - The async clients accept an ``httpx.AsyncClient`` (e.g. a
+    ``RequestContext.http_client()``) so HTTP calls are captured in the
+    decision trail without per-integration plumbing.
+  - Returned dicts have the smallest contract the scoring stage needs —
+    not the raw service response.
+
+Verification status (smoke-tested 2026-06-05):
+
+  ✓ nrel_pvwatts             developer.nlr.gov (domain changed from nrel.gov)
+  ✓ usda_ssurgo              sdmdataaccess.sc.egov.usda.gov SDA Tabular
+  ✓ usfws_critical_habitat   services.arcgis.com FeatureServer (802 polygons)
+  ✓ usgs_padus               services.arcgis.com PADUS_Protected_Areas_National (306,082)
+  ✓ usgs_nhdplus             hydro.nationalmap.gov NHDPlus_HR MapServer
+  ✓ usgs_peak_flow           nwis.waterdata.usgs.gov/nwis/peak (RDB)
+  ✓ openfema                 www.fema.gov/api/open/v2 (Disasters + NFIP claims)
+  ⚠ google_grrr              gs://flood-forecasting/hydrologic_predictions (Zarr; lazy import)
+
+Known unavailable as of 2026-06-05:
+
+  ✗ EPA EJScreen — service discontinued Feb 2025; gaftp.epa.gov/EJScreen also 404.
+  ✗ USGS StreamStats — all documented /streamstatsservices/* endpoints 404.
+"""
+
+from .google_grrr import grrr_return_periods
+from .nrel_pvwatts import pvwatts_v8
+from .openfema import disaster_declarations, nfip_claims_by_zip
+from .usda_ssurgo import sda_point
+from .usfws_critical_habitat import critical_habitat_at_point
+from .usgs_nhdplus import nhdplus_at_point
+from .usgs_padus import padus_at_point
+from .usgs_peak_flow import peak_flows_for_site
+
+__all__ = [
+    "critical_habitat_at_point",
+    "disaster_declarations",
+    "grrr_return_periods",
+    "nfip_claims_by_zip",
+    "nhdplus_at_point",
+    "padus_at_point",
+    "peak_flows_for_site",
+    "pvwatts_v8",
+    "sda_point",
+]
