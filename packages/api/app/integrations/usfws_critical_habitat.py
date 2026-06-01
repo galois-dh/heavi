@@ -21,6 +21,37 @@ URL = (
 )
 
 
+async def critical_habitat_in_envelope(
+    client: httpx.AsyncClient,
+    *,
+    west: float, south: float, east: float, north: float,
+    max_records: int = 50,
+) -> list[dict[str, Any]]:
+    """Return critical-habitat units intersecting an envelope, with geometry
+    (GeoJSON) so callers can compute intersection area. Empty list → no
+    designated habitat in the bbox."""
+    geom = json.dumps({
+        "xmin": west, "ymin": south, "xmax": east, "ymax": north,
+        "spatialReference": {"wkid": 4326},
+    })
+    params = {
+        "geometry":         geom,
+        "geometryType":     "esriGeometryEnvelope",
+        "inSR":             "4326",
+        "spatialRel":       "esriSpatialRelIntersects",
+        "outFields":        ("comname,sciname,spcode,unit,subunit,"
+                             "unitname,listing_st,fedreg_no,pubdate"),
+        "returnGeometry":   "true",
+        "outSR":            "4326",
+        "f":                "geojson",
+        "resultRecordCount": max_records,
+    }
+    r = await client.get(URL, params=params)
+    r.raise_for_status()
+    data = r.json()
+    return data.get("features") or []
+
+
 async def critical_habitat_at_point(
     client: httpx.AsyncClient, *, latitude: float, longitude: float
 ) -> list[dict[str, Any]]:

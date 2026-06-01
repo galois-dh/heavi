@@ -18,6 +18,37 @@ URL = (
 )
 
 
+async def padus_in_envelope(
+    client: httpx.AsyncClient,
+    *,
+    west: float, south: float, east: float, north: float,
+    max_records: int = 50,
+) -> list[dict[str, Any]]:
+    """Return protected-area units intersecting an envelope, with geometry
+    (GeoJSON) so callers can compute intersection area. Empty list → no
+    PAD-US intersect in the bbox."""
+    geom = json.dumps({
+        "xmin": west, "ymin": south, "xmax": east, "ymax": north,
+        "spatialReference": {"wkid": 4326},
+    })
+    params = {
+        "geometry":         geom,
+        "geometryType":     "esriGeometryEnvelope",
+        "inSR":             "4326",
+        "spatialRel":       "esriSpatialRelIntersects",
+        "outFields":        ("Unit_Nm,Category,Pub_Access,GAP_Sts,"
+                             "IUCN_Cat,MngTp_Desc,MngNm_Desc,DesTp_Desc"),
+        "returnGeometry":   "true",
+        "outSR":            "4326",
+        "f":                "geojson",
+        "resultRecordCount": max_records,
+    }
+    r = await client.get(URL, params=params)
+    r.raise_for_status()
+    data = r.json()
+    return data.get("features") or []
+
+
 async def padus_at_point(
     client: httpx.AsyncClient, *, latitude: float, longitude: float
 ) -> list[dict[str, Any]]:
