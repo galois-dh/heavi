@@ -21,6 +21,10 @@ from .flood_scoring import MODULE_NAME as FLOOD_MODULE
 from .flood_scoring import MODULE_VERSION as FLOOD_VERSION
 from .flood_scoring import assess_flood_risk
 from .flood_scoring import methodology_doc as flood_methodology_doc
+from .methodology_repository import (
+    get_all_source_ids_for_workflow,
+    get_methodology_doc,
+)
 from .portfolio_pdf import render_pdf
 from .portfolio_risk import (
     MAX_ROWS,
@@ -200,6 +204,35 @@ async def data_source_check(
     return (await check_source_availability(
         pool, source_id, latitude=lat, longitude=lng
     )).to_dict()
+
+
+# ─── Methodology Repository (Platform Build Spec Phase 2) ──────────────────
+
+
+@app.get("/methodology/{workflow_type}")
+async def methodology_for_workflow(workflow_type: str) -> dict:
+    """Full methodology documentation for a workflow.
+
+    Returns framework citations, per-criterion weights + rationale + data
+    sources, and the deduplicated academic source list — the same payload
+    that gets attached to every scored assessment from Phase 4 onward."""
+    if not pool:
+        raise HTTPException(503, "Database pool not initialized")
+    doc = await get_methodology_doc(pool, workflow_type)
+    if doc["criteria_count"] == 0:
+        raise HTTPException(404, f"no criteria registered for workflow '{workflow_type}'")
+    return doc
+
+
+@app.get("/methodology/{workflow_type}/sources")
+async def methodology_source_ids(workflow_type: str) -> dict:
+    """Deduplicated source_ids referenced across this workflow's data trees.
+    Phase 3's resolve_sources() uses this to know what to query."""
+    if not pool:
+        raise HTTPException(503, "Database pool not initialized")
+    ids = await get_all_source_ids_for_workflow(pool, workflow_type)
+    return {"workflow_type": workflow_type, "source_count": len(ids),
+            "source_ids": sorted(ids)}
 
 
 class QueryRequest(BaseModel):
