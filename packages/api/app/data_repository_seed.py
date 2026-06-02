@@ -624,6 +624,159 @@ SEED: list[dict[str, Any]] = [
         data_category="infrastructure",
         applicable_workflows=["trade_area"],
     ),
+
+    # ── Phase 1 update (Heavi Platform Build Spec) ────────────────────────
+    # Six additional sources representing the fallback/alternative nodes in
+    # the methodology data trees. These are referenced by methodology_criteria
+    # but were not in the original 25-source catalog.
+
+    _ds(
+        source_id="nwi_wetlands_rest",
+        name="USFWS NWI Wetlands REST Service",
+        provider="U.S. Fish and Wildlife Service",
+        description=("On-demand REST service for NWI wetlands. Alternative path "
+                     "to the PostGIS-loaded snapshot."),
+        access_method="rest_api",
+        access_config={
+            "endpoint": ("https://fwsprimary.wim.usgs.gov/server/rest/services/"
+                         "Wetlands/MapServer/0/query"),
+            "format": "esriGeometryEnvelope",
+            "status": "degraded — HTTP 500 on queries as of June 2026",
+        },
+        coverage_type="national",
+        reliability="degraded",
+        last_verified=_PHASE_A_TS,
+        known_gaps=("Service returning HTTP 500 on spatial queries. Retested "
+                    "twice (Phase A and Phase 1). Intermittently available."),
+        license="public_domain",
+        source_url="https://www.fws.gov/program/national-wetlands-inventory",
+        data_category="environmental",
+        applicable_workflows=["solar_siting", "hazard_assessment"],
+    ),
+    _ds(
+        source_id="osm_substations_overpass",
+        name="OSM Power Substations (Overpass On-Demand)",
+        provider="OpenStreetMap contributors",
+        description=("Live Overpass query for power=substation features within "
+                     "50 km. Fallback when the substations_osm_us PostGIS cache "
+                     "does not cover the location's state."),
+        access_method="rest_api",
+        access_config={
+            "endpoint": "https://overpass-api.de/api/interpreter",
+            "query_template": (
+                "[out:json][timeout:30];(node[\"power\"=\"substation\"]"
+                "(around:50000,{lat},{lng});way[\"power\"=\"substation\"]"
+                "(around:50000,{lat},{lng}););out center;"
+            ),
+        },
+        coverage_type="national",
+        reliability="verified",
+        last_verified=_PHASE_A_TS,
+        known_gaps=("Higher latency (2-5 s). Can timeout under load. Rate limits "
+                    "apply (~10,000 queries/day per IP)."),
+        license="ODbL",
+        source_url="https://overpass-api.de",
+        data_category="infrastructure",
+        applicable_workflows=["solar_siting"],
+    ),
+    _ds(
+        source_id="osm_pois_overpass",
+        name="OSM Points of Interest (Overpass On-Demand)",
+        provider="OpenStreetMap contributors",
+        description=("Live Overpass query for amenities and shops within 10 km. "
+                     "Fallback when the trade_area_pois_dallas PostGIS cache does "
+                     "not cover the location."),
+        access_method="rest_api",
+        access_config={
+            "endpoint": "https://overpass-api.de/api/interpreter",
+            "query_template": (
+                "[out:json][timeout:60];(node[\"amenity\"](around:10000,{lat},{lng});"
+                "node[\"shop\"](around:10000,{lat},{lng}););out center;"
+            ),
+        },
+        coverage_type="national",
+        reliability="verified",
+        last_verified=_PHASE_A_TS,
+        known_gaps=("Higher latency. Category classification from OSM tags, may "
+                    "not match customer definitions."),
+        license="ODbL",
+        source_url="https://overpass-api.de",
+        data_category="demographic",
+        applicable_workflows=["trade_area"],
+    ),
+    _ds(
+        source_id="census_acs_commuter",
+        name="Census ACS Commuter Data (Proxy for Daytime Population)",
+        provider="U.S. Census Bureau",
+        description=("Means of transportation to work + travel time. Proxy for "
+                     "daytime population when LEHD/LODES is unavailable."),
+        access_method="rest_api",
+        access_config={
+            "endpoint": "https://api.census.gov/data/2022/acs/acs5",
+            "variables": "B08301_001E,B08303_001E",
+            "auth": "api_key", "key_env_var": "CENSUS_API_KEY",
+        },
+        coverage_type="national",
+        reliability="verified",
+        last_verified=_PHASE_A_TS,
+        known_gaps=("Proxy only — commuter count is not equivalent to workplace "
+                    "population. Tract-level, not block-level."),
+        license="public_domain",
+        source_url="https://www.census.gov/data/developers/data-sets/acs-5year.html",
+        data_category="demographic",
+        applicable_workflows=["trade_area"],
+    ),
+    _ds(
+        source_id="nrel_nsrdb_ghi",
+        name="NREL NSRDB (Raw GHI)",
+        provider="National Renewable Energy Laboratory",
+        description=("Raw global horizontal irradiance from NSRDB. Supplementary "
+                     "to PVWatts for cross-checking annual / monthly GHI at 4 km "
+                     "grid."),
+        access_method="rest_api",
+        access_config={
+            "endpoint": ("https://developer.nlr.gov/api/nsrdb/v2/solar/"
+                         "psm3-download.json"),
+            "note": ("bulk download or API query for annual/monthly GHI at 4 km "
+                     "grid"),
+        },
+        coverage_type="national",
+        reliability="verified",
+        last_verified=_PHASE_A_TS,
+        known_gaps=("Raw irradiance, not system output. Does not account for tilt, "
+                    "temperature, or system losses. Use PVWatts for system "
+                    "simulation."),
+        license="public_domain",
+        source_url="https://nsrdb.nrel.gov",
+        citation="Sengupta et al. (2018)",
+        data_category="solar_resource",
+        applicable_workflows=["solar_siting"],
+    ),
+    _ds(
+        source_id="osm_roads_overpass",
+        name="OSM Roads (Overpass On-Demand)",
+        provider="OpenStreetMap contributors",
+        description=("Live Overpass query for classified roads (motorway/trunk/"
+                     "primary/secondary) within 10 km. Fallback when Census "
+                     "TIGER coverage is unavailable or stale."),
+        access_method="rest_api",
+        access_config={
+            "endpoint": "https://overpass-api.de/api/interpreter",
+            "query_template": (
+                "[out:json][timeout:30];"
+                "way[\"highway\"~\"motorway|trunk|primary|secondary\"]"
+                "(around:10000,{lat},{lng});out center;"
+            ),
+        },
+        coverage_type="national",
+        reliability="verified",
+        last_verified=_PHASE_A_TS,
+        known_gaps="Classification quality varies by region.",
+        license="ODbL",
+        source_url="https://overpass-api.de",
+        data_category="infrastructure",
+        applicable_workflows=["solar_siting"],
+    ),
 ]
 
 

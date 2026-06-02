@@ -13,6 +13,7 @@ from fastapi.responses import Response
 from pydantic import BaseModel
 
 from .data_repository import get_source_availability, get_sources_for_workflow
+from .data_repository_check import check_source_availability
 from .decision_trail import RequestContext, persist_trail
 from .earthquake_scoring import assess_earthquake_risk
 from .earthquake_scoring import methodology_doc as earthquake_methodology_doc
@@ -178,10 +179,27 @@ async def data_sources_list(workflow: str | None = None) -> dict:
 async def data_source_availability(
     source_id: str, lat: float, lng: float,
 ) -> dict:
-    """Availability + quality for a single source at a single coordinate."""
+    """Catalog-level availability (no live probe) per Phase 1 spec — uses
+    coverage_type + coverage_states + reliability metadata to answer."""
     if not pool:
         raise HTTPException(503, "Database pool not initialized")
     return await get_source_availability(pool, source_id, latitude=lat, longitude=lng)
+
+
+@app.get("/data-sources/{source_id}/check")
+async def data_source_check(
+    source_id: str, lat: float, lng: float,
+) -> dict:
+    """Source-specific live probe (per Phase 1 spec acceptance criterion #3).
+
+    Returns the SourceResult with the actual probe data attached, so the
+    Phase 3 selection engine can reuse it across criteria without re-querying.
+    """
+    if not pool:
+        raise HTTPException(503, "Database pool not initialized")
+    return (await check_source_availability(
+        pool, source_id, latitude=lat, longitude=lng
+    )).to_dict()
 
 
 class QueryRequest(BaseModel):
