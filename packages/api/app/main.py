@@ -14,6 +14,7 @@ from pydantic import BaseModel
 
 from .data_repository import get_source_availability, get_sources_for_workflow
 from .data_repository_check import check_source_availability
+from .data_selection import select_data
 from .decision_trail import RequestContext, persist_trail
 from .earthquake_scoring import assess_earthquake_risk
 from .earthquake_scoring import methodology_doc as earthquake_methodology_doc
@@ -222,6 +223,20 @@ async def methodology_for_workflow(workflow_type: str) -> dict:
     if doc["criteria_count"] == 0:
         raise HTTPException(404, f"no criteria registered for workflow '{workflow_type}'")
     return doc
+
+
+@app.get("/data-selection")
+async def data_selection_endpoint(
+    workflow: str, lat: float, lng: float,
+) -> dict:
+    """Phase 3 selection engine — for a given workflow + location returns
+    which sources were queried, which were selected per criterion, the
+    per-criterion + composite confidence, gaps, strongest/weakest data, and
+    the source cache so downstream scoring can reuse without re-querying."""
+    if not pool:
+        raise HTTPException(503, "Database pool not initialized")
+    result = await select_data(pool, workflow, lat, lng)
+    return result.to_dict()
 
 
 @app.get("/methodology/{workflow_type}/sources")

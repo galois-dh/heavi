@@ -80,14 +80,28 @@ async def _probe_postgis(
     """Spatial-existence probe with a small nearest-features pull so the data
     is cached for the selection engine."""
     if source_id == "hazus_ddfs":
-        # Non-spatial lookup table — just confirm rows present.
-        async with pool.acquire() as conn:
-            n = await conn.fetchval(f"SELECT COUNT(*) FROM {access_config['table']}")
+        # Non-spatial lookup table — confirm rows present. The catalog records
+        # the logical table name (hazus_ddfs); the physical name in PostGIS is
+        # flood_hazus_ddfs from the original loader. Try logical first, then
+        # the known physical alias.
+        candidates = [access_config["table"], "flood_hazus_ddfs"]
+        n = 0
+        used = None
+        for tbl in candidates:
+            try:
+                async with pool.acquire() as conn:
+                    n = await conn.fetchval(f"SELECT COUNT(*) FROM {tbl}")
+                used = tbl
+                if n and n > 0:
+                    break
+            except Exception:  # noqa: BLE001
+                continue
         return SourceResult(
             source_id=source_id,
             available=bool(n and n > 0),
             quality="full" if n else "unavailable",
-            data={"row_count": int(n) if n else 0},
+            data={"row_count": int(n) if n else 0, "physical_table": used},
+            note=(None if used else "expected lookup table not found"),
         )
 
     table = access_config.get("table")
@@ -116,11 +130,15 @@ async def _probe_postgis(
                 """,
                 longitude, latitude, float(radius),
             )
-    except Exception as e:  # noqa: BLE001
+    except Exception as e:  # noqa: BLE001 — bad table / missing column / etc.
+        # A missing physical table means the source isn't actually loaded;
+        # return unavailable instead of bubbling up an exception (so the
+        # selection engine can mark the criterion as a gap).
         return SourceResult(
             source_id=source_id, available=False, quality="unavailable",
             data=None, error=str(e),
             query_time_ms=(time.perf_counter() - t0) * 1000.0,
+            note=f"PostGIS probe failed on table '{table}'",
         )
     n = int(row["n"] or 0)
     nearest_m = float(row["nearest_m"]) if row["nearest_m"] is not None else None
