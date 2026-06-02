@@ -1263,15 +1263,18 @@ async def stage3_buildable_area(
 # ─── Stage 4 — Interconnection Analysis ────────────────────────────────────
 
 
-# OSM substation table coverage. Outside these states the nearest-neighbour
-# query may return a result hundreds of km away — we surface that as a
-# coverage gap rather than pretending the distance is meaningful.
+# OSM substation lookup is national: PostGIS-loaded states act as a CACHE
+# for fast nearest-neighbour, with Overpass on-demand as the fallback for
+# any US location not in that cache. Both paths return the same shape.
 LOADED_SUB_STATES = {"CA", "TX", "AZ", "NV", "FL", "NC"}
-SUB_COVERAGE_NOTE = (
-    f"OSM substations loaded for {', '.join(sorted(LOADED_SUB_STATES))} "
-    "(top-6 US solar markets). Other states will return a distant or no "
-    "match — see data_loaders_status.md for the Geofabrik expansion path."
-)
+SUB_CACHE_RADIUS_M = 50_000  # 50 km — PostGIS cache hit considered valid within
+OVERPASS_URL = "https://overpass-api.de/api/interpreter"
+OVERPASS_TIMEOUT_S = 30
+OVERPASS_HEADERS = {
+    "User-Agent":   "Heavi/0.1 solar-stage-4 (contact: dhazarik@gmail.com)",
+    "Accept":       "application/json",
+    "Content-Type": "application/x-www-form-urlencoded",
+}
 
 # NREL / industry cost factors for gen-tie line, by voltage class.
 # Source: NREL ATB transmission cost estimates (LBNL Solar Industry Trends
@@ -1391,13 +1394,24 @@ async def _nearest_transmission(
     }
 
 
-async def _nearest_substation(
-    ctx: RequestContext, latitude: float, longitude: float
-) -> dict[str, Any]:
-    """Nearest OSM substation across the loaded 6 states. If the result is
-    more than ~50 km away, we treat the location as out of dense coverage
-    and surface it as a partial / coverage_gap result rather than reporting
-    a misleading distance."""
+def _haversine_m(lat1: float, lng1: float, lat2: float, lng2: float) -> float:
+    """Great-circle distance in metres (sufficient for nearest-substation
+    triage, accurate to ~0.3 % at parcel scale)."""
+    r = 6_371_000.0
+    p1 = math.radians(lat1)
+    p2 = math.radians(lat2)
+    dp = math.radians(lat2 - lat1)
+    dl = math.radians(lng2 - lng1)
+    a = math.sin(dp / 2) ** 2 + math.cos(p1) * math.cos(p2) * math.sin(dl / 2) ** 2
+    return 2 * r * math.asin(math.sqrt(a))
+
+
+async def _substation_postgis_cache(
+    ctx: RequestContext, latitude: float, longitude: float,
+) -> dict[str, Any] | None:
+    """Returns the nearest PostGIS-cached substation within SUB_CACHE_RADIUS_M,
+    or None if no substation is loaded within that radius. Bounded by
+    ST_DWithin so a cache miss is unambiguous."""
     try:
         async with ctx.pool.acquire() as conn:
             row = await conn.fetchrow(
@@ -1410,35 +1424,141 @@ async def _nearest_substation(
                   s.substation AS sub_type,
                   ST_Distance(s.geometry::geography, p.geom::geography) AS dist_m
                 FROM parcel p, substations_osm_us s
+                WHERE ST_DWithin(s.geometry::geography, p.geom::geography, $3)
                 ORDER BY s.geometry::geography <-> p.geom::geography
                 LIMIT 1
                 """,
-                longitude, latitude,
+                longitude, latitude, float(SUB_CACHE_RADIUS_M),
             )
-    except Exception as e:  # noqa: BLE001
-        return {"data_quality": "error", "error": str(e), "source": "substations_osm_us"}
+    except Exception:  # noqa: BLE001 — let the caller fall back to Overpass
+        return None
     if row is None:
-        return {
-            "data_quality": "unavailable", "feature_count": 0,
-            "source": "substations_osm_us",
-        }
-    dist_m = float(row["dist_m"] or 0)
-    dist_km = round(dist_m / 1000.0, 2)
-    coverage_gap = (
-        dist_km > DISTANT_SUBSTATION_FLAG_KM
-        or row["state"] not in LOADED_SUB_STATES
-    )
+        return None
     return {
-        "data_quality": "partial" if coverage_gap else "ok",
-        "distance_km":  dist_km,
-        "name":         row["name"],
-        "voltage":      row["voltage"],
-        "operator":     row["operator"],
-        "state":        row["state"],
-        "sub_type":     row["sub_type"],
-        "coverage_gap": coverage_gap,
-        "coverage_note": SUB_COVERAGE_NOTE if coverage_gap else None,
-        "source":       "OSM power=substation (substations_osm_us, top-6 solar states)",
+        "distance_km": round(float(row["dist_m"] or 0) / 1000.0, 2),
+        "name":        row["name"],
+        "voltage":     row["voltage"],
+        "operator":    row["operator"],
+        "state":       row["state"],
+        "sub_type":    row["sub_type"],
+        "osm_id":      row["osm_id"],
+    }
+
+
+async def _substation_overpass(
+    ctx: RequestContext, latitude: float, longitude: float, radius_m: int,
+) -> dict[str, Any] | None:
+    """Nearest OSM substation via Overpass `around:` query — on-demand, works
+    anywhere globally. Returns None if the query succeeded with zero results;
+    raises on transport / status errors so the caller can retry."""
+    q = (
+        f"[out:json][timeout:{OVERPASS_TIMEOUT_S}];"
+        f"(node[\"power\"=\"substation\"](around:{radius_m},{latitude},{longitude});"
+        f" way[\"power\"=\"substation\"](around:{radius_m},{latitude},{longitude}););"
+        "out center;"
+    )
+    async with ctx.http_client(timeout=float(OVERPASS_TIMEOUT_S + 15)) as client:
+        r = await client.post(OVERPASS_URL, data={"data": q}, headers=OVERPASS_HEADERS)
+        r.raise_for_status()
+        data = r.json()
+    elements = data.get("elements") or []
+    best = None
+    best_dist = float("inf")
+    for el in elements:
+        if el.get("type") == "node":
+            lat = el.get("lat")
+            lng = el.get("lon")
+        else:
+            ctr = el.get("center") or {}
+            lat = ctr.get("lat")
+            lng = ctr.get("lon")
+        if lat is None or lng is None:
+            continue
+        d = _haversine_m(latitude, longitude, float(lat), float(lng))
+        if d < best_dist:
+            best_dist = d
+            best = (el, float(lat), float(lng))
+    if best is None:
+        return None
+    el, sub_lat, sub_lng = best
+    tags = el.get("tags", {}) or {}
+    return {
+        "distance_km": round(best_dist / 1000.0, 2),
+        "name":        tags.get("name"),
+        "voltage":     tags.get("voltage"),
+        "operator":    tags.get("operator"),
+        "state":       None,  # Overpass doesn't return state directly
+        "sub_type":    tags.get("substation"),
+        "osm_id":      el.get("id"),
+        "lat":         sub_lat,
+        "lng":         sub_lng,
+    }
+
+
+async def _nearest_substation(
+    ctx: RequestContext, latitude: float, longitude: float,
+) -> dict[str, Any]:
+    """National nearest-substation lookup: PostGIS cache first, Overpass
+    on-demand fallback (one retry on transport error).
+
+    The cache is a fast win for parcels in the loaded states; the Overpass
+    fallback covers every other US location so the cost model never has to
+    fabricate or skip the substation distance.
+    """
+    # 1. PostGIS cache (50 km bound).
+    cached = await _substation_postgis_cache(ctx, latitude, longitude)
+    if cached is not None:
+        return {
+            **cached,
+            "data_quality": "ok",
+            "source_kind":  "cache_postgis",
+            "source":       (
+                "OSM power=substation (substations_osm_us PostGIS cache; "
+                f"radius {SUB_CACHE_RADIUS_M//1000} km)"
+            ),
+        }
+
+    # 2. Cache miss → Overpass on-demand, with one retry.
+    last_err: str | None = None
+    for attempt in (1, 2):
+        try:
+            live = await _substation_overpass(
+                ctx, latitude, longitude, radius_m=SUB_CACHE_RADIUS_M,
+            )
+        except Exception as e:  # noqa: BLE001
+            last_err = f"attempt {attempt}: {e}"
+            continue
+        if live is None:
+            return {
+                "data_quality":  "ok",
+                "distance_km":   None,
+                "feature_count": 0,
+                "source_kind":   "overpass_live",
+                "source":        (
+                    f"OSM Overpass (around:{SUB_CACHE_RADIUS_M//1000} km, "
+                    "live query)"
+                ),
+                "notes":         (
+                    f"No OSM substation within {SUB_CACHE_RADIUS_M//1000} km "
+                    "of the parcel via PostGIS cache OR Overpass."
+                ),
+            }
+        return {
+            **live,
+            "data_quality": "ok",
+            "source_kind":  "overpass_live",
+            "source":       (
+                f"OSM Overpass (around:{SUB_CACHE_RADIUS_M//1000} km, "
+                "live query)"
+            ),
+        }
+
+    # 3. Overpass errored twice — flag as data_quality=error.
+    return {
+        "data_quality": "error",
+        "error":        last_err,
+        "source_kind":  "overpass_live",
+        "source":       "OSM Overpass (failed after retry)",
     }
 
 
@@ -1542,10 +1662,14 @@ async def stage4_interconnection(
         kind="postgis lookup table",
     )
     trail.data_source(
-        "OSM Power Substations (top-6 solar states)",
-        source="substations_osm_us (PostGIS)",
-        vintage="OSM via Overpass 2026-06-05; CA/TX/AZ/NV/FL/NC",
-        kind="postgis lookup table",
+        "OSM Power Substations (national)",
+        source="substations_osm_us (PostGIS cache) + Overpass on-demand",
+        vintage=(
+            "Cache: OSM via Overpass 2026-06-05 for CA/TX/AZ/NV/FL/NC "
+            "(top-6 solar states). Live: any US location via Overpass "
+            f"around:{SUB_CACHE_RADIUS_M//1000}km."
+        ),
+        kind="postgis lookup + federal HTTP (Overpass)",
     )
     trail.data_source(
         "EIA Form 860 — Operating Solar Plants",
@@ -1579,37 +1703,55 @@ async def stage4_interconnection(
             error=tx.get("error"),
         )
 
-    # ── 2. Substation ─────────────────────────────────────────────────────
+    # ── 2. Substation (PostGIS cache → Overpass fallback) ─────────────────
     sb = await _nearest_substation(ctx, latitude, longitude)
-    if sb["data_quality"] in ("ok", "partial"):
-        trail.step(
-            "substation_proximity",
-            source=sb["source"],
-            value={
-                "distance_km": sb["distance_km"],
-                "name":        sb["name"],
-                "voltage":     sb["voltage"],
-                "operator":    sb["operator"],
-                "state":       sb["state"],
-            },
-            result="resolved" if not sb.get("coverage_gap") else "coverage_gap",
-            coverage_note=sb.get("coverage_note"),
-        )
-        if sb.get("coverage_gap"):
+    if sb["data_quality"] == "ok":
+        dist_km = sb.get("distance_km")
+        if dist_km is None:
+            # Both PostGIS cache and Overpass returned no substation in 50 km.
+            trail.step(
+                "substation_proximity",
+                source=sb["source"],
+                value={"distance_km": None},
+                result="no_substation_within_50km",
+                source_kind=sb.get("source_kind"),
+                summary=sb.get("notes"),
+            )
             trail.advisory(
-                f"Nearest OSM substation is {sb['distance_km']} km away — "
-                "this location is likely outside the loaded substation coverage "
-                f"({', '.join(sorted(LOADED_SUB_STATES))}). Substation distance "
-                "is unreliable for cost estimation here.",
-                severity="info", name="substation_coverage_gap",
-                state=sb.get("state"),
+                f"No OSM substation within {SUB_CACHE_RADIUS_M//1000} km of the "
+                "parcel via the PostGIS cache or live Overpass. Interconnection "
+                "cost cannot account for substation-side equipment beyond the "
+                "default flat assumption — verify with the utility.",
+                severity="warning", name="no_nearby_substation",
+            )
+        else:
+            trail.step(
+                "substation_proximity",
+                source=sb["source"],
+                value={
+                    "distance_km": dist_km,
+                    "name":        sb.get("name"),
+                    "voltage":     sb.get("voltage"),
+                    "operator":    sb.get("operator"),
+                    "state":       sb.get("state"),
+                },
+                result="resolved",
+                source_kind=sb.get("source_kind"),  # cache_postgis | overpass_live
             )
     else:
+        # Both PostGIS and Overpass failed (network etc.). Surface as error.
         trail.step(
             "substation_proximity", source=sb.get("source", "?"),
             value={"distance_km": None},
             result=f"data_{sb['data_quality']}",
+            source_kind=sb.get("source_kind"),
             error=sb.get("error"),
+        )
+        trail.advisory(
+            "Substation lookup failed on both PostGIS cache and Overpass "
+            f"(error: {sb.get('error')}). Interconnection cost uses the "
+            "flat-equipment assumption only.",
+            severity="warning", name="substation_lookup_failed",
         )
 
     # ── 3. Cost formula ───────────────────────────────────────────────────
@@ -1689,8 +1831,11 @@ async def stage4_interconnection(
                  source="HIFLD nearest line (PostGIS KNN)")
     trail.factor("substation_distance_km",
                  value=sb.get("distance_km"),
-                 source="OSM substations nearest (PostGIS KNN)",
-                 coverage_gap=sb.get("coverage_gap", False))
+                 source=(
+                     "OSM substations nearest "
+                     f"(via {sb.get('source_kind','?')})"
+                 ),
+                 source_kind=sb.get("source_kind"))
     trail.factor(
         "interconnection_cost_total_usd",
         value=round(total_cost, 0) if total_cost else None,
