@@ -12,6 +12,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response
 from pydantic import BaseModel
 
+from .data_repository import get_source_availability, get_sources_for_workflow
 from .decision_trail import RequestContext, persist_trail
 from .earthquake_scoring import assess_earthquake_risk
 from .earthquake_scoring import methodology_doc as earthquake_methodology_doc
@@ -146,6 +147,41 @@ async def list_layers() -> list[LayerSummary]:
                 )
             )
         return layers
+
+
+# ─── Data Repository (Platform Refactor Phase 1) ───────────────────────────
+
+
+@app.get("/data-sources")
+async def data_sources_list(workflow: str | None = None) -> dict:
+    """Heavi data catalog. Pass ?workflow=solar_siting (or hazard_assessment /
+    trade_area) to filter by applicable workflow. With no filter, returns the
+    full catalog so the UI / caller can render the "we know what we know" view."""
+    if not pool:
+        raise HTTPException(503, "Database pool not initialized")
+    if workflow:
+        rows = await get_sources_for_workflow(pool, workflow)
+    else:
+        async with pool.acquire() as conn:
+            raw = await conn.fetch(
+                "SELECT * FROM data_sources ORDER BY data_category, source_id"
+            )
+        rows = [dict(r) for r in raw]
+    return {
+        "workflow":      workflow,
+        "source_count":  len(rows),
+        "sources":       rows,
+    }
+
+
+@app.get("/data-sources/{source_id}/availability")
+async def data_source_availability(
+    source_id: str, lat: float, lng: float,
+) -> dict:
+    """Availability + quality for a single source at a single coordinate."""
+    if not pool:
+        raise HTTPException(503, "Database pool not initialized")
+    return await get_source_availability(pool, source_id, latitude=lat, longitude=lng)
 
 
 class QueryRequest(BaseModel):
