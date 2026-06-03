@@ -131,11 +131,34 @@ async def resolve_sources(
     Each source is queried ONCE. The result is a cache keyed by source_id,
     which downstream criteria reuse — this is the spec's "data source reuse
     rule" (e.g., usgs_3dep appears in solar_slope, solar_aspect, excl_steep
-    but only one HTTP/SQL hit is paid)."""
+    but only one HTTP/SQL hit is paid).
+
+    Set HEAVI_SELECTION_TIMING=1 to print per-source probe wall time to
+    stdout (diagnostic only — no impact when unset)."""
+    import os, time  # local import keeps prod hot-path imports unchanged
+    log_timing = os.getenv("HEAVI_SELECTION_TIMING") == "1"
+
     source_ids = await get_all_source_ids_for_workflow(pool, workflow_type)
     cache: dict[str, SourceResult] = {}
+    timings: list[tuple[str, float]] = []
+
     for sid in sorted(source_ids):  # sorted for deterministic ordering
+        t0 = time.perf_counter()
         cache[sid] = await check_source_availability(pool, sid, latitude, longitude)
+        ms = (time.perf_counter() - t0) * 1000.0
+        timings.append((sid, ms))
+        if log_timing:
+            print(f"  {sid}: {ms:.1f} ms", flush=True)
+
+    if log_timing:
+        total_ms = sum(ms for _, ms in timings)
+        print(f"  --- top 5 slowest ---", flush=True)
+        for sid, ms in sorted(timings, key=lambda x: -x[1])[:5]:
+            share = (ms / total_ms) * 100.0 if total_ms else 0.0
+            print(f"  {sid}: {ms:.1f} ms  ({share:.1f}% of probe wall)", flush=True)
+        print(f"  --- sum of probe wall: {total_ms/1000.0:.2f} s "
+              f"across {len(timings)} sources ---", flush=True)
+
     return cache
 
 

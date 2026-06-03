@@ -71,6 +71,35 @@ _POSTGIS_PROBE_RADIUS_M: dict[str, int] = {
 # ─── PostGIS probe ─────────────────────────────────────────────────────────
 
 
+# Cache of table → has a pre-computed `geog geography` column. Probing the same
+# table across many locations (the selection engine queries each source once per
+# location) would otherwise re-hit information_schema every time. Populated lazily
+# on first probe of each table; persists for the process lifetime.
+_GEOG_COLUMN_CACHE: dict[str, bool] = {}
+
+
+async def _table_has_geog(pool: asyncpg.Pool, table: str) -> bool:
+    """True if `table` has a `geog` column (a pre-computed geography we can probe
+    against the GiST index, avoiding a per-row geometry::geography cast)."""
+    if table in _GEOG_COLUMN_CACHE:
+        return _GEOG_COLUMN_CACHE[table]
+    try:
+        async with pool.acquire() as conn:
+            exists = await conn.fetchval(
+                """
+                SELECT EXISTS (
+                    SELECT 1 FROM information_schema.columns
+                    WHERE table_name = $1 AND column_name = 'geog'
+                )
+                """,
+                table,
+            )
+    except Exception:  # noqa: BLE001
+        exists = False
+    _GEOG_COLUMN_CACHE[table] = bool(exists)
+    return bool(exists)
+
+
 async def _probe_postgis(
     pool: asyncpg.Pool,
     source_id: str,
@@ -116,6 +145,12 @@ async def _probe_postgis(
     point_sql = (
         "ST_SetSRID(ST_MakePoint($1, $2), 4326)::geography"
     )
+    # Prefer a pre-computed `geog` column (probed directly against its GiST
+    # index) over casting `geometry::geography` per row, which defeats the index
+    # and forces a sequential scan. Falls back to the runtime cast when the table
+    # has no geog column. The raw geometry column is left untouched for callers
+    # that still use it.
+    geo_expr = "t.geog" if await _table_has_geog(pool, table) else f"t.{geom_col}::geography"
     t0 = time.perf_counter()
     try:
         async with pool.acquire() as conn:
@@ -124,9 +159,9 @@ async def _probe_postgis(
                 WITH parcel AS (SELECT {point_sql} AS g)
                 SELECT
                   COUNT(*)::int AS n,
-                  MIN(ST_Distance(t.{geom_col}::geography, p.g)) AS nearest_m
+                  MIN(ST_Distance({geo_expr}, p.g)) AS nearest_m
                 FROM {table} t, parcel p
-                WHERE ST_DWithin(t.{geom_col}::geography, p.g, $3)
+                WHERE ST_DWithin({geo_expr}, p.g, $3)
                 """,
                 longitude, latitude, float(radius),
             )

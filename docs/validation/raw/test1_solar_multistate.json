@@ -1,0 +1,1016 @@
+{
+  "spec_section": "TEST 1",
+  "seed": 42,
+  "concurrency": 1,
+  "states_tested": [
+    "TX",
+    "AZ",
+    "NC",
+    "NV",
+    "FL"
+  ],
+  "elapsed_s": 515.2,
+  "raw_results": {
+    "TX": {
+      "eia_count_available": 150,
+      "eia_sample_size": 5,
+      "random_sample_size": 5,
+      "eia_results": [
+        {
+          "lat": 34.380532,
+          "lng": -100.099625,
+          "score": 0.8215,
+          "rating": "High",
+          "exclusions": [],
+          "confidence_tier": "MODERATE",
+          "composite_confidence": 0.665,
+          "elapsed_s": 10.82,
+          "error": null,
+          "plant_code": 62249,
+          "plant_name": "Misae Solar",
+          "county": "Childress",
+          "capacity_mw": 240.0
+        },
+        {
+          "lat": 33.320637,
+          "lng": -100.982201,
+          "score": 0.6946,
+          "rating": "Moderate",
+          "exclusions": [],
+          "confidence_tier": "MODERATE",
+          "composite_confidence": 0.665,
+          "elapsed_s": 7.67,
+          "error": null,
+          "plant_code": 65654,
+          "plant_name": "Texas Solar Nova 1",
+          "county": "Kent",
+          "capacity_mw": 252.0
+        },
+        {
+          "lat": 32.275814,
+          "lng": -102.844806,
+          "score": 0.8529,
+          "rating": "Excluded",
+          "exclusions": [
+            "excl_protected"
+          ],
+          "confidence_tier": "MODERATE",
+          "composite_confidence": 0.665,
+          "elapsed_s": 7.6,
+          "error": null,
+          "plant_code": 64325,
+          "plant_name": "Prospero Solar II",
+          "county": "Andrews",
+          "capacity_mw": 250.0
+        },
+        {
+          "lat": 26.090103,
+          "lng": -97.798453,
+          "score": 0.8307,
+          "rating": "High",
+          "exclusions": [],
+          "confidence_tier": "MODERATE",
+          "composite_confidence": 0.665,
+          "elapsed_s": 7.57,
+          "error": null,
+          "plant_code": 65661,
+          "plant_name": "Nebula Solar",
+          "county": "Cameron",
+          "capacity_mw": 135.0
+        },
+        {
+          "lat": 31.030996,
+          "lng": -102.488209,
+          "score": 0.8069,
+          "rating": "High",
+          "exclusions": [],
+          "confidence_tier": "MODERATE",
+          "composite_confidence": 0.665,
+          "elapsed_s": 8.06,
+          "error": null,
+          "plant_code": 62804,
+          "plant_name": "Greasewood Solar",
+          "county": "Pecos",
+          "capacity_mw": 255.0
+        }
+      ],
+      "random_results": [
+        {
+          "lat": 34.1189,
+          "lng": -105.434,
+          "score": 0.4255,
+          "rating": "Moderate",
+          "exclusions": [],
+          "confidence_tier": "MODERATE",
+          "composite_confidence": 0.665,
+          "elapsed_s": 8.7,
+          "error": null
+        },
+        {
+          "lat": 36.2918,
+          "lng": -95.2196,
+          "score": 0.6899,
+          "rating": "Excluded",
+          "exclusions": [
+            "excl_protected"
+          ],
+          "confidence_tier": "MODERATE",
+          "composite_confidence": 0.665,
+          "elapsed_s": 11.26,
+          "error": null
+        },
+        {
+          "lat": 33.7414,
+          "lng": -95.8598,
+          "score": 0.4266,
+          "rating": "Moderate",
+          "exclusions": [],
+          "confidence_tier": "MODERATE",
+          "composite_confidence": 0.665,
+          "elapsed_s": 8.12,
+          "error": null
+        },
+        {
+          "lat": 26.712,
+          "lng": -98.3094,
+          "score": 0.5595,
+          "rating": "Moderate",
+          "exclusions": [],
+          "confidence_tier": "MODERATE",
+          "composite_confidence": 0.665,
+          "elapsed_s": 8.64,
+          "error": null
+        },
+        {
+          "lat": 34.799,
+          "lng": -93.6829,
+          "score": 0.3351,
+          "rating": "Excluded",
+          "exclusions": [
+            "excl_protected"
+          ],
+          "confidence_tier": "MODERATE",
+          "composite_confidence": 0.665,
+          "elapsed_s": 7.74,
+          "error": null
+        }
+      ],
+      "elapsed_s": 86.7
+    },
+    "AZ": {
+      "eia_count_available": 142,
+      "eia_sample_size": 5,
+      "random_sample_size": 5,
+      "eia_results": [
+        {
+          "lat": 32.146142,
+          "lng": -110.990639,
+          "score": 0.6718,
+          "rating": "Excluded",
+          "exclusions": [
+            "excl_urban"
+          ],
+          "confidence_tier": "MODERATE",
+          "composite_confidence": 0.665,
+          "elapsed_s": 7.26,
+          "error": null,
+          "plant_code": 61104,
+          "plant_name": "Pima Community College - East Campus",
+          "county": "Pima",
+          "capacity_mw": 1.3
+        },
+        {
+          "lat": 33.424279,
+          "lng": -111.92822,
+          "score": 0.7739,
+          "rating": "Excluded",
+          "exclusions": [
+            "excl_urban"
+          ],
+          "confidence_tier": "MODERATE",
+          "composite_confidence": 0.665,
+          "elapsed_s": 8.48,
+          "error": null,
+          "plant_code": 62643,
+          "plant_name": "AZ State University - Tempe Campus Solar",
+          "county": "Maricopa",
+          "capacity_mw": 0.1
+        },
+        {
+          "lat": 34.9843,
+          "lng": -114.5565,
+          "score": 0.6412,
+          "rating": "Excluded",
+          "exclusions": [
+            "excl_flood",
+            "excl_urban"
+          ],
+          "confidence_tier": "MODERATE",
+          "composite_confidence": 0.665,
+          "elapsed_s": 7.47,
+          "error": null,
+          "plant_code": 59819,
+          "plant_name": "Mohave Electric at Fort Mohave",
+          "county": "Mohave",
+          "capacity_mw": 4.4
+        },
+        {
+          "lat": 33.026389,
+          "lng": -112.665833,
+          "score": 0.6643,
+          "rating": "Moderate",
+          "exclusions": [],
+          "confidence_tier": "MODERATE",
+          "composite_confidence": 0.665,
+          "elapsed_s": 12.08,
+          "error": null,
+          "plant_code": 58501,
+          "plant_name": "RE Gillespie 1 LLC",
+          "county": "Maricopa",
+          "capacity_mw": 15.0
+        },
+        {
+          "lat": 32.687778,
+          "lng": -114.49611,
+          "score": 0.7319,
+          "rating": "Excluded",
+          "exclusions": [
+            "excl_urban"
+          ],
+          "confidence_tier": "MODERATE",
+          "composite_confidence": 0.665,
+          "elapsed_s": 13.48,
+          "error": null,
+          "plant_code": 57765,
+          "plant_name": "Arizona Western College PV",
+          "county": "Yuma",
+          "capacity_mw": 1.0
+        }
+      ],
+      "random_results": [
+        {
+          "lat": 33.8226,
+          "lng": -111.5727,
+          "score": 0.5598,
+          "rating": "Excluded",
+          "exclusions": [
+            "excl_protected",
+            "excl_steep"
+          ],
+          "confidence_tier": "MODERATE",
+          "composite_confidence": 0.665,
+          "elapsed_s": 9.96,
+          "error": null
+        },
+        {
+          "lat": 32.7363,
+          "lng": -113.0628,
+          "score": 0.5782,
+          "rating": "Excluded",
+          "exclusions": [
+            "excl_protected"
+          ],
+          "confidence_tier": "MODERATE",
+          "composite_confidence": 0.665,
+          "elapsed_s": 16.21,
+          "error": null
+        },
+        {
+          "lat": 36.4979,
+          "lng": -110.6358,
+          "score": 0.5386,
+          "rating": "Excluded",
+          "exclusions": [
+            "excl_protected"
+          ],
+          "confidence_tier": "MODERATE",
+          "composite_confidence": 0.665,
+          "elapsed_s": 10.19,
+          "error": null
+        },
+        {
+          "lat": 32.6697,
+          "lng": -109.6375,
+          "score": 0.6987,
+          "rating": "Excluded",
+          "exclusions": [
+            "excl_protected"
+          ],
+          "confidence_tier": "MODERATE",
+          "composite_confidence": 0.665,
+          "elapsed_s": 11.02,
+          "error": null
+        },
+        {
+          "lat": 33.0648,
+          "lng": -112.4243,
+          "score": 0.6766,
+          "rating": "Excluded",
+          "exclusions": [
+            "excl_protected"
+          ],
+          "confidence_tier": "MODERATE",
+          "composite_confidence": 0.665,
+          "elapsed_s": 11.88,
+          "error": null
+        }
+      ],
+      "elapsed_s": 108.2
+    },
+    "NC": {
+      "eia_count_available": 783,
+      "eia_sample_size": 5,
+      "random_sample_size": 5,
+      "eia_results": [
+        {
+          "lat": 35.97485,
+          "lng": -79.60948,
+          "score": 0.6619,
+          "rating": "Moderate",
+          "exclusions": [],
+          "confidence_tier": "MODERATE",
+          "composite_confidence": 0.665,
+          "elapsed_s": 13.47,
+          "error": null,
+          "plant_code": 64176,
+          "plant_name": "Charlie",
+          "county": "Guilford",
+          "capacity_mw": 4.0
+        },
+        {
+          "lat": 36.0975,
+          "lng": -78.167778,
+          "score": 0.6762,
+          "rating": "Moderate",
+          "exclusions": [],
+          "confidence_tier": "MODERATE",
+          "composite_confidence": 0.665,
+          "elapsed_s": 10.74,
+          "error": null,
+          "plant_code": 58802,
+          "plant_name": "Franklin Solar, LLC",
+          "county": "Franklin",
+          "capacity_mw": 0.5
+        },
+        {
+          "lat": 35.370556,
+          "lng": -77.608333,
+          "score": 0.7635,
+          "rating": "High",
+          "exclusions": [],
+          "confidence_tier": "MODERATE",
+          "composite_confidence": 0.665,
+          "elapsed_s": 11.32,
+          "error": null,
+          "plant_code": 59125,
+          "plant_name": "Kinston",
+          "county": "Lenoir",
+          "capacity_mw": 2.0
+        },
+        {
+          "lat": 35.501688,
+          "lng": -77.105614,
+          "score": 0.6344,
+          "rating": "Moderate",
+          "exclusions": [],
+          "confidence_tier": "MODERATE",
+          "composite_confidence": 0.665,
+          "elapsed_s": 8.35,
+          "error": null,
+          "plant_code": 60048,
+          "plant_name": "TWE Chocowinity Solar, LLC",
+          "county": "Beaufort",
+          "capacity_mw": 4.5
+        },
+        {
+          "lat": 35.903333,
+          "lng": -80.416944,
+          "score": 0.707,
+          "rating": "High",
+          "exclusions": [],
+          "confidence_tier": "MODERATE",
+          "composite_confidence": 0.665,
+          "elapsed_s": 9.29,
+          "error": null,
+          "plant_code": 59217,
+          "plant_name": "Tiburon Holdings",
+          "county": "Davie",
+          "capacity_mw": 5.0
+        }
+      ],
+      "random_results": [
+        {
+          "lat": 35.6806,
+          "lng": -84.0333,
+          "score": 0.6336,
+          "rating": "Moderate",
+          "exclusions": [],
+          "confidence_tier": "MODERATE",
+          "composite_confidence": 0.665,
+          "elapsed_s": 8.12,
+          "error": null
+        },
+        {
+          "lat": 34.1738,
+          "lng": -78.3907,
+          "score": 0.5221,
+          "rating": "Excluded",
+          "exclusions": [
+            "excl_flood",
+            "excl_protected",
+            "excl_wetlands"
+          ],
+          "confidence_tier": "MODERATE",
+          "composite_confidence": 0.665,
+          "elapsed_s": 9.52,
+          "error": null
+        },
+        {
+          "lat": 36.4553,
+          "lng": -83.3592,
+          "score": 0.3605,
+          "rating": "Low",
+          "exclusions": [],
+          "confidence_tier": "MODERATE",
+          "composite_confidence": 0.665,
+          "elapsed_s": 11.79,
+          "error": null
+        },
+        {
+          "lat": 35.6882,
+          "lng": -82.1054,
+          "score": 0.4004,
+          "rating": "Moderate",
+          "exclusions": [],
+          "confidence_tier": "MODERATE",
+          "composite_confidence": 0.665,
+          "elapsed_s": 13.15,
+          "error": null
+        },
+        {
+          "lat": 35.0826,
+          "lng": -82.2196,
+          "score": 0.6478,
+          "rating": "Moderate",
+          "exclusions": [],
+          "confidence_tier": "MODERATE",
+          "composite_confidence": 0.665,
+          "elapsed_s": 8.48,
+          "error": null
+        }
+      ],
+      "elapsed_s": 104.6
+    },
+    "NV": {
+      "eia_count_available": 94,
+      "eia_sample_size": 5,
+      "random_sample_size": 5,
+      "eia_results": [
+        {
+          "lat": 36.629761,
+          "lng": -114.684033,
+          "score": 0.8504,
+          "rating": "Excluded",
+          "exclusions": [
+            "excl_protected"
+          ],
+          "confidence_tier": "MODERATE",
+          "composite_confidence": 0.665,
+          "elapsed_s": 9.0,
+          "error": null,
+          "plant_code": 61852,
+          "plant_name": "Eagle Shadow Mountain Solar Farm",
+          "county": "Clark",
+          "capacity_mw": 300.0
+        },
+        {
+          "lat": 35.348,
+          "lng": -114.97,
+          "score": 0.7287,
+          "rating": "Excluded",
+          "exclusions": [
+            "excl_protected"
+          ],
+          "confidence_tier": "MODERATE",
+          "composite_confidence": 0.665,
+          "elapsed_s": 11.76,
+          "error": null,
+          "plant_code": 60352,
+          "plant_name": "Boulder Solar Power, LLC",
+          "county": "Clark",
+          "capacity_mw": 100.0
+        },
+        {
+          "lat": 39.667002,
+          "lng": -117.693658,
+          "score": 0.5234,
+          "rating": "Excluded",
+          "exclusions": [
+            "excl_protected"
+          ],
+          "confidence_tier": "MODERATE",
+          "composite_confidence": 0.665,
+          "elapsed_s": 11.19,
+          "error": null,
+          "plant_code": 60785,
+          "plant_name": "Tungsten Mountain",
+          "county": "Churchill",
+          "capacity_mw": 5.0
+        },
+        {
+          "lat": 39.667002,
+          "lng": -117.693658,
+          "score": 0.5234,
+          "rating": "Excluded",
+          "exclusions": [
+            "excl_protected"
+          ],
+          "confidence_tier": "MODERATE",
+          "composite_confidence": 0.665,
+          "elapsed_s": 7.99,
+          "error": null,
+          "plant_code": 60785,
+          "plant_name": "Tungsten Mountain",
+          "county": "Churchill",
+          "capacity_mw": 7.3
+        },
+        {
+          "lat": 35.63,
+          "lng": -115.32,
+          "score": 0.6308,
+          "rating": "Excluded",
+          "exclusions": [
+            "excl_protected"
+          ],
+          "confidence_tier": "MODERATE",
+          "composite_confidence": 0.665,
+          "elapsed_s": 7.05,
+          "error": null,
+          "plant_code": 58644,
+          "plant_name": "Silver State Solar Power South",
+          "county": "Clark",
+          "capacity_mw": 35.7
+        }
+      ],
+      "random_results": [
+        {
+          "lat": 38.0117,
+          "lng": -115.5365,
+          "score": 0.5157,
+          "rating": "Excluded",
+          "exclusions": [
+            "excl_protected"
+          ],
+          "confidence_tier": "MODERATE",
+          "composite_confidence": 0.665,
+          "elapsed_s": 8.33,
+          "error": null
+        },
+        {
+          "lat": 36.8773,
+          "lng": -116.4564,
+          "score": 0.3982,
+          "rating": "Excluded",
+          "exclusions": [
+            "excl_protected",
+            "excl_steep"
+          ],
+          "confidence_tier": "MODERATE",
+          "composite_confidence": 0.665,
+          "elapsed_s": 8.3,
+          "error": null
+        },
+        {
+          "lat": 41.2544,
+          "lng": -114.6318,
+          "score": 0.433,
+          "rating": "Moderate",
+          "exclusions": [],
+          "confidence_tier": "MODERATE",
+          "composite_confidence": 0.665,
+          "elapsed_s": 9.13,
+          "error": null
+        },
+        {
+          "lat": 38.405,
+          "lng": -115.8784,
+          "score": 0.5206,
+          "rating": "Excluded",
+          "exclusions": [
+            "excl_protected"
+          ],
+          "confidence_tier": "MODERATE",
+          "composite_confidence": 0.665,
+          "elapsed_s": 13.89,
+          "error": null
+        },
+        {
+          "lat": 36.6816,
+          "lng": -117.9663,
+          "score": 0.5416,
+          "rating": "Excluded",
+          "exclusions": [
+            "excl_protected",
+            "excl_steep"
+          ],
+          "confidence_tier": "MODERATE",
+          "composite_confidence": 0.665,
+          "elapsed_s": 12.19,
+          "error": null
+        }
+      ],
+      "elapsed_s": 99.1
+    },
+    "FL": {
+      "eia_count_available": 149,
+      "eia_sample_size": 5,
+      "random_sample_size": 5,
+      "eia_results": [
+        {
+          "lat": 29.88213,
+          "lng": -81.67618,
+          "score": 0.561,
+          "rating": "Moderate",
+          "exclusions": [],
+          "confidence_tier": "MODERATE",
+          "composite_confidence": 0.665,
+          "elapsed_s": 11.35,
+          "error": null,
+          "plant_code": 65431,
+          "plant_name": "Anhinga Solar Energy Center",
+          "county": "Clay",
+          "capacity_mw": 74.5
+        },
+        {
+          "lat": 29.756944,
+          "lng": -81.897222,
+          "score": 0.6475,
+          "rating": "Excluded",
+          "exclusions": [
+            "excl_flood",
+            "excl_urban"
+          ],
+          "confidence_tier": "MODERATE",
+          "composite_confidence": 0.665,
+          "elapsed_s": 9.76,
+          "error": null,
+          "plant_code": 61022,
+          "plant_name": "Coral Farms Solar Energy Center",
+          "county": "Putnam",
+          "capacity_mw": 74.5
+        },
+        {
+          "lat": 27.723197,
+          "lng": -82.025608,
+          "score": 0.794,
+          "rating": "High",
+          "exclusions": [],
+          "confidence_tier": "MODERATE",
+          "composite_confidence": 0.665,
+          "elapsed_s": 8.86,
+          "error": null,
+          "plant_code": 61653,
+          "plant_name": "Alafia Solar",
+          "county": "Polk",
+          "capacity_mw": 60.0
+        },
+        {
+          "lat": 30.91993,
+          "lng": -87.34002,
+          "score": 0.6203,
+          "rating": "Moderate",
+          "exclusions": [],
+          "confidence_tier": "MODERATE",
+          "composite_confidence": 0.665,
+          "elapsed_s": 11.98,
+          "error": null,
+          "plant_code": 65424,
+          "plant_name": "First City Solar Energy Center",
+          "county": "Escambia",
+          "capacity_mw": 74.5
+        },
+        {
+          "lat": 26.861592,
+          "lng": -81.751011,
+          "score": 0.7064,
+          "rating": "Excluded",
+          "exclusions": [
+            "excl_wetlands"
+          ],
+          "confidence_tier": "MODERATE",
+          "composite_confidence": 0.665,
+          "elapsed_s": 12.67,
+          "error": null,
+          "plant_code": 59993,
+          "plant_name": "Babcock Solar Energy Center Hybrid",
+          "county": "Charlotte",
+          "capacity_mw": 74.5
+        }
+      ],
+      "random_results": [
+        {
+          "lat": 26.7575,
+          "lng": -82.4103,
+          "score": 0.4592,
+          "rating": "Moderate",
+          "exclusions": [],
+          "confidence_tier": "MODERATE",
+          "composite_confidence": 0.665,
+          "elapsed_s": 11.85,
+          "error": null
+        },
+        {
+          "lat": 28.7923,
+          "lng": -83.3645,
+          "score": 0.2984,
+          "rating": "Low",
+          "exclusions": [],
+          "confidence_tier": "LOW",
+          "composite_confidence": 0.6125,
+          "elapsed_s": 14.19,
+          "error": null
+        },
+        {
+          "lat": 27.6659,
+          "lng": -82.2401,
+          "score": 0.647,
+          "rating": "Excluded",
+          "exclusions": [
+            "excl_wetlands"
+          ],
+          "confidence_tier": "MODERATE",
+          "composite_confidence": 0.665,
+          "elapsed_s": 9.27,
+          "error": null
+        },
+        {
+          "lat": 26.9437,
+          "lng": -84.9966,
+          "score": 0.2105,
+          "rating": "Low",
+          "exclusions": [],
+          "confidence_tier": "LOW",
+          "composite_confidence": 0.6125,
+          "elapsed_s": 13.03,
+          "error": null
+        },
+        {
+          "lat": 28.9965,
+          "lng": -85.2625,
+          "score": 0.2917,
+          "rating": "Low",
+          "exclusions": [],
+          "confidence_tier": "LOW",
+          "composite_confidence": 0.6125,
+          "elapsed_s": 13.32,
+          "error": null
+        }
+      ],
+      "elapsed_s": 116.5
+    }
+  },
+  "summary": {
+    "per_state": {
+      "TX": {
+        "eia_sample_size": 5,
+        "eia_pct_high": 60.0,
+        "eia_mean_score": 0.8013,
+        "eia_rating_distribution": {
+          "High": 3,
+          "Moderate": 1,
+          "Excluded": 1
+        },
+        "eia_confidence_tier_distribution": {
+          "MODERATE": 5
+        },
+        "eia_errors": 0,
+        "random_sample_size": 5,
+        "random_pct_high": 0.0,
+        "random_mean_score": 0.4873,
+        "random_rating_distribution": {
+          "Moderate": 3,
+          "Excluded": 2
+        },
+        "score_separation": 0.314,
+        "low_scoring_eia_installations": [
+          {
+            "plant_code": 64325,
+            "plant_name": "Prospero Solar II",
+            "score": 0.8529,
+            "rating": "Excluded",
+            "exclusions": [
+              "excl_protected"
+            ]
+          }
+        ]
+      },
+      "AZ": {
+        "eia_sample_size": 5,
+        "eia_pct_high": 0.0,
+        "eia_mean_score": 0.6966,
+        "eia_rating_distribution": {
+          "Excluded": 4,
+          "Moderate": 1
+        },
+        "eia_confidence_tier_distribution": {
+          "MODERATE": 5
+        },
+        "eia_errors": 0,
+        "random_sample_size": 5,
+        "random_pct_high": 0.0,
+        "random_mean_score": 0.6104,
+        "random_rating_distribution": {
+          "Excluded": 5
+        },
+        "score_separation": 0.0862,
+        "low_scoring_eia_installations": [
+          {
+            "plant_code": 61104,
+            "plant_name": "Pima Community College - East Campus",
+            "score": 0.6718,
+            "rating": "Excluded",
+            "exclusions": [
+              "excl_urban"
+            ]
+          },
+          {
+            "plant_code": 62643,
+            "plant_name": "AZ State University - Tempe Campus Solar",
+            "score": 0.7739,
+            "rating": "Excluded",
+            "exclusions": [
+              "excl_urban"
+            ]
+          },
+          {
+            "plant_code": 59819,
+            "plant_name": "Mohave Electric at Fort Mohave",
+            "score": 0.6412,
+            "rating": "Excluded",
+            "exclusions": [
+              "excl_flood",
+              "excl_urban"
+            ]
+          },
+          {
+            "plant_code": 57765,
+            "plant_name": "Arizona Western College PV",
+            "score": 0.7319,
+            "rating": "Excluded",
+            "exclusions": [
+              "excl_urban"
+            ]
+          }
+        ]
+      },
+      "NC": {
+        "eia_sample_size": 5,
+        "eia_pct_high": 40.0,
+        "eia_mean_score": 0.6886,
+        "eia_rating_distribution": {
+          "Moderate": 3,
+          "High": 2
+        },
+        "eia_confidence_tier_distribution": {
+          "MODERATE": 5
+        },
+        "eia_errors": 0,
+        "random_sample_size": 5,
+        "random_pct_high": 0.0,
+        "random_mean_score": 0.5129,
+        "random_rating_distribution": {
+          "Moderate": 3,
+          "Excluded": 1,
+          "Low": 1
+        },
+        "score_separation": 0.1757,
+        "low_scoring_eia_installations": []
+      },
+      "NV": {
+        "eia_sample_size": 5,
+        "eia_pct_high": 0.0,
+        "eia_mean_score": 0.6513,
+        "eia_rating_distribution": {
+          "Excluded": 5
+        },
+        "eia_confidence_tier_distribution": {
+          "MODERATE": 5
+        },
+        "eia_errors": 0,
+        "random_sample_size": 5,
+        "random_pct_high": 0.0,
+        "random_mean_score": 0.4818,
+        "random_rating_distribution": {
+          "Excluded": 4,
+          "Moderate": 1
+        },
+        "score_separation": 0.1695,
+        "low_scoring_eia_installations": [
+          {
+            "plant_code": 61852,
+            "plant_name": "Eagle Shadow Mountain Solar Farm",
+            "score": 0.8504,
+            "rating": "Excluded",
+            "exclusions": [
+              "excl_protected"
+            ]
+          },
+          {
+            "plant_code": 60352,
+            "plant_name": "Boulder Solar Power, LLC",
+            "score": 0.7287,
+            "rating": "Excluded",
+            "exclusions": [
+              "excl_protected"
+            ]
+          },
+          {
+            "plant_code": 60785,
+            "plant_name": "Tungsten Mountain",
+            "score": 0.5234,
+            "rating": "Excluded",
+            "exclusions": [
+              "excl_protected"
+            ]
+          },
+          {
+            "plant_code": 60785,
+            "plant_name": "Tungsten Mountain",
+            "score": 0.5234,
+            "rating": "Excluded",
+            "exclusions": [
+              "excl_protected"
+            ]
+          },
+          {
+            "plant_code": 58644,
+            "plant_name": "Silver State Solar Power South",
+            "score": 0.6308,
+            "rating": "Excluded",
+            "exclusions": [
+              "excl_protected"
+            ]
+          }
+        ]
+      },
+      "FL": {
+        "eia_sample_size": 5,
+        "eia_pct_high": 20.0,
+        "eia_mean_score": 0.6658,
+        "eia_rating_distribution": {
+          "Moderate": 2,
+          "Excluded": 2,
+          "High": 1
+        },
+        "eia_confidence_tier_distribution": {
+          "MODERATE": 5
+        },
+        "eia_errors": 0,
+        "random_sample_size": 5,
+        "random_pct_high": 0.0,
+        "random_mean_score": 0.3814,
+        "random_rating_distribution": {
+          "Moderate": 1,
+          "Low": 3,
+          "Excluded": 1
+        },
+        "score_separation": 0.2844,
+        "low_scoring_eia_installations": [
+          {
+            "plant_code": 61022,
+            "plant_name": "Coral Farms Solar Energy Center",
+            "score": 0.6475,
+            "rating": "Excluded",
+            "exclusions": [
+              "excl_flood",
+              "excl_urban"
+            ]
+          },
+          {
+            "plant_code": 59993,
+            "plant_name": "Babcock Solar Energy Center Hybrid",
+            "score": 0.7064,
+            "rating": "Excluded",
+            "exclusions": [
+              "excl_wetlands"
+            ]
+          }
+        ]
+      }
+    },
+    "aggregate": {
+      "total_eia_scored": 25,
+      "total_random_scored": 25,
+      "national_pct_high": 24.0,
+      "national_mean_eia": 0.7007,
+      "national_mean_random": 0.4948,
+      "states_passing_70pct": 0,
+      "states_passing_60pct": 1
+    },
+    "pass_criteria": {
+      "AC1_60pct_national": false,
+      "AC2_mean_separation_every_state": true,
+      "AC3_70pct_in_3_of_5": false
+    }
+  }
+}
