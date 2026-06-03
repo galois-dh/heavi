@@ -1,0 +1,555 @@
+{
+  "calibrated_at": "2026-06-07",
+  "n_regions": 7,
+  "ac2_profiles_generated": 7,
+  "ac3_within_bounds": true,
+  "ac4_sum_equals_one": true,
+  "profiles": [
+    {
+      "region": "WECC",
+      "region_name": "Western Electricity Coordinating Council",
+      "method": "constrained_optimization",
+      "n_eia_installations": 100,
+      "n_random_comparisons": 100,
+      "n_eia_excluded": 49,
+      "optimized_weights": {
+        "solar_aspect": 0.08,
+        "solar_ej": 0.0,
+        "solar_ghi": 0.1,
+        "solar_land_cover": 0.08,
+        "solar_road": 0.1,
+        "solar_slope": 0.17,
+        "solar_soil": 0.05,
+        "solar_transmission": 0.42
+      },
+      "default_weights": {
+        "solar_aspect": 0.1,
+        "solar_ej": 0.05,
+        "solar_ghi": 0.15,
+        "solar_land_cover": 0.1,
+        "solar_road": 0.12,
+        "solar_slope": 0.15,
+        "solar_soil": 0.08,
+        "solar_transmission": 0.25
+      },
+      "weight_changes": {
+        "solar_aspect": {
+          "from": 0.1,
+          "to": 0.08,
+          "reason": "Weight decreased (-0.020) within the literature bound: in WECC (sparse western transmission and highly variable terrain/resource), this criterion's EIA-vs-random score separation is +0.358, so the calibration shifts weight away from it."
+        },
+        "solar_ej": {
+          "from": 0.05,
+          "to": 0.0,
+          "reason": "Weight decreased (-0.050) within the literature bound: in WECC (sparse western transmission and highly variable terrain/resource), this criterion's EIA-vs-random score separation is +0.000, so the calibration shifts weight away from it."
+        },
+        "solar_ghi": {
+          "from": 0.15,
+          "to": 0.1,
+          "reason": "Weight decreased (-0.050) within the literature bound: in WECC (sparse western transmission and highly variable terrain/resource), this criterion's EIA-vs-random score separation is +0.216, so the calibration shifts weight away from it."
+        },
+        "solar_land_cover": {
+          "from": 0.1,
+          "to": 0.08,
+          "reason": "Weight decreased (-0.020) within the literature bound: in WECC (sparse western transmission and highly variable terrain/resource), this criterion's EIA-vs-random score separation is -0.137, so the calibration shifts weight away from it."
+        },
+        "solar_road": {
+          "from": 0.12,
+          "to": 0.1,
+          "reason": "Weight decreased (-0.020) within the literature bound: in WECC (sparse western transmission and highly variable terrain/resource), this criterion's EIA-vs-random score separation is +0.000, so the calibration shifts weight away from it."
+        },
+        "solar_slope": {
+          "from": 0.15,
+          "to": 0.17,
+          "reason": "Weight increased (+0.020) within the literature bound: in WECC (sparse western transmission and highly variable terrain/resource), this criterion's EIA-vs-random score separation is +0.408, so the calibration shifts weight toward it."
+        },
+        "solar_soil": {
+          "from": 0.08,
+          "to": 0.05,
+          "reason": "Weight decreased (-0.030) within the literature bound: in WECC (sparse western transmission and highly variable terrain/resource), this criterion's EIA-vs-random score separation is -0.043, so the calibration shifts weight away from it."
+        },
+        "solar_transmission": {
+          "from": 0.25,
+          "to": 0.42,
+          "reason": "Weight increased (+0.170) within the literature bound: in WECC (sparse western transmission and highly variable terrain/resource), this criterion's EIA-vs-random score separation is +0.487, so the calibration shifts weight toward it."
+        }
+      },
+      "validation": {
+        "pct_eia_high_default_weights": 0.61,
+        "pct_eia_high_optimized_weights": 0.74,
+        "mean_separation_default": 0.2465,
+        "mean_separation_optimized": 0.3112
+      },
+      "academic_basis": "Weights constrained to ranges from Doorga et al. (2019) and Al-Shammari et al. (2026); optimized against EIA Form 860 installations within the literature-supported range (constrained AHP, not unconstrained ML).",
+      "calibrated_at": "2026-06-07"
+    },
+    {
+      "region": "ERCOT",
+      "region_name": "Electric Reliability Council of Texas",
+      "method": "constrained_optimization",
+      "n_eia_installations": 100,
+      "n_random_comparisons": 100,
+      "n_eia_excluded": 22,
+      "optimized_weights": {
+        "solar_aspect": 0.08,
+        "solar_ej": 0.03,
+        "solar_ghi": 0.1,
+        "solar_land_cover": 0.08,
+        "solar_road": 0.1,
+        "solar_slope": 0.11,
+        "solar_soil": 0.05,
+        "solar_transmission": 0.45
+      },
+      "default_weights": {
+        "solar_aspect": 0.1,
+        "solar_ej": 0.05,
+        "solar_ghi": 0.15,
+        "solar_land_cover": 0.1,
+        "solar_road": 0.12,
+        "solar_slope": 0.15,
+        "solar_soil": 0.08,
+        "solar_transmission": 0.25
+      },
+      "weight_changes": {
+        "solar_aspect": {
+          "from": 0.1,
+          "to": 0.08,
+          "reason": "Weight decreased (-0.020) within the literature bound: in ERCOT (dense in-region grid with high, fairly uniform irradiance), this criterion's EIA-vs-random score separation is +0.188, so the calibration shifts weight away from it."
+        },
+        "solar_ej": {
+          "from": 0.05,
+          "to": 0.03,
+          "reason": "Weight decreased (-0.020) within the literature bound: in ERCOT (dense in-region grid with high, fairly uniform irradiance), this criterion's EIA-vs-random score separation is +0.000, so the calibration shifts weight away from it."
+        },
+        "solar_ghi": {
+          "from": 0.15,
+          "to": 0.1,
+          "reason": "Weight decreased (-0.050) within the literature bound: in ERCOT (dense in-region grid with high, fairly uniform irradiance), this criterion's EIA-vs-random score separation is -0.032, so the calibration shifts weight away from it."
+        },
+        "solar_land_cover": {
+          "from": 0.1,
+          "to": 0.08,
+          "reason": "Weight decreased (-0.020) within the literature bound: in ERCOT (dense in-region grid with high, fairly uniform irradiance), this criterion's EIA-vs-random score separation is -0.085, so the calibration shifts weight away from it."
+        },
+        "solar_road": {
+          "from": 0.12,
+          "to": 0.1,
+          "reason": "Weight decreased (-0.020) within the literature bound: in ERCOT (dense in-region grid with high, fairly uniform irradiance), this criterion's EIA-vs-random score separation is +0.000, so the calibration shifts weight away from it."
+        },
+        "solar_slope": {
+          "from": 0.15,
+          "to": 0.11,
+          "reason": "Weight decreased (-0.040) within the literature bound: in ERCOT (dense in-region grid with high, fairly uniform irradiance), this criterion's EIA-vs-random score separation is +0.097, so the calibration shifts weight away from it."
+        },
+        "solar_soil": {
+          "from": 0.08,
+          "to": 0.05,
+          "reason": "Weight decreased (-0.030) within the literature bound: in ERCOT (dense in-region grid with high, fairly uniform irradiance), this criterion's EIA-vs-random score separation is -0.005, so the calibration shifts weight away from it."
+        },
+        "solar_transmission": {
+          "from": 0.25,
+          "to": 0.45,
+          "reason": "Weight increased (+0.200) within the literature bound: in ERCOT (dense in-region grid with high, fairly uniform irradiance), this criterion's EIA-vs-random score separation is +0.317, so the calibration shifts weight toward it."
+        }
+      },
+      "validation": {
+        "pct_eia_high_default_weights": 0.59,
+        "pct_eia_high_optimized_weights": 0.78,
+        "mean_separation_default": 0.1041,
+        "mean_separation_optimized": 0.163
+      },
+      "academic_basis": "Weights constrained to ranges from Doorga et al. (2019) and Al-Shammari et al. (2026); optimized against EIA Form 860 installations within the literature-supported range (constrained AHP, not unconstrained ML).",
+      "calibrated_at": "2026-06-07"
+    },
+    {
+      "region": "SPP",
+      "region_name": "Southwest Power Pool",
+      "method": "constrained_optimization",
+      "n_eia_installations": 41,
+      "n_random_comparisons": 41,
+      "n_eia_excluded": 18,
+      "optimized_weights": {
+        "solar_aspect": 0.11,
+        "solar_ej": 0.0,
+        "solar_ghi": 0.1,
+        "solar_land_cover": 0.08,
+        "solar_road": 0.1,
+        "solar_slope": 0.11,
+        "solar_soil": 0.05,
+        "solar_transmission": 0.45
+      },
+      "default_weights": {
+        "solar_aspect": 0.1,
+        "solar_ej": 0.05,
+        "solar_ghi": 0.15,
+        "solar_land_cover": 0.1,
+        "solar_road": 0.12,
+        "solar_slope": 0.15,
+        "solar_soil": 0.08,
+        "solar_transmission": 0.25
+      },
+      "weight_changes": {
+        "solar_aspect": {
+          "from": 0.1,
+          "to": 0.11,
+          "reason": "Weight increased (+0.010) within the literature bound: in SPP (flat Great Plains terrain with moderate, variable resource), this criterion's EIA-vs-random score separation is +0.207, so the calibration shifts weight toward it."
+        },
+        "solar_ej": {
+          "from": 0.05,
+          "to": 0.0,
+          "reason": "Weight decreased (-0.050) within the literature bound: in SPP (flat Great Plains terrain with moderate, variable resource), this criterion's EIA-vs-random score separation is +0.000, so the calibration shifts weight away from it."
+        },
+        "solar_ghi": {
+          "from": 0.15,
+          "to": 0.1,
+          "reason": "Weight decreased (-0.050) within the literature bound: in SPP (flat Great Plains terrain with moderate, variable resource), this criterion's EIA-vs-random score separation is +0.081, so the calibration shifts weight away from it."
+        },
+        "solar_land_cover": {
+          "from": 0.1,
+          "to": 0.08,
+          "reason": "Weight decreased (-0.020) within the literature bound: in SPP (flat Great Plains terrain with moderate, variable resource), this criterion's EIA-vs-random score separation is -0.095, so the calibration shifts weight away from it."
+        },
+        "solar_road": {
+          "from": 0.12,
+          "to": 0.1,
+          "reason": "Weight decreased (-0.020) within the literature bound: in SPP (flat Great Plains terrain with moderate, variable resource), this criterion's EIA-vs-random score separation is +0.000, so the calibration shifts weight away from it."
+        },
+        "solar_slope": {
+          "from": 0.15,
+          "to": 0.11,
+          "reason": "Weight decreased (-0.040) within the literature bound: in SPP (flat Great Plains terrain with moderate, variable resource), this criterion's EIA-vs-random score separation is +0.076, so the calibration shifts weight away from it."
+        },
+        "solar_soil": {
+          "from": 0.08,
+          "to": 0.05,
+          "reason": "Weight decreased (-0.030) within the literature bound: in SPP (flat Great Plains terrain with moderate, variable resource), this criterion's EIA-vs-random score separation is +0.054, so the calibration shifts weight away from it."
+        },
+        "solar_transmission": {
+          "from": 0.25,
+          "to": 0.45,
+          "reason": "Weight increased (+0.200) within the literature bound: in SPP (flat Great Plains terrain with moderate, variable resource), this criterion's EIA-vs-random score separation is +0.286, so the calibration shifts weight toward it."
+        }
+      },
+      "validation": {
+        "pct_eia_high_default_weights": 0.5122,
+        "pct_eia_high_optimized_weights": 0.7073,
+        "mean_separation_default": 0.1162,
+        "mean_separation_optimized": 0.1628
+      },
+      "academic_basis": "Weights constrained to ranges from Doorga et al. (2019) and Al-Shammari et al. (2026); optimized against EIA Form 860 installations within the literature-supported range (constrained AHP, not unconstrained ML).",
+      "calibrated_at": "2026-06-07"
+    },
+    {
+      "region": "MISO",
+      "region_name": "Midcontinent Independent System Operator",
+      "method": "constrained_optimization",
+      "n_eia_installations": 100,
+      "n_random_comparisons": 100,
+      "n_eia_excluded": 36,
+      "optimized_weights": {
+        "solar_aspect": 0.08,
+        "solar_ej": 0.0,
+        "solar_ghi": 0.1,
+        "solar_land_cover": 0.08,
+        "solar_road": 0.1,
+        "solar_slope": 0.14,
+        "solar_soil": 0.05,
+        "solar_transmission": 0.45
+      },
+      "default_weights": {
+        "solar_aspect": 0.1,
+        "solar_ej": 0.05,
+        "solar_ghi": 0.15,
+        "solar_land_cover": 0.1,
+        "solar_road": 0.12,
+        "solar_slope": 0.15,
+        "solar_soil": 0.08,
+        "solar_transmission": 0.25
+      },
+      "weight_changes": {
+        "solar_aspect": {
+          "from": 0.1,
+          "to": 0.08,
+          "reason": "Weight decreased (-0.020) within the literature bound: in MISO (dense Upper-Midwest grid over flat cropland), this criterion's EIA-vs-random score separation is -0.029, so the calibration shifts weight away from it."
+        },
+        "solar_ej": {
+          "from": 0.05,
+          "to": 0.0,
+          "reason": "Weight decreased (-0.050) within the literature bound: in MISO (dense Upper-Midwest grid over flat cropland), this criterion's EIA-vs-random score separation is +0.000, so the calibration shifts weight away from it."
+        },
+        "solar_ghi": {
+          "from": 0.15,
+          "to": 0.1,
+          "reason": "Weight decreased (-0.050) within the literature bound: in MISO (dense Upper-Midwest grid over flat cropland), this criterion's EIA-vs-random score separation is -0.024, so the calibration shifts weight away from it."
+        },
+        "solar_land_cover": {
+          "from": 0.1,
+          "to": 0.08,
+          "reason": "Weight decreased (-0.020) within the literature bound: in MISO (dense Upper-Midwest grid over flat cropland), this criterion's EIA-vs-random score separation is -0.028, so the calibration shifts weight away from it."
+        },
+        "solar_road": {
+          "from": 0.12,
+          "to": 0.1,
+          "reason": "Weight decreased (-0.020) within the literature bound: in MISO (dense Upper-Midwest grid over flat cropland), this criterion's EIA-vs-random score separation is +0.000, so the calibration shifts weight away from it."
+        },
+        "solar_slope": {
+          "from": 0.15,
+          "to": 0.14,
+          "reason": "Weight decreased (-0.010) within the literature bound: in MISO (dense Upper-Midwest grid over flat cropland), this criterion's EIA-vs-random score separation is +0.073, so the calibration shifts weight away from it."
+        },
+        "solar_soil": {
+          "from": 0.08,
+          "to": 0.05,
+          "reason": "Weight decreased (-0.030) within the literature bound: in MISO (dense Upper-Midwest grid over flat cropland), this criterion's EIA-vs-random score separation is +0.003, so the calibration shifts weight away from it."
+        },
+        "solar_transmission": {
+          "from": 0.25,
+          "to": 0.45,
+          "reason": "Weight increased (+0.200) within the literature bound: in MISO (dense Upper-Midwest grid over flat cropland), this criterion's EIA-vs-random score separation is +0.209, so the calibration shifts weight toward it."
+        }
+      },
+      "validation": {
+        "pct_eia_high_default_weights": 0.24,
+        "pct_eia_high_optimized_weights": 0.48,
+        "mean_separation_default": 0.0571,
+        "mean_separation_optimized": 0.0975
+      },
+      "academic_basis": "Weights constrained to ranges from Doorga et al. (2019) and Al-Shammari et al. (2026); optimized against EIA Form 860 installations within the literature-supported range (constrained AHP, not unconstrained ML).",
+      "calibrated_at": "2026-06-07"
+    },
+    {
+      "region": "PJM",
+      "region_name": "PJM Interconnection",
+      "method": "constrained_optimization",
+      "n_eia_installations": 100,
+      "n_random_comparisons": 100,
+      "n_eia_excluded": 51,
+      "optimized_weights": {
+        "solar_aspect": 0.08,
+        "solar_ej": 0.0,
+        "solar_ghi": 0.1,
+        "solar_land_cover": 0.08,
+        "solar_road": 0.1,
+        "solar_slope": 0.17,
+        "solar_soil": 0.05,
+        "solar_transmission": 0.42
+      },
+      "default_weights": {
+        "solar_aspect": 0.1,
+        "solar_ej": 0.05,
+        "solar_ghi": 0.15,
+        "solar_land_cover": 0.1,
+        "solar_road": 0.12,
+        "solar_slope": 0.15,
+        "solar_soil": 0.08,
+        "solar_transmission": 0.25
+      },
+      "weight_changes": {
+        "solar_aspect": {
+          "from": 0.1,
+          "to": 0.08,
+          "reason": "Weight decreased (-0.020) within the literature bound: in PJM (very dense Mid-Atlantic grid over rolling-to-mountainous terrain), this criterion's EIA-vs-random score separation is +0.173, so the calibration shifts weight away from it."
+        },
+        "solar_ej": {
+          "from": 0.05,
+          "to": 0.0,
+          "reason": "Weight decreased (-0.050) within the literature bound: in PJM (very dense Mid-Atlantic grid over rolling-to-mountainous terrain), this criterion's EIA-vs-random score separation is +0.000, so the calibration shifts weight away from it."
+        },
+        "solar_ghi": {
+          "from": 0.15,
+          "to": 0.1,
+          "reason": "Weight decreased (-0.050) within the literature bound: in PJM (very dense Mid-Atlantic grid over rolling-to-mountainous terrain), this criterion's EIA-vs-random score separation is +0.072, so the calibration shifts weight away from it."
+        },
+        "solar_land_cover": {
+          "from": 0.1,
+          "to": 0.08,
+          "reason": "Weight decreased (-0.020) within the literature bound: in PJM (very dense Mid-Atlantic grid over rolling-to-mountainous terrain), this criterion's EIA-vs-random score separation is -0.105, so the calibration shifts weight away from it."
+        },
+        "solar_road": {
+          "from": 0.12,
+          "to": 0.1,
+          "reason": "Weight decreased (-0.020) within the literature bound: in PJM (very dense Mid-Atlantic grid over rolling-to-mountainous terrain), this criterion's EIA-vs-random score separation is +0.000, so the calibration shifts weight away from it."
+        },
+        "solar_slope": {
+          "from": 0.15,
+          "to": 0.17,
+          "reason": "Weight increased (+0.020) within the literature bound: in PJM (very dense Mid-Atlantic grid over rolling-to-mountainous terrain), this criterion's EIA-vs-random score separation is +0.337, so the calibration shifts weight toward it."
+        },
+        "solar_soil": {
+          "from": 0.08,
+          "to": 0.05,
+          "reason": "Weight decreased (-0.030) within the literature bound: in PJM (very dense Mid-Atlantic grid over rolling-to-mountainous terrain), this criterion's EIA-vs-random score separation is -0.008, so the calibration shifts weight away from it."
+        },
+        "solar_transmission": {
+          "from": 0.25,
+          "to": 0.42,
+          "reason": "Weight increased (+0.170) within the literature bound: in PJM (very dense Mid-Atlantic grid over rolling-to-mountainous terrain), this criterion's EIA-vs-random score separation is +0.202, so the calibration shifts weight toward it."
+        }
+      },
+      "validation": {
+        "pct_eia_high_default_weights": 0.1,
+        "pct_eia_high_optimized_weights": 0.49,
+        "mean_separation_default": 0.1241,
+        "mean_separation_optimized": 0.1542
+      },
+      "academic_basis": "Weights constrained to ranges from Doorga et al. (2019) and Al-Shammari et al. (2026); optimized against EIA Form 860 installations within the literature-supported range (constrained AHP, not unconstrained ML).",
+      "calibrated_at": "2026-06-07"
+    },
+    {
+      "region": "SERC",
+      "region_name": "SERC Reliability Corporation",
+      "method": "constrained_optimization",
+      "n_eia_installations": 100,
+      "n_random_comparisons": 100,
+      "n_eia_excluded": 27,
+      "optimized_weights": {
+        "solar_aspect": 0.08,
+        "solar_ej": 0.0,
+        "solar_ghi": 0.1,
+        "solar_land_cover": 0.08,
+        "solar_road": 0.1,
+        "solar_slope": 0.14,
+        "solar_soil": 0.05,
+        "solar_transmission": 0.45
+      },
+      "default_weights": {
+        "solar_aspect": 0.1,
+        "solar_ej": 0.05,
+        "solar_ghi": 0.15,
+        "solar_land_cover": 0.1,
+        "solar_road": 0.12,
+        "solar_slope": 0.15,
+        "solar_soil": 0.08,
+        "solar_transmission": 0.25
+      },
+      "weight_changes": {
+        "solar_aspect": {
+          "from": 0.1,
+          "to": 0.08,
+          "reason": "Weight decreased (-0.020) within the literature bound: in SERC (moderate Southeastern grid, humid, moderate-to-high resource), this criterion's EIA-vs-random score separation is +0.048, so the calibration shifts weight away from it."
+        },
+        "solar_ej": {
+          "from": 0.05,
+          "to": 0.0,
+          "reason": "Weight decreased (-0.050) within the literature bound: in SERC (moderate Southeastern grid, humid, moderate-to-high resource), this criterion's EIA-vs-random score separation is +0.000, so the calibration shifts weight away from it."
+        },
+        "solar_ghi": {
+          "from": 0.15,
+          "to": 0.1,
+          "reason": "Weight decreased (-0.050) within the literature bound: in SERC (moderate Southeastern grid, humid, moderate-to-high resource), this criterion's EIA-vs-random score separation is +0.030, so the calibration shifts weight away from it."
+        },
+        "solar_land_cover": {
+          "from": 0.1,
+          "to": 0.08,
+          "reason": "Weight decreased (-0.020) within the literature bound: in SERC (moderate Southeastern grid, humid, moderate-to-high resource), this criterion's EIA-vs-random score separation is +0.058, so the calibration shifts weight away from it."
+        },
+        "solar_road": {
+          "from": 0.12,
+          "to": 0.1,
+          "reason": "Weight decreased (-0.020) within the literature bound: in SERC (moderate Southeastern grid, humid, moderate-to-high resource), this criterion's EIA-vs-random score separation is +0.000, so the calibration shifts weight away from it."
+        },
+        "solar_slope": {
+          "from": 0.15,
+          "to": 0.14,
+          "reason": "Weight decreased (-0.010) within the literature bound: in SERC (moderate Southeastern grid, humid, moderate-to-high resource), this criterion's EIA-vs-random score separation is +0.139, so the calibration shifts weight away from it."
+        },
+        "solar_soil": {
+          "from": 0.08,
+          "to": 0.05,
+          "reason": "Weight decreased (-0.030) within the literature bound: in SERC (moderate Southeastern grid, humid, moderate-to-high resource), this criterion's EIA-vs-random score separation is +0.063, so the calibration shifts weight away from it."
+        },
+        "solar_transmission": {
+          "from": 0.25,
+          "to": 0.45,
+          "reason": "Weight increased (+0.200) within the literature bound: in SERC (moderate Southeastern grid, humid, moderate-to-high resource), this criterion's EIA-vs-random score separation is +0.207, so the calibration shifts weight toward it."
+        }
+      },
+      "validation": {
+        "pct_eia_high_default_weights": 0.28,
+        "pct_eia_high_optimized_weights": 0.6,
+        "mean_separation_default": 0.0977,
+        "mean_separation_optimized": 0.1274
+      },
+      "academic_basis": "Weights constrained to ranges from Doorga et al. (2019) and Al-Shammari et al. (2026); optimized against EIA Form 860 installations within the literature-supported range (constrained AHP, not unconstrained ML).",
+      "calibrated_at": "2026-06-07"
+    },
+    {
+      "region": "NPCC",
+      "region_name": "Northeast Power Coordinating Council",
+      "method": "constrained_optimization",
+      "n_eia_installations": 100,
+      "n_random_comparisons": 100,
+      "n_eia_excluded": 36,
+      "optimized_weights": {
+        "solar_aspect": 0.08,
+        "solar_ej": 0.0,
+        "solar_ghi": 0.1,
+        "solar_land_cover": 0.08,
+        "solar_road": 0.1,
+        "solar_slope": 0.14,
+        "solar_soil": 0.05,
+        "solar_transmission": 0.45
+      },
+      "default_weights": {
+        "solar_aspect": 0.1,
+        "solar_ej": 0.05,
+        "solar_ghi": 0.15,
+        "solar_land_cover": 0.1,
+        "solar_road": 0.12,
+        "solar_slope": 0.15,
+        "solar_soil": 0.08,
+        "solar_transmission": 0.25
+      },
+      "weight_changes": {
+        "solar_aspect": {
+          "from": 0.1,
+          "to": 0.08,
+          "reason": "Weight decreased (-0.020) within the literature bound: in NPCC (dense Northeastern grid, lower and seasonal resource), this criterion's EIA-vs-random score separation is +0.039, so the calibration shifts weight away from it."
+        },
+        "solar_ej": {
+          "from": 0.05,
+          "to": 0.0,
+          "reason": "Weight decreased (-0.050) within the literature bound: in NPCC (dense Northeastern grid, lower and seasonal resource), this criterion's EIA-vs-random score separation is +0.000, so the calibration shifts weight away from it."
+        },
+        "solar_ghi": {
+          "from": 0.15,
+          "to": 0.1,
+          "reason": "Weight decreased (-0.050) within the literature bound: in NPCC (dense Northeastern grid, lower and seasonal resource), this criterion's EIA-vs-random score separation is +0.030, so the calibration shifts weight away from it."
+        },
+        "solar_land_cover": {
+          "from": 0.1,
+          "to": 0.08,
+          "reason": "Weight decreased (-0.020) within the literature bound: in NPCC (dense Northeastern grid, lower and seasonal resource), this criterion's EIA-vs-random score separation is +0.108, so the calibration shifts weight away from it."
+        },
+        "solar_road": {
+          "from": 0.12,
+          "to": 0.1,
+          "reason": "Weight decreased (-0.020) within the literature bound: in NPCC (dense Northeastern grid, lower and seasonal resource), this criterion's EIA-vs-random score separation is +0.000, so the calibration shifts weight away from it."
+        },
+        "solar_slope": {
+          "from": 0.15,
+          "to": 0.14,
+          "reason": "Weight decreased (-0.010) within the literature bound: in NPCC (dense Northeastern grid, lower and seasonal resource), this criterion's EIA-vs-random score separation is +0.194, so the calibration shifts weight away from it."
+        },
+        "solar_soil": {
+          "from": 0.08,
+          "to": 0.05,
+          "reason": "Weight decreased (-0.030) within the literature bound: in NPCC (dense Northeastern grid, lower and seasonal resource), this criterion's EIA-vs-random score separation is +0.002, so the calibration shifts weight away from it."
+        },
+        "solar_transmission": {
+          "from": 0.25,
+          "to": 0.45,
+          "reason": "Weight increased (+0.200) within the literature bound: in NPCC (dense Northeastern grid, lower and seasonal resource), this criterion's EIA-vs-random score separation is +0.332, so the calibration shifts weight toward it."
+        }
+      },
+      "validation": {
+        "pct_eia_high_default_weights": 0.04,
+        "pct_eia_high_optimized_weights": 0.28,
+        "mean_separation_default": 0.1384,
+        "mean_separation_optimized": 0.1913
+      },
+      "academic_basis": "Weights constrained to ranges from Doorga et al. (2019) and Al-Shammari et al. (2026); optimized against EIA Form 860 installations within the literature-supported range (constrained AHP, not unconstrained ML).",
+      "calibrated_at": "2026-06-07"
+    }
+  ]
+}

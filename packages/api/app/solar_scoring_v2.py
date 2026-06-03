@@ -20,6 +20,7 @@ assessment — honouring the "no redundant queries" rule.
 
 from __future__ import annotations
 
+import json
 import math
 from typing import Any
 
@@ -38,6 +39,7 @@ from .integrations import (
     slope_aspect_from_grid,
 )
 from .methodology_repository import get_methodology_doc
+from .nerc_regions import get_nerc_region
 
 MODULE_NAME = "solar_siting_scoring_v2"
 MODULE_VERSION = "0.4.0"  # Phase 4 (selection-engine-driven)
@@ -428,6 +430,95 @@ async def _excl_urban(m: _Measurements) -> tuple[bool | None, dict[str, Any]]:
     }
 
 
+# ─── Regional weight resolution (Weight Adaptation Spec, Step 6) ───────────
+
+
+async def _regional_weight_profile(
+    pool: asyncpg.Pool, region: str | None,
+) -> dict[str, Any] | None:
+    """Fetch the stored regional weight profile for a region (weights +
+    metadata), or None. Kept inline (a single read) so the scoring hot path
+    doesn't import the scipy-backed optimizer module."""
+    if not region:
+        return None
+    try:
+        async with pool.acquire() as conn:
+            row = await conn.fetchrow(
+                "SELECT weights, metadata FROM regional_weight_profiles "
+                "WHERE region=$1 AND workflow_type='solar_siting'",
+                region,
+            )
+    except Exception:  # noqa: BLE001 — table missing → defaults
+        return None
+    if row is None:
+        return None
+    weights, metadata = row["weights"], row["metadata"]
+    if isinstance(weights, str):
+        weights = json.loads(weights)
+    if isinstance(metadata, str):
+        metadata = json.loads(metadata)
+    return {"weights": weights, "metadata": metadata}
+
+
+def _resolve_weights(
+    default_weights: dict[str, float],
+    region: str | None,
+    profile: dict[str, Any] | None,
+    weights_override: dict[str, float] | None,
+) -> tuple[dict[str, float], dict[str, Any]]:
+    """Pick the weight vector and build the documenting weight_profile section.
+
+    Precedence: explicit weights_override > calibrated regional profile >
+    literature defaults. Always returns a full weight per scored criterion."""
+    if weights_override:
+        weights = dict(default_weights)
+        for k, v in weights_override.items():
+            if k in weights:
+                weights[k] = float(v)
+        return weights, {
+            "region": region,
+            "method": "explicit_override",
+            "note": "Caller-supplied weights_override applied over literature defaults.",
+        }
+
+    if profile:
+        md, pw = profile["metadata"], profile["weights"]
+        if md.get("method") == "constrained_optimization":
+            n = md.get("n_eia_installations")
+            weights = {c: float(pw.get(c, default_weights[c])) for c in default_weights}
+            return weights, {
+                "region": region,
+                "method": "calibrated",
+                "n_installations_in_calibration": n,
+                "note": (
+                    f"Weights calibrated against {n} EIA Form 860 installations in "
+                    f"{region} region, constrained to ranges from Doorga et al. (2019) "
+                    "and Al-Shammari et al. (2026)."
+                ),
+            }
+        # Profile exists but was a sparse-data literature_default fallback.
+        return dict(default_weights), {
+            "region": region,
+            "method": "literature_default",
+            "note": (
+                f"Fewer than 20 EIA installations in {region}. Using literature "
+                "default weights from Doorga et al. (2019)."
+            ),
+        }
+
+    return dict(default_weights), {
+        "region": region,
+        "method": "literature_default",
+        "note": (
+            f"No calibrated profile for {region}; using literature default weights "
+            "from Doorga et al. (2019)."
+            if region else
+            "Location is outside the calibrated NERC regions; using literature "
+            "default weights from Doorga et al. (2019)."
+        ),
+    }
+
+
 # ─── Orchestrator ─────────────────────────────────────────────────────────
 
 
@@ -458,17 +549,18 @@ async def score_solar_siting(
     # Step 1 — select data.
     selection = await select_data(pool, "solar_siting", latitude, longitude)
 
-    # Step 2 — load methodology + weights.
+    # Step 2 — load methodology + weights (regional calibration when available).
     methodology = await get_methodology_doc(pool, "solar_siting")
-    weights = {
+    default_weights = {
         c["criterion_id"]: float(c["weight_default"] or 0.0)
         for c in methodology["criteria"]
         if c["criterion_type"] == "scored" and c["weight_default"] is not None
     }
-    if weights_override:
-        for k, v in weights_override.items():
-            if k in weights:
-                weights[k] = float(v)
+    region = await get_nerc_region(pool, latitude, longitude)
+    profile = await _regional_weight_profile(pool, region)
+    weights, weight_profile = _resolve_weights(
+        default_weights, region, profile, weights_override
+    )
 
     # Step 3 — score + check exclusions, sharing one measurement cache.
     criteria_scores: dict[str, Any] = {}
@@ -570,6 +662,7 @@ async def score_solar_siting(
         "score":           round(composite, 4),
         "rating":          rating,
         "exclusions":      exclusions,
+        "weight_profile":  weight_profile,
         "criteria_scores": criteria_scores,
         "exclusion_results": exclusion_results,
         "confidence": {

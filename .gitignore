@@ -13,3 +13,4 @@ __pycache__/
 .DS_Store
 transcript-analysis/
 build/
+packages/api/weight_cache/
