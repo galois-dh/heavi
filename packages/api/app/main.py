@@ -44,6 +44,7 @@ from .solar_scoring import (
     run_discover_mode,
     run_score_mode,
 )
+from .solar_scoring_v2 import score_solar_siting as solar_v2_score
 from .spatial_query import spatial_query
 from .trade_area_scoring import discover_trade_area, score_trade_area
 from .trade_area_scoring import methodology_doc as trade_area_methodology_doc
@@ -223,6 +224,26 @@ async def methodology_for_workflow(workflow_type: str) -> dict:
     if doc["criteria_count"] == 0:
         raise HTTPException(404, f"no criteria registered for workflow '{workflow_type}'")
     return doc
+
+
+class SolarScoreV2Request(BaseModel):
+    latitude: float
+    longitude: float
+    weights_override: dict[str, float] | None = None
+
+
+@app.post("/solar/score-v2")
+async def solar_score_v2(req: SolarScoreV2Request) -> dict:
+    """Phase 4 — single-location solar siting score consuming the data
+    selection engine. Returns score + rating + criteria_scores + exclusions
+    + full confidence report + methodology documentation.
+
+    The legacy CSV-batch endpoint at POST /solar/score is unchanged."""
+    if not pool:
+        raise HTTPException(503, "Database pool not initialized")
+    return await solar_v2_score(
+        pool, req.latitude, req.longitude, req.weights_override,
+    )
 
 
 @app.get("/data-selection")
