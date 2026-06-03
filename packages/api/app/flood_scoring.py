@@ -580,8 +580,8 @@ def methodology_doc() -> dict[str, Any]:
             "depth_range_ft": "−4 to +24, 1-ft steps, relative to the first floor.",
             "citation": (
                 "Federal Emergency Management Agency (2022). HAZUS Flood Model "
-                "Technical Manual. Depth-damage relationships derived from USACE and "
-                "Federal Insurance Administration credibility-weighted curves."
+                "Technical Manual. Depth-damage relationships derived from USACE "
+                "and FEMA (predecessor agency) credibility-weighted curves."
             ),
         },
         "annual_exceedance_probabilities": {

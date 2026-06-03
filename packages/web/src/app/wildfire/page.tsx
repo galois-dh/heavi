@@ -6,7 +6,6 @@ import { MapView, type MapHandle } from "../../components/map-view";
 import { WildfireReportPanel } from "../../components/wildfire-report";
 import {
   postWildfireLoss,
-  wildfireMethodologyFilingUrl,
   type WildfireRiskAssessment,
 } from "../../lib/api";
 import { exportElementToPdf } from "../../lib/export-pdf";
@@ -98,14 +97,6 @@ export default function WildfirePage() {
             {loading ? "Assessing…" : "Assess"}
           </button>
         </form>
-        <a
-          href={wildfireMethodologyFilingUrl()}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="shrink-0 rounded-md border border-zinc-700 px-3 py-2 text-xs font-medium text-zinc-300 transition hover:border-zinc-500 hover:text-white"
-        >
-          Download Methodology Filing
-        </a>
       </div>
 
       {error && (

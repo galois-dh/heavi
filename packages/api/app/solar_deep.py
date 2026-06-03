@@ -1203,7 +1203,7 @@ async def stage3_buildable_area(
             trail.advisory(
                 f"FEMA Special Flood Hazard Area covers "
                 f"{fl_pct:.1f}% of the parcel — may affect permitting, "
-                "insurance, and finance underwriting.",
+                "lender requirements, and finance underwriting.",
                 severity="warning", name="high_flood_zone_presence",
                 flood_overlap_pct=round(fl_pct, 1), zones=fl.get("zones"),
             )

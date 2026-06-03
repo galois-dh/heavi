@@ -33,6 +33,90 @@ export async function postQuery(question: string): Promise<QueryResult> {
   return res.json();
 }
 
+// ─── Heavi Energy — solar siting v2 (Phase 4 / 5) ────────────────────────
+
+export interface SolarScoreV2 {
+  module: string;
+  module_version: string;
+  query: { latitude: number; longitude: number };
+  score: number;
+  rating: "High" | "Moderate" | "Low" | "Excluded";
+  exclusions: string[];
+  criteria_scores: Record<string, {
+    score: number | null;
+    weight: number | null;
+    weighted_contribution?: number;
+    basis: Record<string, unknown>;
+    confidence: number;
+    selected_source: string | null;
+  }>;
+  exclusion_results: Record<string, {
+    excluded: boolean | null;
+    basis: Record<string, unknown>;
+    confidence: number;
+    selected_source: string | null;
+  }>;
+  confidence: {
+    tier: "HIGH" | "MODERATE" | "LOW" | "INSUFFICIENT";
+    composite: number;
+    statement: string;
+    completeness: string;
+    gaps: string[];
+    strongest_data: string[];
+    weakest_data: string[];
+    per_criterion: Record<string, {
+      confidence: number;
+      tier: "HIGH" | "MODERATE" | "LOW" | "NONE";
+      quality_note: string;
+      selected_source: string | null;
+    }>;
+  };
+  methodology: {
+    workflow_type: string;
+    framework_citations: Array<{ name: string; role: string; venue: string }>;
+    criteria_count: number;
+    scored_count: number;
+    exclusion_count: number;
+    criteria: Array<{
+      criterion_id: string;
+      criterion_name: string;
+      criterion_type: "scored" | "exclusion";
+      weight_default: number | null;
+      weight_range: [number, number] | null;
+      weight_rationale: string | null;
+      exclusion_threshold: string | null;
+      exclusion_rationale: string | null;
+      data_sources: Array<{
+        source_id: string;
+        relationship: string;
+        quality: string;
+        provides: string;
+      }>;
+    }>;
+    academic_sources: Array<{
+      author: string; year: number; title: string;
+      journal?: string; volume?: string; pages?: string; finding?: string;
+    }>;
+  };
+}
+
+export async function postSolarScoreV2(body: {
+  latitude: number;
+  longitude: number;
+  weights_override?: Record<string, number>;
+}): Promise<SolarScoreV2> {
+  const res = await fetch(`${API_BASE}/solar/score-v2`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`Solar scoring failed (${res.status}): ${text}`);
+  }
+  return res.json();
+}
+
 export type FactorKey =
   | "flood_risk"
   | "demographics"
@@ -137,10 +221,6 @@ export interface WildfireRiskAssessment {
   methodology_note?: string;
   natural_language_summary?: string;
   message?: string;
-}
-
-export function wildfireMethodologyFilingUrl(): string {
-  return `${API_BASE}/wildfire/methodology-filing`;
 }
 
 export async function postWildfireLoss(

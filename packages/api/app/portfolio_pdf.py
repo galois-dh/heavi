@@ -517,7 +517,7 @@ def _page_cover(job: PortfolioJob, styles: dict[str, ParagraphStyle]) -> list[An
         Paragraph(
             "This document estimates per-property and aggregate wildfire risk "
             "using calibrated hazard, vulnerability, and exposure models. "
-            "Intended for decision support; not an insurance pricing document.",
+            "Intended for investment, lending, and portfolio decision support.",
             styles["small"],
         )
     )

@@ -381,7 +381,7 @@ SEED: list[dict[str, Any]] = [
 
     crit("excl_flood", "solar_siting", "Flood Zones (SFHA)", "exclusion",
          exclusion_threshold="any overlap with FEMA SFHA (Zone A* or V*)",
-         exclusion_rationale="SFHA zones face permitting restrictions, insurance requirements, and physical risk.",
+         exclusion_rationale="SFHA zones face permitting restrictions, lender requirements, and physical risk.",
          data_tree=[
              alt("fema_nfhl", "authoritative", 1.0,
                  "Flood zone classification (A, AE, V, VE, X). SFHA = excluded.",
@@ -642,7 +642,7 @@ SEED: list[dict[str, Any]] = [
 
     crit("ta_flood", "trade_area", "Flood Risk Context", "scored",
          weight_default=0.05, weight_min=0.00, weight_max=0.10,
-         weight_rationale="Trade areas in flood-prone locations face permitting, insurance, and continuity risk.",
+         weight_rationale="Trade areas in flood-prone locations face permitting, lender, and continuity risk.",
          data_tree=[
              alt("fema_nfhl", "authoritative", 1.0,
                  "Flood zone classification at site",
