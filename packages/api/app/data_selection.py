@@ -293,18 +293,49 @@ def traverse_data_tree(
 # ─── Step 3 / 4 — composite confidence ────────────────────────────────────
 
 
+# Per-exclusion-criterion remediation language — the exclusion_id is the lookup
+# key, the value is the human-readable proxy advisory used in the statement when
+# THIS exclusion is the dominant degradation. Adding new entries here is the
+# only place to change wording for a specific source-fallback case.
+_EXCLUSION_PROXY_GUIDANCE: dict[str, str] = {
+    "excl_wetlands": (
+        "Wetland exclusion screening used SSURGO hydric soils as proxy rather "
+        "than NWI boundary data. Recommend field delineation before committing."
+    ),
+}
+
+
 def compute_composite_confidence(
     selections: list[CriterionSelection],
     specs: list[CriterionSpec],
 ) -> tuple[float, str, str]:
-    """Weighted composite over scored criteria, minus exclusion penalty.
+    """Weighted composite over scored criteria, scaled by the WEAKEST exclusion.
 
-    composite = (Σ weight × confidence) / (Σ weight)
-              × (1 − 0.3 × (exclusion_NONE_count / total_exclusions))
+    composite = scored_confidence × exclusion_factor
+      where  scored_confidence    = (Σ weight × confidence) / Σ weight
+             worst_excl           = min(confidence over exclusion criteria)
+             exclusion_factor     = 0.5 + 0.5 × worst_excl
+
+    Rationale: a single missed fatal-flaw check (e.g., wetlands via SSURGO
+    proxy rather than NWI) materially weakens the entire assessment, because
+    the cost of overlooking that flaw at site-commitment is asymmetric. The
+    earlier formula (penalty only for NONE-confidence exclusions) treated a
+    proxy and an authoritative source identically, which masked the gap. The
+    revised mapping:
+
+        worst exclusion 1.0 (authoritative) → factor 1.00 (no penalty)
+        worst exclusion 0.7 (fallback)      → factor 0.85
+        worst exclusion 0.4 (proxy)         → factor 0.70
+        worst exclusion 0.0 (gap)           → factor 0.50
+
+    See the provenance doc § "Step 4: Composite Confidence" (revised 2026-06-06)
+    for the worked-out maths and tier mapping.
     """
+    spec_by_id = {s.criterion_id: s for s in specs}
+
+    # 1) Scored — weighted sum.
     scored_num = 0.0
     scored_den = 0.0
-    spec_by_id = {s.criterion_id: s for s in specs}
     for sel in selections:
         spec = spec_by_id.get(sel.criterion_id)
         if spec is None or spec.criterion_type != "scored":
@@ -314,42 +345,48 @@ def compute_composite_confidence(
         scored_den += w
     scored_confidence = (scored_num / scored_den) if scored_den > 0 else 0.0
 
+    # 2) Exclusion — weakest-link factor.
     exclusion_sels = [
         sel for sel in selections
-        if (spec := spec_by_id.get(sel.criterion_id)) is not None
-        and spec.criterion_type == "exclusion"
+        if (sp := spec_by_id.get(sel.criterion_id)) is not None
+        and sp.criterion_type == "exclusion"
     ]
-    excl_none = sum(1 for s in exclusion_sels if s.confidence == 0.0)
-    total_excl = len(exclusion_sels)
-    penalty = (excl_none / total_excl) if total_excl > 0 else 0.0
-    composite = scored_confidence * (1.0 - 0.3 * penalty)
+    if exclusion_sels:
+        worst_excl = min(s.confidence for s in exclusion_sels)
+    else:
+        worst_excl = 1.0  # no exclusions defined → no factor
+    exclusion_factor = 0.5 + 0.5 * worst_excl
+
+    composite = scored_confidence * exclusion_factor
     tier = composite_tier(composite)
 
-    # Always identify non-authoritative selections, regardless of tier, so the
-    # reader sees the degraded criteria even when the composite is HIGH.
-    # The provenance composite math only penalises NONE-confidence exclusion
-    # criteria, so a single proxy exclusion (e.g. SSURGO hydric for wetlands)
-    # may not drop the tier — but the user still needs to know.
+    # 3) Identify non-authoritative selections for the statement.
     non_auth_scored = [
         sel.criterion_id for sel in selections
         if (sp := spec_by_id.get(sel.criterion_id)) is not None
         and sp.criterion_type == "scored"
         and 0.0 < sel.confidence < 0.85
     ]
-    non_auth_excl = [
-        sel.criterion_id for sel in selections
-        if (sp := spec_by_id.get(sel.criterion_id)) is not None
-        and sp.criterion_type == "exclusion"
-        and 0.0 < sel.confidence < 0.85
+    weak_excl_sels = [
+        s for s in exclusion_sels if s.confidence < 1.0
     ]
+    weak_excl_ids = [s.criterion_id for s in weak_excl_sels]
+    none_excl_ids = [s.criterion_id for s in exclusion_sels if s.confidence == 0.0]
+
+    # Source-specific remediation language for the worst exclusion driver.
+    worst_excl_sel = min(weak_excl_sels, key=lambda s: s.confidence, default=None)
+    worst_guidance = (
+        _EXCLUSION_PROXY_GUIDANCE.get(worst_excl_sel.criterion_id)
+        if worst_excl_sel else None
+    )
 
     if tier == "HIGH":
-        if non_auth_scored or non_auth_excl:
+        if non_auth_scored or weak_excl_ids:
             bits = []
             if non_auth_scored:
                 bits.append(f"scored: {', '.join(non_auth_scored)}")
-            if non_auth_excl:
-                bits.append(f"exclusion (proxy): {', '.join(non_auth_excl)}")
+            if weak_excl_ids:
+                bits.append(f"exclusion: {', '.join(weak_excl_ids)}")
             statement = (
                 "This assessment uses authoritative data for the majority of "
                 "criteria. Proxy or partial data was used for: "
@@ -357,36 +394,40 @@ def compute_composite_confidence(
                 + ". Verify those before relying on the result."
             )
         else:
-            statement = "This assessment is based on authoritative data for all major criteria."
+            statement = (
+                "This assessment is based on authoritative data for all major criteria."
+            )
     elif tier == "MODERATE":
-        degraded = [
-            s.criterion_id for s in selections
-            if 0.0 < s.confidence < 0.85 and s.criterion_type == "scored"
-        ]
-        proxy_excl = [
-            s.criterion_id for s in selections
-            if 0.0 < s.confidence < 0.85 and s.criterion_type == "exclusion"
-        ]
-        bits: list[str] = []
-        if degraded:
-            bits.append(f"scored: {', '.join(degraded)}")
-        if proxy_excl:
-            bits.append(f"exclusion (proxy): {', '.join(proxy_excl)}")
-        if excl_none:
-            bits.append(f"exclusion (gap): {excl_none} criterion(s)")
-        detail = "; ".join(bits) if bits else "see per-criterion detail"
-        statement = (
-            f"This assessment uses proxy or partial data for some criteria — "
-            f"{detail}. Results are directionally reliable but should be verified."
-        )
+        # Lead with the specific exclusion driver if we have remediation language.
+        if worst_guidance:
+            statement = (
+                f"{worst_guidance} Composite confidence is MODERATE "
+                f"(scored {scored_confidence:.2f} × exclusion factor "
+                f"{exclusion_factor:.2f} = {composite:.2f})."
+            )
+        else:
+            bits = []
+            if non_auth_scored:
+                bits.append(f"scored: {', '.join(non_auth_scored)}")
+            if weak_excl_ids:
+                bits.append(f"exclusion: {', '.join(weak_excl_ids)}")
+            if none_excl_ids:
+                bits.append(f"exclusion gaps: {', '.join(none_excl_ids)}")
+            detail = "; ".join(bits) if bits else "see per-criterion detail"
+            statement = (
+                f"This assessment uses proxy or partial data for some criteria — "
+                f"{detail}. Results are directionally reliable but should be "
+                "verified for those gaps."
+            )
     elif tier == "LOW":
         gaps = [s.criterion_id for s in selections if s.confidence < 0.4]
+        lead = worst_guidance + " " if worst_guidance else ""
         statement = (
-            f"This assessment has significant data gaps affecting "
+            f"{lead}This assessment has significant data gaps affecting "
             f"{len(gaps)} criteria: {', '.join(gaps) or '(see per-criterion detail)'}."
             " Results should be treated as preliminary screening, not definitive."
         )
-    else:
+    else:  # INSUFFICIENT
         gaps = [s.criterion_id for s in selections if s.confidence == 0.0]
         statement = (
             "Insufficient data available at this location to produce a reliable "
