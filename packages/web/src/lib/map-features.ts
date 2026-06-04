@@ -14,23 +14,26 @@ export function pointFeature(
 }
 
 export function solarFeature(fid: string, r: SolarScoreV2): GeoJSON.Feature {
-  return pointFeature(fid, r.query.longitude, r.query.latitude, r.score, r.rating);
+  return pointFeature(fid, r.query.longitude, r.query.latitude, r.score ?? 0, r.rating);
 }
 
 export function hazardFeature(fid: string, r: HazardScoreV2): GeoJSON.Feature {
-  // Color by the worse of the two peril tiers.
+  // Color by the worse of the two assessable peril tiers; gray only if BOTH
+  // perils are CANNOT ASSESS (otherwise show the known risk).
   const order: Record<string, number> = { HIGH: 3, MODERATE: 2, LOW: 1 };
   const wf = r.wildfire.risk_tier ?? "";
   const fl = r.flood.risk_tier ?? "";
-  const worse = (order[wf] ?? 0) >= (order[fl] ?? 0) ? wf : fl;
-  return pointFeature(
-    fid, r.query.longitude, r.query.latitude, 0, worse || "LOW",
-  );
+  const wfCa = r.wildfire.cannot_assess || wf === "CANNOT ASSESS";
+  const flCa = r.flood.cannot_assess || fl === "CANNOT ASSESS";
+  let label = "LOW";
+  if (wfCa && flCa) label = "CANNOT ASSESS";
+  else label = (order[wf] ?? 0) >= (order[fl] ?? 0) ? (wfCa ? fl : wf) : (flCa ? wf : fl);
+  return pointFeature(fid, r.query.longitude, r.query.latitude, 0, label || "LOW");
 }
 
 export function tradeAreaFeature(fid: string, r: TradeAreaScoreV2): GeoJSON.Feature {
   const q = r.query as { latitude: number; longitude: number };
-  return pointFeature(fid, q.longitude, q.latitude, r.suitability_score, r.suitability_rating);
+  return pointFeature(fid, q.longitude, q.latitude, r.suitability_score ?? 0, r.suitability_rating);
 }
 
 export function fc(features: GeoJSON.Feature[]): GeoJSON.FeatureCollection {

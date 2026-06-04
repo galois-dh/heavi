@@ -38,6 +38,7 @@ from .flood_scoring import (
     query_nfhl,
     query_nsi,
 )
+from .critical_sources import CANNOT_ASSESS, selection_critical_gaps
 from .integrations import (
     query_landfire_canopy,
     query_landfire_fuel,
@@ -89,6 +90,32 @@ def _picks(selection: Any) -> dict[str, tuple[str | None, float]]:
     }
 
 
+def _wildfire_cannot_assess(sources: list[str], message: str) -> dict[str, Any]:
+    """CANNOT ASSESS peril shape — null risk, not $0/LOW (Insufficient Data Spec)."""
+    return {
+        "available": False,
+        "cannot_assess": True,
+        "annual_risk_usd": None,
+        "risk_tier": CANNOT_ASSESS,
+        "damage_probability": None,
+        "missing_sources": sources,
+        "message": message,
+    }
+
+
+def _flood_cannot_assess(sources: list[str], message: str) -> dict[str, Any]:
+    return {
+        "available": False,
+        "cannot_assess": True,
+        "annual_risk_usd": None,
+        "risk_tier": CANNOT_ASSESS,
+        "flood_zone": None,
+        "depth_ft": None,
+        "missing_sources": sources,
+        "message": message,
+    }
+
+
 def _fsim_result(res: dict[str, Any]) -> dict[str, Any]:
     """Shape the pre-loaded FSim/LANDFIRE structure-model result."""
     pv = res["property_vulnerability"]
@@ -128,14 +155,15 @@ async def _wildfire_block(
     fuel_src, fuel_conf = picks.get("wf_fuel_proximity", (None, 0.0))
     canopy_src, canopy_conf = picks.get("wf_canopy", (None, 0.0))
 
-    # CANNOT ASSESS only when the likelihood tree is fully exhausted.
+    # CANNOT ASSESS only when the likelihood tree is fully exhausted (Insufficient
+    # Data Handling Spec). With the completed trees this is rare — FSim missing but
+    # NIFC available is ASSESSABLE.
     if like_src is None:
-        return {
-            "available": False, "cannot_assess": True,
-            "annual_risk_usd": None, "risk_tier": None, "damage_probability": None,
-            "note": ("CANNOT ASSESS — no wildfire-likelihood source available "
-                     "(FSim and NIFC fire perimeters both unavailable)."),
-        }
+        return _wildfire_cannot_assess(
+            ["usfs_fsim", "nifc_fire_perimeters"],
+            "Wildfire burn-probability data (USFS FSim / NIFC fire history) "
+            "unavailable at this location. Wildfire risk cannot be estimated.",
+        )
 
     # FSim pre-loaded path (authoritative) when the catalog FSim source resolves.
     if like_src == "usfs_fsim":
@@ -149,6 +177,14 @@ async def _wildfire_block(
             await query_nifc_perimeters(client, latitude=latitude, longitude=longitude)
             if like_src == "nifc_fire_perimeters" else None
         )
+        # NIFC API failure (None) is distinct from "0 historical fires" (a valid
+        # low-risk answer, e.g. Houston). Only the former is unassessable.
+        if like_src == "nifc_fire_perimeters" and nifc is None:
+            return _wildfire_cannot_assess(
+                ["nifc_fire_perimeters"],
+                "Wildfire fire-history service (NIFC) did not respond. Wildfire "
+                "risk cannot be estimated at this location right now.",
+            )
         fuel = (
             await query_landfire_fuel(client, latitude=latitude, longitude=longitude)
             if fuel_src == "landfire_wcs_fuel" else None
@@ -319,8 +355,19 @@ async def score_hazard(
     selection = await select_data(pool, "hazard_assessment", latitude, longitude)
     methodology = await get_methodology_doc(pool, "hazard_assessment")
 
+    # Critical-source gaps: a peril whose critical criterion's whole tree is
+    # exhausted (confidence 0.0) is CANNOT ASSESS, not $0/LOW.
+    crit_by_peril: dict[str, dict[str, Any]] = {}
+    for g in selection_critical_gaps(selection, "hazard_assessment"):
+        if g.get("peril"):
+            crit_by_peril[g["peril"]] = g
+
     wildfire = await _wildfire_block(pool, latitude, longitude, selection)
-    flood = await _flood_block(pool, latitude, longitude)
+    if "flood" in crit_by_peril:
+        g = crit_by_peril["flood"]
+        flood = _flood_cannot_assess(g["sources"], g["message"])
+    else:
+        flood = await _flood_block(pool, latitude, longitude)
 
     confidence = _confidence_report(selection)
     # Per-peril confidence subsets so each block carries its own quality view.

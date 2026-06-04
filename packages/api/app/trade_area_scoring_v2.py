@@ -27,6 +27,12 @@ import asyncpg
 import httpx
 
 from . import trade_area_scoring as ta
+from .critical_sources import (
+    CANNOT_ASSESS,
+    cannot_assess_statement,
+    scoring_critical_gap,
+    selection_critical_gaps,
+)
 from .data_selection import select_data
 from .flood_scoring import classify_zone, query_nfhl
 from .methodology_repository import get_methodology_doc
@@ -306,6 +312,39 @@ async def score_trade_area_v2(
     confidence = _confidence_report(selection)
     sources_used = _sources_used(selection)
 
+    def _wrap(base: dict[str, Any]) -> dict[str, Any]:
+        return {
+            "module": MODULE_NAME, "module_version": MODULE_VERSION,
+            "query": {"latitude": latitude, "longitude": longitude,
+                      "address": address, "resolved_address": resolved_address,
+                      "business_category": business_category},
+            **base, "data_sources_used": sources_used,
+            "confidence": confidence, "methodology": methodology,
+        }
+
+    def _cannot_assess(gaps: list[dict[str, Any]]) -> dict[str, Any]:
+        return {
+            "module": MODULE_NAME, "module_version": MODULE_VERSION,
+            "query": {"latitude": latitude, "longitude": longitude,
+                      "address": address, "resolved_address": resolved_address,
+                      "business_category": business_category},
+            "coverage": CANNOT_ASSESS, "suitability_score": None,
+            "suitability_rating": CANNOT_ASSESS, "cannot_assess": True,
+            "missing_sources": gaps, "message": gaps[0]["message"],
+            "data_sources_used": sources_used,
+            "confidence": {"tier": CANNOT_ASSESS, "composite": None,
+                           "statement": cannot_assess_statement(gaps),
+                           "gaps": [g["message"] for g in gaps]},
+            "methodology": methodology,
+        }
+
+    # Critical-source check: resident demographics (Census ACS / ta_population)
+    # are required to score a trade area. If that whole tree is exhausted, CANNOT
+    # ASSESS rather than a misleading score.
+    crit_gaps = selection_critical_gaps(selection, "trade_area")
+    if crit_gaps:
+        return _cannot_assess(crit_gaps)
+
     # Full pipeline is available where the OSM POI cache covers the point (the
     # loaded geography). Elsewhere fall back to the on-demand partial.
     poi_source = sources_used["poi_source"]
@@ -320,19 +359,18 @@ async def score_trade_area_v2(
                 existing_locations=existing_locations,
                 address=address, resolved_address=resolved_address,
             )
-        except RuntimeError:
+        except RuntimeError as e:
+            msg = str(e).lower()
+            if "demograph" in msg or "acs" in msg:
+                # Census demographics unobtainable at scoring time → CANNOT ASSESS.
+                return _cannot_assess([scoring_critical_gap("trade_area", "ta_population")])
             # ORS isochrones unavailable (rate-limited / key missing) → the
             # euclidean_buffer fallback node (ta_accessibility, confidence 0.3).
-            base = await _euclidean_dallas_score(
-                pool, latitude, longitude, business_category, custom_categories)
-            return {
-                "module": MODULE_NAME, "module_version": MODULE_VERSION,
-                "query": {"latitude": latitude, "longitude": longitude,
-                          "address": address, "resolved_address": resolved_address,
-                          "business_category": business_category},
-                **base, "data_sources_used": sources_used,
-                "confidence": confidence, "methodology": methodology,
-            }
+            try:
+                return _wrap(await _euclidean_dallas_score(
+                    pool, latitude, longitude, business_category, custom_categories))
+            except RuntimeError:
+                return _cannot_assess([scoring_critical_gap("trade_area", "ta_population")])
         # Competitor POI points within the 10-min isochrone (for the map markers).
         rings = full.get("trade_area_rings") or []
         iso10 = next((r.get("isochrone") for r in rings

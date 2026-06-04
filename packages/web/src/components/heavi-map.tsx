@@ -41,11 +41,15 @@ interface HeaviMapProps {
 
 const EMPTY: GeoJSON.FeatureCollection = { type: "FeatureCollection", features: [] };
 
+// CANNOT ASSESS is a distinct neutral gray (not green/red) across all scales.
+const CANNOT_ASSESS_COLOR = "#9ca3af";
+
 // Circle-color expression per color scale. Features carry { score, label }.
 function colorExpr(scale: ScoreScale): maplibregl.ExpressionSpecification {
   if (scale === "risk") {
     return [
       "match", ["upcase", ["to-string", ["coalesce", ["get", "label"], ""]]],
+      "CANNOT ASSESS", CANNOT_ASSESS_COLOR,
       "HIGH", "#ef4444", "MODERATE", "#eab308", "LOW", "#22c55e",
       "#64748b",
     ];
@@ -53,13 +57,15 @@ function colorExpr(scale: ScoreScale): maplibregl.ExpressionSpecification {
   if (scale === "tradearea") {
     return [
       "match", ["to-string", ["coalesce", ["get", "label"], ""]],
+      "CANNOT ASSESS", CANNOT_ASSESS_COLOR,
       "Strong", "#06b6d4", "Moderate", "#8b5cf6", "Weak", "#64748b",
       "#64748b",
     ];
   }
-  // suitability (default): Excluded → gray, else step on score.
+  // suitability (default): CANNOT ASSESS / Excluded → gray, else step on score.
   return [
     "case",
+    ["==", ["to-string", ["coalesce", ["get", "label"], ""]], "CANNOT ASSESS"], CANNOT_ASSESS_COLOR,
     ["==", ["to-string", ["coalesce", ["get", "label"], ""]], "Excluded"], "#6b7280",
     ["step", ["coalesce", ["get", "score"], 0], "#ef4444", 0.4, "#eab308", 0.7, "#22c55e"],
   ];

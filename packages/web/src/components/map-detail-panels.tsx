@@ -11,10 +11,40 @@ const TIER_CHIP: Record<string, string> = {
   STRONG: "bg-cyan-500/15 text-cyan-300 border-cyan-500/30",
   WEAK: "bg-slate-500/15 text-slate-300 border-slate-500/30",
   EXCLUDED: "bg-zinc-600/30 text-zinc-300 border-zinc-600",
+  // CANNOT ASSESS — neutral gray/amber, visually distinct from green/red (AC4).
+  "CANNOT ASSESS": "bg-zinc-500/20 text-zinc-200 border-zinc-400/40",
   NONE: "bg-zinc-700/40 text-zinc-300 border-zinc-700",
 };
 const chip = (t: string | null | undefined) => TIER_CHIP[(t ?? "NONE").toUpperCase()] ?? TIER_CHIP.NONE;
 const usd = (v: number | null | undefined) => (v == null ? "—" : `$${Math.round(v).toLocaleString("en-US")}/yr`);
+
+/** CANNOT ASSESS explanatory block — message + named missing sources + the
+ *  "does NOT mean low risk" disclaimer (Insufficient Data Handling Spec, AC3). */
+export function CannotAssess({
+  label, message, sources,
+}: { label: string; message?: string; sources?: string[] }) {
+  return (
+    <div className="rounded-md border border-zinc-400/40 bg-zinc-500/10 p-3 text-xs">
+      <div className="flex items-center gap-2">
+        <span aria-hidden className="text-zinc-300">ⓘ</span>
+        <span className="rounded border border-zinc-400/40 bg-zinc-500/20 px-2 py-0.5 font-semibold text-zinc-200">
+          {label} · CANNOT ASSESS
+        </span>
+      </div>
+      <p className="mt-2 leading-relaxed text-zinc-300">
+        {message ?? `${label} cannot be assessed at this location.`}
+      </p>
+      {sources && sources.length > 0 && (
+        <ul className="mt-1.5 space-y-0.5 text-zinc-400">
+          {sources.map((s, i) => <li key={i}>• {s}</li>)}
+        </ul>
+      )}
+      <p className="mt-2 text-[11px] italic text-zinc-500">
+        This does NOT mean the location is low risk — critical data is unavailable.
+      </p>
+    </div>
+  );
+}
 
 function Header({ title, sub }: { title: string; sub: string }) {
   return (
@@ -28,12 +58,24 @@ function Header({ title, sub }: { title: string; sub: string }) {
 export function EnergyDetail({ r }: { r: SolarScoreV2 }) {
   const wp = r.weight_profile;
   const cites = r.methodology?.framework_citations?.length ?? 0;
+  if (r.cannot_assess || r.rating === "CANNOT ASSESS") {
+    return (
+      <div className="space-y-3 text-xs">
+        <Header title="Parcel assessment" sub={`${r.query.latitude.toFixed(4)}, ${r.query.longitude.toFixed(4)}`} />
+        <CannotAssess
+          label="Site score"
+          message={r.message}
+          sources={(r.missing_sources ?? []).flatMap((m) => m.sources)}
+        />
+      </div>
+    );
+  }
   return (
     <div className="space-y-3 text-xs">
       <Header title="Parcel assessment" sub={`${r.query.latitude.toFixed(4)}, ${r.query.longitude.toFixed(4)}`} />
       <div className="flex flex-wrap gap-2">
         <span className={`rounded-md border px-2 py-1 ${chip(r.rating)}`}>
-          SCORE {Math.round(r.score * 100)} / 100 · {r.rating}
+          SCORE {Math.round((r.score ?? 0) * 100)} / 100 · {r.rating}
         </span>
         <span className={`rounded-md border px-2 py-1 ${chip(r.confidence.tier)}`}>
           CONFIDENCE {Math.round(r.confidence.composite * 100)} · {r.confidence.tier}
@@ -91,25 +133,33 @@ export function HazardDetail({ r }: { r: HazardScoreV2 }) {
     <div className="space-y-3 text-xs">
       <Header title="Property hazard assessment" sub={`${r.query.latitude.toFixed(4)}, ${r.query.longitude.toFixed(4)}`} />
 
-      <div className="rounded-md border border-zinc-800 bg-zinc-950/60 p-2">
-        <div className="flex items-center justify-between">
-          <span className="font-semibold text-white">Wildfire</span>
-          <span className={`rounded border px-1.5 py-0.5 ${chip(wf.risk_tier)}`}>{wf.available ? wf.risk_tier : "NO DATA"}</span>
+      {wf.cannot_assess || wf.risk_tier === "CANNOT ASSESS" ? (
+        <CannotAssess label="Wildfire" message={wf.message} sources={wf.missing_sources} />
+      ) : (
+        <div className="rounded-md border border-zinc-800 bg-zinc-950/60 p-2">
+          <div className="flex items-center justify-between">
+            <span className="font-semibold text-white">Wildfire</span>
+            <span className={`rounded border px-1.5 py-0.5 ${chip(wf.risk_tier)}`}>{wf.available ? wf.risk_tier : "NO DATA"}</span>
+          </div>
+          <p className="text-base font-bold text-zinc-100">{usd(wf.annual_risk_usd)}</p>
+          {wf.damage_probability != null && <p className="text-zinc-500">damage prob {Math.round(wf.damage_probability * 100)}%</p>}
         </div>
-        <p className="text-base font-bold text-zinc-100">{usd(wf.annual_risk_usd)}</p>
-        {wf.damage_probability != null && <p className="text-zinc-500">damage prob {Math.round(wf.damage_probability * 100)}%</p>}
-      </div>
+      )}
 
-      <div className="rounded-md border border-zinc-800 bg-zinc-950/60 p-2">
-        <div className="flex items-center justify-between">
-          <span className="font-semibold text-white">Flood</span>
-          <span className={`rounded border px-1.5 py-0.5 ${chip(fl.risk_tier)}`}>{fl.risk_tier ?? "—"}</span>
+      {fl.cannot_assess || fl.risk_tier === "CANNOT ASSESS" ? (
+        <CannotAssess label="Flood" message={fl.message} sources={fl.missing_sources} />
+      ) : (
+        <div className="rounded-md border border-zinc-800 bg-zinc-950/60 p-2">
+          <div className="flex items-center justify-between">
+            <span className="font-semibold text-white">Flood</span>
+            <span className={`rounded border px-1.5 py-0.5 ${chip(fl.risk_tier)}`}>{fl.risk_tier ?? "—"}</span>
+          </div>
+          <p className="text-base font-bold text-zinc-100">{usd(fl.annual_risk_usd)}</p>
+          <p className="text-zinc-500">
+            zone {fl.flood_zone ?? "X/unmapped"}{fl.depth_ft != null && ` · depth ${fl.depth_ft} ft`}
+          </p>
         </div>
-        <p className="text-base font-bold text-zinc-100">{usd(fl.annual_risk_usd)}</p>
-        <p className="text-zinc-500">
-          zone {fl.flood_zone ?? "X/unmapped"}{fl.depth_ft != null && ` · depth ${fl.depth_ft} ft`}
-        </p>
-      </div>
+      )}
 
       <div className="flex items-center gap-2">
         <span className="text-[10px] uppercase tracking-wider text-zinc-500">Confidence</span>
@@ -136,12 +186,24 @@ export function LocationsDetail({ r }: { r: TradeAreaScoreV2 }) {
   // 10-min ring demographics if present (full coverage).
   const rings = r.trade_area_rings ?? [];
   const ring10 = rings.find((x) => Math.abs(((x.drive_time_minutes as number) ?? 0) - 10) <= 3) as Record<string, unknown> | undefined;
+  if (r.cannot_assess || r.suitability_rating === "CANNOT ASSESS") {
+    return (
+      <div className="space-y-3 text-xs">
+        <Header title="Trade area assessment" sub={`${q.latitude.toFixed(4)}, ${q.longitude.toFixed(4)} · ${q.business_category ?? "—"}`} />
+        <CannotAssess
+          label="Trade area"
+          message={r.message}
+          sources={(r.missing_sources ?? []).flatMap((m) => m.sources)}
+        />
+      </div>
+    );
+  }
   return (
     <div className="space-y-3 text-xs">
       <Header title="Trade area assessment" sub={`${q.latitude.toFixed(4)}, ${q.longitude.toFixed(4)} · ${q.business_category ?? "—"}`} />
       <div className="flex flex-wrap gap-2">
         <span className={`rounded-md border px-2 py-1 ${chip(r.suitability_rating)}`}>
-          SCORE {r.suitability_score.toFixed(2)} · {r.suitability_rating}
+          SCORE {(r.suitability_score ?? 0).toFixed(2)} · {r.suitability_rating}
         </span>
         <span className={`rounded-md border px-2 py-1 ${chip(r.confidence.tier)}`}>
           CONFIDENCE {r.confidence.tier} · {Math.round(r.confidence.composite * 100)}%

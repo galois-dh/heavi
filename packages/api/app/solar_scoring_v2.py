@@ -38,6 +38,12 @@ from .integrations import (
     sda_point,
     slope_aspect_from_grid,
 )
+from .critical_sources import (
+    CANNOT_ASSESS,
+    cannot_assess_statement,
+    scoring_critical_gap,
+    selection_critical_gaps,
+)
 from .methodology_repository import get_methodology_doc
 from .nerc_regions import get_nerc_region
 
@@ -207,7 +213,9 @@ def _selected_source_id(sel: CriterionSelection) -> str | None:
 async def _score_solar_ghi(m: _Measurements) -> tuple[float, dict[str, Any]]:
     pv = await m.pvwatts()
     if not pv:
-        return 0.0, {"reason": "PVWatts unavailable"}
+        # solar_ghi is THE solar resource — flag it as a critical unavailability
+        # so the orchestrator returns CANNOT ASSESS rather than a partial score.
+        return 0.0, {"reason": "PVWatts unavailable", "critical_unavailable": True}
     cf = pv.get("capacity_factor_pct") or 0.0
     return _linear(cf, 14.0, 22.0), {
         "capacity_factor_pct": round(cf, 2),
@@ -702,6 +710,36 @@ async def score_solar_siting(
                 }
                 if excluded:
                     exclusions.append(sel.criterion_id)
+
+    # Critical-source check (Insufficient Data Handling Spec): solar_ghi (the
+    # solar resource) is critical. If its whole tree is exhausted, or PVWatts
+    # was unobtainable at scoring time, do NOT produce a partial score.
+    critical_gaps = selection_critical_gaps(selection, "solar_siting")
+    ghi_basis = (criteria_scores.get("solar_ghi") or {}).get("basis") or {}
+    if ghi_basis.get("critical_unavailable") and not any(
+        g["criterion"] == "solar_ghi" for g in critical_gaps
+    ):
+        critical_gaps.append(scoring_critical_gap("solar_siting", "solar_ghi"))
+    if critical_gaps:
+        return {
+            "module":          MODULE_NAME,
+            "module_version":  MODULE_VERSION,
+            "query":           {"latitude": latitude, "longitude": longitude},
+            "score":           None,
+            "rating":          CANNOT_ASSESS,
+            "cannot_assess":   True,
+            "missing_sources": critical_gaps,
+            "message":         critical_gaps[0]["message"],
+            "weight_profile":  weight_profile,
+            "criteria_scores": criteria_scores,
+            "confidence": {
+                "tier":      CANNOT_ASSESS,
+                "composite": None,
+                "statement": cannot_assess_statement(critical_gaps),
+                "gaps":      [g["message"] for g in critical_gaps],
+            },
+            "methodology":     methodology,
+        }
 
     # Step 4 — composite (weighted scored, exclusion overrides to "Excluded").
     # Flood is excluded from the weighted average and applied as a *deduction*

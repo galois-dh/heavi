@@ -39,9 +39,12 @@ export interface SolarScoreV2 {
   module: string;
   module_version: string;
   query: { latitude: number; longitude: number };
-  score: number;
-  rating: "High" | "Moderate" | "Low" | "Excluded";
-  exclusions: string[];
+  score: number | null;
+  rating: "High" | "Moderate" | "Low" | "Excluded" | "CANNOT ASSESS";
+  cannot_assess?: boolean;
+  message?: string;
+  missing_sources?: Array<{ criterion: string; sources: string[]; message: string }>;
+  exclusions?: string[];
   weight_profile?: {
     region: string | null;
     method: string;
@@ -709,18 +712,24 @@ export interface HazardScoreV2 {
   query: { latitude: number; longitude: number };
   wildfire: {
     available: boolean;
+    cannot_assess?: boolean;
     annual_risk_usd: number | null;
     risk_tier: string | null;
     damage_probability: number | null;
+    message?: string;
+    missing_sources?: string[];
     note?: string;
     [k: string]: unknown;
   };
   flood: {
     available: boolean;
+    cannot_assess?: boolean;
     annual_risk_usd: number | null;
     risk_tier: string | null;
     flood_zone: string | null;
     depth_ft: number | null;
+    message?: string;
+    missing_sources?: string[];
     [k: string]: unknown;
   };
   confidence: ConfidenceReport;
@@ -748,8 +757,11 @@ export interface TradeAreaScoreV2 {
   module: string;
   query: Record<string, unknown>;
   coverage: string;
-  suitability_score: number;
+  suitability_score: number | null;
   suitability_rating: string;
+  cannot_assess?: boolean;
+  message?: string;
+  missing_sources?: Array<{ criterion: string; sources: string[]; message: string }>;
   criteria_scores: Record<string, number>;
   competitive_analysis?: Record<string, unknown> | null;
   data_sources_used: Record<string, string | null>;
