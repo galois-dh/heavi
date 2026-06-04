@@ -42,6 +42,12 @@ export interface SolarScoreV2 {
   score: number;
   rating: "High" | "Moderate" | "Low" | "Excluded";
   exclusions: string[];
+  weight_profile?: {
+    region: string | null;
+    method: string;
+    n_installations_in_calibration?: number;
+    note?: string;
+  };
   criteria_scores: Record<string, {
     score: number | null;
     weight: number | null;
@@ -749,6 +755,9 @@ export interface TradeAreaScoreV2 {
   data_sources_used: Record<string, string | null>;
   coverage_gaps?: string[];
   coverage_note?: string;
+  trade_area_rings?: Array<Record<string, unknown>>;
+  competitor_pois?: Array<{ latitude: number; longitude: number }>;
+  natural_language_summary?: string;
   confidence: ConfidenceReport;
   methodology: Record<string, unknown>;
 }

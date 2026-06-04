@@ -1,116 +1,99 @@
+"use client";
+
+import { type FormEvent, useCallback, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { TopNav } from "../../components/top-nav";
-import { HazardV2Panel } from "../../components/hazard-v2-panel";
+import { HeaviMap } from "../../components/heavi-map";
+import { HazardDetail } from "../../components/map-detail-panels";
+import { postHazardScoreV2, type HazardScoreV2 } from "../../lib/api";
+import { HAZARD_CONSTRAINTS, fc, hazardFeature } from "../../lib/map-features";
 
-const HAZARDS = [
-  {
-    id: "wildfire",
-    title: "Wildfire risk",
-    validation: "AUC 0.76 in Sonoma County (Finney 2011 FSim + Kramer 2018 + Syphard 2012)",
-    blurb: "Probabilistic burn probability × structure exposure × HAZUS-style vulnerability. Per-structure annual loss estimate with full provenance.",
-    href: "/wildfire",
-    cta: "Assess a single property",
-  },
-  {
-    id: "flood",
-    title: "Flood risk",
-    validation: "16× discrimination in Lee County (Scawthorn 2006 HAZUS + FEMA NFHL)",
-    blurb: "FEMA NFHL zone + Base Flood Elevation + USGS 3DEP elevation + USACE NSI building characteristics → depth-damage curve loss estimate.",
-    href: "/flood",
-    cta: "Assess a single property",
-  },
-  {
-    id: "earthquake",
-    title: "Earthquake risk",
-    validation: "USGS NSHM hazard + HAZUS damage functions",
-    blurb: "Peak ground acceleration + site-class amplification + building fragility → damage-state probabilities.",
-    href: "/earthquake",
-    cta: "Assess a single property",
-  },
-];
-
+/**
+ * Heavi Hazard — map-first wildfire + flood assessment (Map Interface Spec,
+ * Step 7). Same layout as Energy: input sidebar + detail panel, map with
+ * risk-tier color coding and toggleable FEMA flood-zone overlay.
+ */
 export default function HazardProductPage() {
+  const [addr, setAddr] = useState("38.4405, -122.7144");
+  const [results, setResults] = useState<Record<string, HazardScoreV2>>({});
+  const [order, setOrder] = useState<string[]>([]);
+  const [selectedFid, setSelectedFid] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const counter = useRef(0);
+
+  const addResult = useCallback((r: HazardScoreV2) => {
+    const fid = `h${counter.current++}`;
+    setResults((prev) => ({ ...prev, [fid]: r }));
+    setOrder((prev) => [...prev, fid]);
+    setSelectedFid(fid);
+  }, []);
+
+  const assess = useCallback(async (e: FormEvent) => {
+    e.preventDefault();
+    setLoading(true); setError(null);
+    try {
+      const m = addr.trim().match(/^\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\s*$/);
+      const body = m ? { latitude: parseFloat(m[1]), longitude: parseFloat(m[2]) } : { address: addr.trim() };
+      addResult(await postHazardScoreV2(body));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Assessment failed");
+    } finally { setLoading(false); }
+  }, [addr, addResult]);
+
+  const features = useMemo(() => fc(order.map((fid) => hazardFeature(fid, results[fid]))), [order, results]);
+  const selected = selectedFid ? results[selectedFid] : null;
+
   return (
     <div className="flex h-full flex-col">
       <TopNav active="hazard" />
-
-      <main className="flex flex-1 flex-col overflow-y-auto px-6 py-8">
-        <div className="mx-auto w-full max-w-4xl">
-          {/* Product hero */}
-          <div className="mb-8">
-            <span className="inline-block rounded-full border border-rose-500/30 bg-rose-500/15 px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-rose-300">
+      <div className="flex flex-1 overflow-hidden">
+        <aside className="flex w-[360px] shrink-0 flex-col overflow-y-auto border-r border-zinc-800 bg-zinc-950">
+          <div className="border-b border-zinc-800 p-4">
+            <span className="inline-block rounded-full border border-rose-500/30 bg-rose-500/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-rose-300">
               Heavi Hazard
             </span>
-            <h1 className="mt-3 text-3xl font-bold text-white">
-              Natural hazard intelligence for investment decisions
-            </h1>
-            <p className="mt-2 max-w-2xl text-sm leading-relaxed text-zinc-400">
-              For CRE acquisition teams, commercial lenders, property managers, and
-              institutional investors evaluating natural-hazard exposure for properties
-              or portfolios. Audit-grade methodology documentation suitable for LP,
-              board, and lender review.
+            <h1 className="mt-2 text-lg font-bold text-white">Wildfire + flood assessment</h1>
+            <p className="mt-1 text-[11px] leading-relaxed text-zinc-400">
+              Combined per-peril risk · color-coded by risk tier · toggle FEMA flood zones.
             </p>
           </div>
 
-          {/* Combined v2 assessment (wildfire + flood + confidence) */}
-          <div className="mb-6">
-            <HazardV2Panel />
-          </div>
+          <form onSubmit={assess} className="space-y-3 border-b border-zinc-800 p-4">
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500">Assess a property</p>
+            <input value={addr} onChange={(e) => setAddr(e.target.value)} placeholder="address or lat, lng"
+              className="w-full rounded-md border border-zinc-700 bg-zinc-900 px-2 py-1.5 text-sm text-zinc-100" />
+            <button type="submit" disabled={loading}
+              className="w-full rounded-md bg-blue-600 px-3 py-2 text-sm font-semibold text-white transition hover:bg-blue-500 disabled:opacity-40">
+              {loading ? "Assessing…" : "Assess"}
+            </button>
+            {error && <p className="rounded-md border border-red-900/50 bg-red-950/40 px-2 py-1.5 text-[11px] text-red-300">{error}</p>}
+            <p className="text-[10px] text-zinc-600">Portfolio CSV → <Link href="/portfolio" className="hover:text-zinc-400">portfolio workflow →</Link></p>
+          </form>
 
-          {/* Per-hazard cards */}
-          <div className="grid grid-cols-1 gap-4">
-            {HAZARDS.map((h) => (
-              <div
-                key={h.id}
-                className="rounded-lg border border-zinc-800 bg-zinc-900 p-5 transition hover:border-zinc-700"
-              >
-                <div className="flex flex-wrap items-baseline justify-between gap-3">
-                  <h2 className="text-lg font-semibold text-white">{h.title}</h2>
-                  <span className="text-[11px] text-zinc-500">{h.validation}</span>
-                </div>
-                <p className="mt-2 text-sm leading-relaxed text-zinc-300">{h.blurb}</p>
-                <div className="mt-4 flex flex-wrap gap-2">
-                  <Link
-                    href={h.href}
-                    className="rounded-md bg-blue-600 px-3.5 py-2 text-sm font-medium text-white transition hover:bg-blue-500"
-                  >
-                    {h.cta} →
-                  </Link>
-                </div>
-              </div>
-            ))}
+          <div className="flex-1 p-4">
+            {selected ? (
+              <HazardDetail r={selected} />
+            ) : (
+              <p className="text-[11px] text-zinc-500">
+                {order.length > 0 ? "Click a property marker to inspect its hazard assessment." : "Assess a property to see it on the map."}
+              </p>
+            )}
           </div>
+        </aside>
 
-          {/* Portfolio panel */}
-          <div className="mt-6 rounded-lg border border-zinc-800 bg-zinc-900/60 p-5">
-            <p className="text-[10px] font-semibold uppercase tracking-wider text-zinc-400">
-              Portfolio
-            </p>
-            <p className="mt-2 text-sm text-zinc-300">
-              Upload a CSV of properties for multi-hazard portfolio assessment with
-              aggregate analytics, methodology documentation, and audit-ready PDF
-              export.
-            </p>
-            <Link
-              href="/portfolio"
-              className="mt-3 inline-block rounded-md border border-zinc-700 px-3.5 py-2 text-sm font-medium text-zinc-200 transition hover:border-zinc-500 hover:bg-zinc-800"
-            >
-              Open portfolio workflow →
-            </Link>
-          </div>
-
-          {/* Methodology + confidence guarantee */}
-          <div className="mt-8 rounded-md border border-rose-500/20 bg-rose-500/5 p-4 text-xs leading-relaxed text-zinc-300">
-            <p className="font-semibold text-rose-300">Every output includes</p>
-            <ul className="mt-1.5 space-y-0.5 text-[12px]">
-              <li>• Confidence tier (HIGH / MODERATE / LOW / INSUFFICIENT) and composite confidence</li>
-              <li>• Per-criterion quality (which source was used, why)</li>
-              <li>• Methodology documentation (framework citations + academic sources)</li>
-              <li>• Data gaps surfaced as first-class output, not footnotes</li>
-            </ul>
-          </div>
+        <div className="relative flex-1">
+          <HeaviMap
+            center={[-122.7144, 38.4405]}
+            zoom={9}
+            scoredFeatures={features}
+            scoreColorScale="risk"
+            constraints={HAZARD_CONSTRAINTS}
+            onFeatureClick={(f) => setSelectedFid((f.properties?.fid as string) ?? null)}
+            selectedFid={selectedFid}
+          />
         </div>
-      </main>
+      </div>
     </div>
   );
 }

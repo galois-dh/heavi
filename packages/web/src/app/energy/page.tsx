@@ -1,131 +1,145 @@
 "use client";
 
-import { type FormEvent, useCallback, useState } from "react";
+import { type FormEvent, useCallback, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { TopNav } from "../../components/top-nav";
-import { ConfidencePanel } from "../../components/confidence-panel";
+import { HeaviMap } from "../../components/heavi-map";
+import { EnergyDetail } from "../../components/map-detail-panels";
 import { postSolarScoreV2, type SolarScoreV2 } from "../../lib/api";
+import { ENERGY_CONSTRAINTS, fc, solarFeature } from "../../lib/map-features";
 
 /**
- * Heavi Energy — site screening for renewable development.
+ * Heavi Energy — map-first site screening (Map Interface Spec, Step 6).
  *
- * Workflow: enter a coordinate → POST /solar/score-v2 (the Phase 4 scoring
- * pipeline that consumes the data-selection-engine output) → render the
- * ConfidencePanel (Phase 5 component). Confidence tier + composite are
- * surfaced at the top of the result, methodology documentation is
- * accessible from the same panel — exactly the Phase 5 acceptance criteria.
+ * Left sidebar: input form (single site or CSV of candidate parcels) + the
+ * detail panel that slides in on marker click. Map: scored parcels color-coded
+ * by suitability, with toggleable constraint overlays.
  */
 export default function EnergyProductPage() {
   const [latText, setLatText] = useState("35.35");
   const [lngText, setLngText] = useState("-119.05");
-  const [result, setResult] = useState<SolarScoreV2 | null>(null);
+  const [results, setResults] = useState<Record<string, SolarScoreV2>>({});
+  const [order, setOrder] = useState<string[]>([]);
+  const [selectedFid, setSelectedFid] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const counter = useRef(0);
+
+  const addResult = useCallback((r: SolarScoreV2) => {
+    const fid = `s${counter.current++}`;
+    setResults((prev) => ({ ...prev, [fid]: r }));
+    setOrder((prev) => [...prev, fid]);
+    setSelectedFid(fid);
+    return fid;
+  }, []);
+
+  const scoreOne = useCallback(async (lat: number, lng: number) => {
+    const r = await postSolarScoreV2({ latitude: lat, longitude: lng });
+    addResult(r);
+  }, [addResult]);
 
   const onSubmit = useCallback(async (e: FormEvent) => {
     e.preventDefault();
-    const lat = Number(latText);
-    const lng = Number(lngText);
-    if (Number.isNaN(lat) || Number.isNaN(lng)) {
-      setError("Latitude and longitude must be numbers.");
-      return;
-    }
-    setLoading(true);
-    setError(null);
+    const lat = Number(latText), lng = Number(lngText);
+    if (Number.isNaN(lat) || Number.isNaN(lng)) { setError("Latitude and longitude must be numbers."); return; }
+    setLoading(true); setError(null);
+    try { await scoreOne(lat, lng); }
+    catch (err) { setError(err instanceof Error ? err.message : "Scoring failed"); }
+    finally { setLoading(false); }
+  }, [latText, lngText, scoreOne]);
+
+  const onCsv = useCallback(async (file: File) => {
+    setLoading(true); setError(null);
     try {
-      const r = await postSolarScoreV2({ latitude: lat, longitude: lng });
-      setResult(r);
+      const text = await file.text();
+      const coords: [number, number][] = [];
+      for (const line of text.split(/\r?\n/)) {
+        const m = line.match(/(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)/);
+        if (m) {
+          const lat = parseFloat(m[1]), lng = parseFloat(m[2]);
+          if (Math.abs(lat) <= 90 && Math.abs(lng) <= 180) coords.push([lat, lng]);
+        }
+      }
+      if (!coords.length) { setError("No 'lat,lng' rows found in CSV."); return; }
+      // Score sequentially (each site is its own scoring call).
+      for (const [lat, lng] of coords.slice(0, 25)) {
+        try { await scoreOne(lat, lng); } catch { /* skip a failed row */ }
+      }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Scoring failed");
-    } finally {
-      setLoading(false);
-    }
-  }, [latText, lngText]);
+      setError(err instanceof Error ? err.message : "CSV scoring failed");
+    } finally { setLoading(false); }
+  }, [scoreOne]);
+
+  const features = useMemo(
+    () => fc(order.map((fid) => solarFeature(fid, results[fid]))),
+    [order, results],
+  );
+  const selected = selectedFid ? results[selectedFid] : null;
 
   return (
     <div className="flex h-full flex-col">
       <TopNav active="energy" />
-
-      <main className="flex flex-1 flex-col overflow-y-auto px-6 py-8">
-        <div className="mx-auto w-full max-w-4xl">
-          {/* Product hero */}
-          <div className="mb-8">
-            <span className="inline-block rounded-full border border-amber-500/30 bg-amber-500/15 px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-amber-300">
+      <div className="flex flex-1 overflow-hidden">
+        {/* Left sidebar */}
+        <aside className="flex w-[360px] shrink-0 flex-col overflow-y-auto border-r border-zinc-800 bg-zinc-950">
+          <div className="border-b border-zinc-800 p-4">
+            <span className="inline-block rounded-full border border-amber-500/30 bg-amber-500/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-amber-300">
               Heavi Energy
             </span>
-            <h1 className="mt-3 text-3xl font-bold text-white">
-              Site screening for renewable development
-            </h1>
-            <p className="mt-2 max-w-2xl text-sm leading-relaxed text-zinc-400">
-              For VP of Site Origination, Director of Development, GIS Analyst at
-              renewable energy developers (solar, wind, battery storage, data centers).
-              Calibrated against EIA Form 860 installations · validated in Kern County
-              at 97.7%. Methodology documentation attached to every output.
+            <h1 className="mt-2 text-lg font-bold text-white">Solar site screening</h1>
+            <p className="mt-1 text-[11px] leading-relaxed text-zinc-400">
+              Score parcels on suitability · view results on the map · toggle constraint layers.
             </p>
-            <div className="mt-3 text-[11px] text-zinc-500">
-              Workflows: solar suitability · environmental screening ·{" "}
-              <Link href="/portfolio" className="hover:text-zinc-300">batch CSV upload →</Link>
-            </div>
           </div>
 
-          {/* Scoring form */}
-          <form
-            onSubmit={onSubmit}
-            className="rounded-lg border border-zinc-800 bg-zinc-900 p-5"
-          >
-            <p className="text-[10px] font-semibold uppercase tracking-wider text-zinc-400">
-              Score a single site
-            </p>
-            <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-3">
-              <div>
-                <label className="block text-[10px] uppercase tracking-wider text-zinc-500">Latitude</label>
-                <input
-                  value={latText}
-                  onChange={(e) => setLatText(e.target.value)}
-                  className="mt-1 w-full rounded-md border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-zinc-100 focus:border-blue-500 focus:outline-none"
-                />
-              </div>
-              <div>
-                <label className="block text-[10px] uppercase tracking-wider text-zinc-500">Longitude</label>
-                <input
-                  value={lngText}
-                  onChange={(e) => setLngText(e.target.value)}
-                  className="mt-1 w-full rounded-md border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-zinc-100 focus:border-blue-500 focus:outline-none"
-                />
-              </div>
-              <div className="flex items-end">
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="w-full rounded-md bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-500 disabled:opacity-40"
-                >
-                  {loading ? "Scoring…" : "Score this site"}
-                </button>
-              </div>
+          <form onSubmit={onSubmit} className="space-y-3 border-b border-zinc-800 p-4">
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500">Score a site</p>
+            <div className="grid grid-cols-2 gap-2">
+              <input value={latText} onChange={(e) => setLatText(e.target.value)} placeholder="lat"
+                className="rounded-md border border-zinc-700 bg-zinc-900 px-2 py-1.5 text-sm text-zinc-100" />
+              <input value={lngText} onChange={(e) => setLngText(e.target.value)} placeholder="lng"
+                className="rounded-md border border-zinc-700 bg-zinc-900 px-2 py-1.5 text-sm text-zinc-100" />
             </div>
-            <p className="mt-2 text-[11px] text-zinc-500">
-              Calls POST /solar/score-v2 — 8 scored + 6 exclusion criteria from the methodology
-              repository, each computed from the source the data-selection engine picked.
-            </p>
+            <button type="submit" disabled={loading}
+              className="w-full rounded-md bg-blue-600 px-3 py-2 text-sm font-semibold text-white transition hover:bg-blue-500 disabled:opacity-40">
+              {loading ? "Scoring…" : "Score this site"}
+            </button>
+            <label className="block cursor-pointer rounded-md border border-dashed border-zinc-700 px-3 py-2 text-center text-[11px] text-zinc-400 hover:border-zinc-500">
+              Upload CSV of parcels (lat,lng per row)
+              <input type="file" accept=".csv,text/csv,text/plain" className="hidden"
+                onChange={(e) => { const f = e.target.files?.[0]; if (f) onCsv(f); e.target.value = ""; }} />
+            </label>
+            {error && <p className="rounded-md border border-red-900/50 bg-red-950/40 px-2 py-1.5 text-[11px] text-red-300">{error}</p>}
           </form>
 
-          {error && (
-            <div className="mt-4 rounded-md border border-red-900/50 bg-red-950/40 px-4 py-2 text-xs text-red-300">
-              {error}
-            </div>
-          )}
-
-          {/* Results — confidence is first-class (Phase 5 acceptance criterion #3) */}
-          {result && (
-            <div className="mt-8">
-              <p className="mb-3 text-[10px] uppercase tracking-wider text-zinc-500">
-                Result · {result.query.latitude.toFixed(4)}, {result.query.longitude.toFixed(4)}
+          {/* Detail panel — appears on marker selection */}
+          <div className="flex-1 p-4">
+            {selected ? (
+              <EnergyDetail r={selected} />
+            ) : (
+              <p className="text-[11px] text-zinc-500">
+                {order.length > 0 ? "Click a marker to inspect its assessment." : "Score a site to see it on the map."}
               </p>
-              <ConfidencePanel result={result} />
-            </div>
-          )}
+            )}
+            {order.length > 1 && (
+              <p className="mt-3 text-[10px] text-zinc-600">{order.length} sites scored · <Link href="/portfolio" className="hover:text-zinc-400">portfolio →</Link></p>
+            )}
+          </div>
+        </aside>
+
+        {/* Map */}
+        <div className="relative flex-1">
+          <HeaviMap
+            center={[-119.05, 35.35]}
+            zoom={9}
+            scoredFeatures={features}
+            scoreColorScale="suitability"
+            constraints={ENERGY_CONSTRAINTS}
+            onFeatureClick={(f) => setSelectedFid((f.properties?.fid as string) ?? null)}
+            selectedFid={selectedFid}
+          />
         </div>
-      </main>
+      </div>
     </div>
   );
 }

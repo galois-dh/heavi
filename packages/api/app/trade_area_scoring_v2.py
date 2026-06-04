@@ -115,6 +115,7 @@ async def _overpass_counts(
         return None
     exact_set = set(exact)
     competitors = complementary = 0
+    competitor_pois: list[dict[str, float]] = []
     for el in elements:
         tags = el.get("tags") or {}
         cats = {f"{k}:{v}" for k, v in tags.items() if k in ("amenity", "shop")}
@@ -123,13 +124,46 @@ async def _overpass_counts(
         )
         if is_comp:
             competitors += 1
+            lat = el.get("lat") or (el.get("center") or {}).get("lat")
+            lng = el.get("lon") or (el.get("center") or {}).get("lon")
+            if lat is not None and lng is not None and len(competitor_pois) < 300:
+                competitor_pois.append({"latitude": float(lat), "longitude": float(lng)})
         else:
             complementary += 1
     return {
         "competitor_count": competitors,
         "complementary_count": complementary,
         "total_pois": competitors + complementary,
+        "competitor_pois": competitor_pois,
     }
+
+
+async def _dallas_competitor_pois(
+    pool: asyncpg.Pool, iso_geom: dict[str, Any] | None,
+    business_category: str, custom_categories: list[str] | None,
+) -> list[dict[str, float]]:
+    """Same-category competitor POI points within the 10-min isochrone (Dallas
+    PostGIS cache) — for the map's competitor markers."""
+    if not iso_geom:
+        return []
+    import json
+    exact, prefix = ta.category_match(business_category, custom_categories)
+    try:
+        async with pool.acquire() as conn:
+            rows = await conn.fetch(
+                """
+                WITH iso AS (SELECT ST_SetSRID(ST_GeomFromGeoJSON($1), 4326) AS g)
+                SELECT ST_Y(p.geometry) AS lat, ST_X(p.geometry) AS lng
+                FROM trade_area_pois_dallas p, iso
+                WHERE ST_Within(p.geometry, iso.g)
+                  AND (p.category = ANY($2::text[]) OR p.category LIKE ANY($3::text[]))
+                LIMIT 500
+                """,
+                json.dumps(iso_geom), exact, prefix,
+            )
+    except Exception:  # noqa: BLE001
+        return []
+    return [{"latitude": float(r["lat"]), "longitude": float(r["lng"])} for r in rows]
 
 
 async def _national_fallback(
@@ -178,6 +212,7 @@ async def _national_fallback(
         "criteria_scores": crit,
         "scored_over_weight_fraction": round(wsum, 3),
         "competitive_analysis": competitive,
+        "competitor_pois": (counts or {}).get("competitor_pois", []),
         "in_flood_zone": in_sfha,
         "flood_zone": flood_zone,
         "coverage_gaps": coverage_gaps,
@@ -226,6 +261,12 @@ async def score_trade_area_v2(
             existing_locations=existing_locations,
             address=address, resolved_address=resolved_address,
         )
+        # Competitor POI points within the 10-min isochrone (for the map markers).
+        rings = full.get("trade_area_rings") or []
+        iso10 = next((r.get("isochrone") for r in rings
+                      if abs((r.get("drive_time_minutes") or 0) - 10) <= 3), None)
+        competitor_pois = await _dallas_competitor_pois(
+            pool, iso10, business_category, custom_categories) if iso10 else []
         base = {
             "coverage": "full",
             "suitability_score": full["suitability_score"],
@@ -234,6 +275,7 @@ async def score_trade_area_v2(
             "competitive_analysis": full["competitive_analysis"],
             "cannibalization": full.get("cannibalization"),
             "trade_area_rings": full["trade_area_rings"],
+            "competitor_pois": competitor_pois,
             "geography": full.get("geography"),
             "natural_language_summary": full.get("natural_language_summary"),
         }

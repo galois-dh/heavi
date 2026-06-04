@@ -12,6 +12,10 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response
 from pydantic import BaseModel
 
+from .constraints import (
+    SUPPORTED_LAYERS as CONSTRAINT_LAYERS,
+    get_constraint_geojson,
+)
 from .data_repository import get_source_availability, get_sources_for_workflow
 from .data_repository_check import check_source_availability
 from .data_selection import select_data
@@ -259,6 +263,26 @@ async def data_selection_endpoint(
         raise HTTPException(503, "Database pool not initialized")
     result = await select_data(pool, workflow, lat, lng)
     return result.to_dict()
+
+
+@app.get("/constraints/{layer_id}")
+async def constraints_endpoint(
+    layer_id: str, bbox: str, limit: int = 5000,
+) -> dict:
+    """Map Interface — GeoJSON for a constraint layer within a bounding box.
+    `bbox` is 'west,south,east,north' (WGS84). PostGIS layers (transmission,
+    substations, eia_solar, nwi) query directly; REST layers (padus, nfhl) are
+    proxied to ArcGIS as geojson. Loaded on-demand by the map as the viewport
+    changes."""
+    if not pool:
+        raise HTTPException(503, "Database pool not initialized")
+    if layer_id not in CONSTRAINT_LAYERS:
+        raise HTTPException(
+            404, f"Unknown constraint layer '{layer_id}'. Supported: {CONSTRAINT_LAYERS}")
+    try:
+        return await get_constraint_geojson(pool, layer_id, bbox, limit)
+    except ValueError as e:
+        raise HTTPException(400, str(e))
 
 
 @app.get("/methodology/{workflow_type}/sources")

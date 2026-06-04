@@ -1,99 +1,152 @@
+"use client";
+
+import { type FormEvent, useCallback, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { TopNav } from "../../components/top-nav";
-import { TradeAreaV2Panel } from "../../components/trade-area-v2-panel";
+import { HeaviMap, type MapOverlay } from "../../components/heavi-map";
+import { LocationsDetail } from "../../components/map-detail-panels";
+import { postTradeAreaScoreV2, type TradeAreaScoreV2 } from "../../lib/api";
+import { LOCATIONS_CONSTRAINTS, fc, tradeAreaFeature } from "../../lib/map-features";
 
+const CATEGORIES = ["coffee_shop", "pharmacy", "restaurant", "fast_food", "bank", "gym", "grocery", "urgent_care"];
+
+/**
+ * Heavi Locations — map-first trade-area scoring (Map Interface Spec, Step 8).
+ * Score a site → marker color-coded by trade-area score, isochrone polygons
+ * (5/10/15 min graduated opacity) and competitor POIs overlaid, detail panel
+ * with demographics + competitive analysis + data provenance.
+ */
 export default function LocationsProductPage() {
+  const [addr, setAddr] = useState("32.78, -96.80");
+  const [category, setCategory] = useState("coffee_shop");
+  const [results, setResults] = useState<Record<string, TradeAreaScoreV2>>({});
+  const [order, setOrder] = useState<string[]>([]);
+  const [selectedFid, setSelectedFid] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const counter = useRef(0);
+
+  const score = useCallback(async (e: FormEvent) => {
+    e.preventDefault();
+    setLoading(true); setError(null);
+    try {
+      const m = addr.trim().match(/^\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\s*$/);
+      const loc = m ? { latitude: parseFloat(m[1]), longitude: parseFloat(m[2]) } : { address: addr.trim() };
+      const r = await postTradeAreaScoreV2({ ...loc, business_category: category });
+      const fid = `t${counter.current++}`;
+      setResults((prev) => ({ ...prev, [fid]: r }));
+      setOrder((prev) => [...prev, fid]);
+      setSelectedFid(fid);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Scoring failed");
+    } finally { setLoading(false); }
+  }, [addr, category]);
+
+  const features = useMemo(() => fc(order.map((fid) => tradeAreaFeature(fid, results[fid]))), [order, results]);
+  const selected = selectedFid ? results[selectedFid] : null;
+
+  // Isochrone polygons (graduated opacity by drive time) + competitor POIs for
+  // the selected site.
+  const overlays = useMemo<MapOverlay[]>(() => {
+    if (!selected) return [];
+    const out: MapOverlay[] = [];
+    const rings = selected.trade_area_rings ?? [];
+    const isoFeatures: GeoJSON.Feature[] = [];
+    for (const r of rings) {
+      const geom = r.isochrone as GeoJSON.Geometry | undefined;
+      const minutes = (r.drive_time_minutes as number) ?? 0;
+      if (geom) isoFeatures.push({ type: "Feature", geometry: geom, properties: { minutes } });
+    }
+    if (isoFeatures.length) {
+      out.push({
+        id: "isochrones",
+        geojson: fc(isoFeatures),
+        type: "fill",
+        paint: {
+          "fill-color": "#06b6d4",
+          // 5 min darkest → 15 min lightest (graduated opacity).
+          "fill-opacity": ["match", ["get", "minutes"], 5, 0.28, 10, 0.18, 15, 0.1, 0.15],
+        },
+      });
+      out.push({
+        id: "isochrone-lines",
+        geojson: fc(isoFeatures),
+        type: "line",
+        paint: { "line-color": "#06b6d4", "line-width": 1, "line-opacity": 0.5 },
+      });
+    }
+    const pois = selected.competitor_pois ?? [];
+    if (pois.length) {
+      out.push({
+        id: "competitor-pois",
+        geojson: fc(pois.map((p) => ({
+          type: "Feature", geometry: { type: "Point", coordinates: [p.longitude, p.latitude] }, properties: {},
+        }))),
+        type: "circle",
+        paint: {
+          "circle-radius": 3, "circle-color": "#ef4444",
+          "circle-stroke-color": "#0b0b0c", "circle-stroke-width": 0.5, "circle-opacity": 0.85,
+        },
+      });
+    }
+    return out;
+  }, [selected]);
+
   return (
     <div className="flex h-full flex-col">
       <TopNav active="locations" />
-
-      <main className="flex flex-1 flex-col overflow-y-auto px-6 py-8">
-        <div className="mx-auto w-full max-w-4xl">
-          {/* Product hero */}
-          <div className="mb-8">
-            <span className="inline-block rounded-full border border-emerald-500/30 bg-emerald-500/15 px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-emerald-300">
+      <div className="flex flex-1 overflow-hidden">
+        <aside className="flex w-[360px] shrink-0 flex-col overflow-y-auto border-r border-zinc-800 bg-zinc-950">
+          <div className="border-b border-zinc-800 p-4">
+            <span className="inline-block rounded-full border border-emerald-500/30 bg-emerald-500/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-emerald-300">
               Heavi Locations
             </span>
-            <h1 className="mt-3 text-3xl font-bold text-white">
-              Trade area & site intelligence
-            </h1>
-            <p className="mt-2 max-w-2xl text-sm leading-relaxed text-zinc-400">
-              For real-estate expansion teams at retail chains, QSR, healthcare systems,
-              bank-branch networks, and logistics companies. Huff gravity-model trade-area
-              analysis with documented methodology, validated against Dallas Starbucks at 96.7%.
+            <h1 className="mt-2 text-lg font-bold text-white">Trade area scoring</h1>
+            <p className="mt-1 text-[11px] leading-relaxed text-zinc-400">
+              Drive-time isochrones · competitive density · color-coded by trade-area score.
             </p>
           </div>
 
-          {/* Methodology framework */}
-          <div className="rounded-lg border border-zinc-800 bg-zinc-900 p-5">
-            <p className="text-[10px] font-semibold uppercase tracking-wider text-emerald-300">
-              Methodology framework
-            </p>
-            <ul className="mt-3 space-y-1.5 text-[12px] leading-relaxed text-zinc-300">
-              <li>
-                <span className="text-zinc-100">Huff (1963, 1964)</span>
-                <span className="text-zinc-500"> — gravity model for trade area delineation</span>
-              </li>
-              <li>
-                <span className="text-zinc-100">Suárez-Vega et al. (2015)</span>
-                <span className="text-zinc-500"> — multi-criteria extension with competitive density</span>
-              </li>
-              <li>
-                <span className="text-zinc-100">Liang et al. (2020)</span>
-                <span className="text-zinc-500"> — modern Huff calibration via mobile-phone data</span>
-              </li>
-              <li>
-                <span className="text-zinc-100">Luo & Wang (2003)</span>
-                <span className="text-zinc-500"> — two-step floating catchment area (healthcare)</span>
-              </li>
-            </ul>
-          </div>
+          <form onSubmit={score} className="space-y-3 border-b border-zinc-800 p-4">
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500">Score a site</p>
+            <input value={addr} onChange={(e) => setAddr(e.target.value)} placeholder="address or lat, lng"
+              className="w-full rounded-md border border-zinc-700 bg-zinc-900 px-2 py-1.5 text-sm text-zinc-100" />
+            <select value={category} onChange={(e) => setCategory(e.target.value)}
+              className="w-full rounded-md border border-zinc-700 bg-zinc-900 px-2 py-1.5 text-sm text-zinc-100">
+              {CATEGORIES.map((c) => <option key={c} value={c}>{c.replace("_", " ")}</option>)}
+            </select>
+            <button type="submit" disabled={loading}
+              className="w-full rounded-md bg-emerald-600 px-3 py-2 text-sm font-semibold text-white transition hover:bg-emerald-500 disabled:opacity-40">
+              {loading ? "Scoring…" : "Score"}
+            </button>
+            {error && <p className="rounded-md border border-red-900/50 bg-red-950/40 px-2 py-1.5 text-[11px] text-red-300">{error}</p>}
+            <p className="text-[10px] text-zinc-600">Full coverage in Dallas County · <Link href="/trade-area" className="hover:text-zinc-400">advanced workflow →</Link></p>
+          </form>
 
-          {/* Inline v2 trade-area score (selection-engine confidence) */}
-          <TradeAreaV2Panel />
-
-          {/* CTAs */}
-          <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2">
-            <div className="rounded-lg border border-zinc-800 bg-zinc-900 p-5">
-              <h2 className="text-base font-semibold text-white">Score a candidate site</h2>
-              <p className="mt-1.5 text-xs leading-relaxed text-zinc-400">
-                Drive-time isochrones · Census ACS demographics · competitive density ·
-                cannibalization detection. Per-site rating with documented rationale.
+          <div className="flex-1 p-4">
+            {selected ? (
+              <LocationsDetail r={selected} />
+            ) : (
+              <p className="text-[11px] text-zinc-500">
+                {order.length > 0 ? "Click a site marker to inspect its trade area." : "Score a site to see it on the map."}
               </p>
-              <Link
-                href="/trade-area"
-                className="mt-4 inline-block rounded-md bg-blue-600 px-3.5 py-2 text-sm font-medium text-white transition hover:bg-blue-500"
-              >
-                Open trade-area workflow →
-              </Link>
-            </div>
-
-            <div className="rounded-lg border border-zinc-800 bg-zinc-900 p-5">
-              <h2 className="text-base font-semibold text-white">Compare multiple sites</h2>
-              <p className="mt-1.5 text-xs leading-relaxed text-zinc-400">
-                Multi-criteria suitability across uploaded candidate sites. Score each on
-                shared criteria, ranked output, methodology attached.
-              </p>
-              <Link
-                href="/suitability"
-                className="mt-4 inline-block rounded-md border border-zinc-700 px-3.5 py-2 text-sm font-medium text-zinc-200 transition hover:border-zinc-500 hover:bg-zinc-800"
-              >
-                Open suitability comparison →
-              </Link>
-            </div>
+            )}
           </div>
+        </aside>
 
-          <div className="mt-8 rounded-md border border-emerald-500/20 bg-emerald-500/5 p-4 text-xs leading-relaxed text-zinc-300">
-            <p className="font-semibold text-emerald-300">Every output includes</p>
-            <ul className="mt-1.5 space-y-0.5 text-[12px]">
-              <li>• Confidence tier and composite confidence</li>
-              <li>• Per-criterion data quality and provenance</li>
-              <li>• Methodology documentation with academic citations</li>
-              <li>• Data gaps surfaced as first-class output</li>
-            </ul>
-          </div>
+        <div className="relative flex-1">
+          <HeaviMap
+            center={[-96.80, 32.78]}
+            zoom={11}
+            scoredFeatures={features}
+            scoreColorScale="tradearea"
+            constraints={LOCATIONS_CONSTRAINTS}
+            overlays={overlays}
+            onFeatureClick={(f) => setSelectedFid((f.properties?.fid as string) ?? null)}
+            selectedFid={selectedFid}
+          />
         </div>
-      </main>
+      </div>
     </div>
   );
 }
