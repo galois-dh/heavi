@@ -19,6 +19,7 @@ from .constraints import (
 from .data_repository import get_source_availability, get_sources_for_workflow
 from .data_repository_check import check_source_availability
 from .data_selection import select_data
+from .geocoding import geocode as geocode_query
 from .decision_trail import RequestContext, persist_trail
 from .earthquake_scoring import assess_earthquake_risk
 from .earthquake_scoring import methodology_doc as earthquake_methodology_doc
@@ -263,6 +264,21 @@ async def data_selection_endpoint(
         raise HTTPException(503, "Database pool not initialized")
     result = await select_data(pool, workflow, lat, lng)
     return result.to_dict()
+
+
+@app.get("/geocode")
+async def geocode_endpoint(q: str) -> dict:
+    """Resolve an address, place name, city/state, or raw lat,lng to coordinates.
+    Census Bureau geocoder first (single-match), Nominatim fallback. Raw
+    coordinates are returned without any external call (Month-1 Sprint F1)."""
+    result = await geocode_query(q)
+    if result is None:
+        raise HTTPException(
+            404,
+            "Could not find that location. Try a different address or enter "
+            "coordinates directly.",
+        )
+    return result
 
 
 @app.get("/constraints/{layer_id}")

@@ -5,7 +5,8 @@ import Link from "next/link";
 import { TopNav } from "../../components/top-nav";
 import { HeaviMap, type MapOverlay } from "../../components/heavi-map";
 import { LocationsDetail } from "../../components/map-detail-panels";
-import { postTradeAreaScoreV2, type TradeAreaScoreV2 } from "../../lib/api";
+import { GeocodeInput } from "../../components/geocode-input";
+import { postTradeAreaScoreV2, resolveLocation, type GeocodeResult, type TradeAreaScoreV2 } from "../../lib/api";
 import { LOCATIONS_CONSTRAINTS, fc, tradeAreaFeature } from "../../lib/map-features";
 
 const CATEGORIES = ["coffee_shop", "pharmacy", "restaurant", "fast_food", "bank", "gym", "grocery", "urgent_care"];
@@ -18,6 +19,7 @@ const CATEGORIES = ["coffee_shop", "pharmacy", "restaurant", "fast_food", "bank"
  */
 export default function LocationsProductPage() {
   const [addr, setAddr] = useState("32.78, -96.80");
+  const [resolved, setResolved] = useState<GeocodeResult | null>(null);
   const [category, setCategory] = useState("coffee_shop");
   const [results, setResults] = useState<Record<string, TradeAreaScoreV2>>({});
   const [order, setOrder] = useState<string[]>([]);
@@ -26,18 +28,20 @@ export default function LocationsProductPage() {
   const [error, setError] = useState<string | null>(null);
   const counter = useRef(0);
 
-  const score = useCallback(async (e: FormEvent) => {
-    e.preventDefault();
+  const score = useCallback(async (e?: FormEvent) => {
+    e?.preventDefault();
+    if (!addr.trim()) return;
     setLoading(true); setError(null);
     try {
-      const m = addr.trim().match(/^\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\s*$/);
-      const loc = m ? { latitude: parseFloat(m[1]), longitude: parseFloat(m[2]) } : { address: addr.trim() };
-      const r = await postTradeAreaScoreV2({ ...loc, business_category: category });
+      const g = await resolveLocation(addr);
+      setResolved(g);
+      const r = await postTradeAreaScoreV2({ latitude: g.latitude, longitude: g.longitude, business_category: category });
       const fid = `t${counter.current++}`;
       setResults((prev) => ({ ...prev, [fid]: r }));
       setOrder((prev) => [...prev, fid]);
       setSelectedFid(fid);
     } catch (err) {
+      setResolved(null);
       setError(err instanceof Error ? err.message : "Scoring failed");
     } finally { setLoading(false); }
   }, [addr, category]);
@@ -109,8 +113,7 @@ export default function LocationsProductPage() {
 
           <form onSubmit={score} className="space-y-3 border-b border-zinc-800 p-4">
             <p className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500">Score a site</p>
-            <input value={addr} onChange={(e) => setAddr(e.target.value)} placeholder="address or lat, lng"
-              className="w-full rounded-md border border-zinc-700 bg-zinc-900 px-2 py-1.5 text-sm text-zinc-100" />
+            <GeocodeInput value={addr} onChange={setAddr} onEnter={() => score()} resolved={resolved} error={error} />
             <select value={category} onChange={(e) => setCategory(e.target.value)}
               className="w-full rounded-md border border-zinc-700 bg-zinc-900 px-2 py-1.5 text-sm text-zinc-100">
               {CATEGORIES.map((c) => <option key={c} value={c}>{c.replace("_", " ")}</option>)}
@@ -119,7 +122,6 @@ export default function LocationsProductPage() {
               className="w-full rounded-md bg-emerald-600 px-3 py-2 text-sm font-semibold text-white transition hover:bg-emerald-500 disabled:opacity-40">
               {loading ? "Scoring…" : "Score"}
             </button>
-            {error && <p className="rounded-md border border-red-900/50 bg-red-950/40 px-2 py-1.5 text-[11px] text-red-300">{error}</p>}
             <p className="text-[10px] text-zinc-600">Full coverage in Dallas County · <Link href="/trade-area" className="hover:text-zinc-400">advanced workflow →</Link></p>
           </form>
 

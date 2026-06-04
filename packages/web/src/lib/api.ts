@@ -792,3 +792,41 @@ export async function postTradeAreaScoreV2(body: {
   }
   return res.json();
 }
+
+// ─── Geocoding (Month-1 Sprint, Feature 1) ─────────────────────────────────
+
+export interface GeocodeResult {
+  latitude: number;
+  longitude: number;
+  formatted_address: string;
+  source: "census" | "nominatim" | "coordinates";
+}
+
+// "35.35, -119.05" or "35.35 -119.05" — raw coordinate pair.
+const COORD_RE = /^\s*(-?\d{1,2}(?:\.\d+)?)\s*[, ]\s*(-?\d{1,3}(?:\.\d+)?)\s*$/;
+
+/** Resolve an address / place name / city-state / raw coords to coordinates.
+ *  Raw coordinates are detected client-side and returned WITHOUT any /geocode
+ *  call (AC3); everything else hits GET /geocode (Census → Nominatim). */
+export async function resolveLocation(input: string): Promise<GeocodeResult> {
+  const q = input.trim();
+  const m = q.match(COORD_RE);
+  if (m) {
+    const lat = parseFloat(m[1]);
+    const lng = parseFloat(m[2]);
+    if (Math.abs(lat) <= 90 && Math.abs(lng) <= 180) {
+      return {
+        latitude: lat, longitude: lng,
+        formatted_address: `${lat.toFixed(5)}, ${lng.toFixed(5)}`,
+        source: "coordinates",
+      };
+    }
+  }
+  const res = await fetch(`${API_BASE}/geocode?q=${encodeURIComponent(q)}`);
+  if (!res.ok) {
+    throw new Error(
+      "Could not find that location. Try a different address or enter coordinates directly.",
+    );
+  }
+  return res.json();
+}

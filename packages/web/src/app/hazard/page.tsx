@@ -5,7 +5,8 @@ import Link from "next/link";
 import { TopNav } from "../../components/top-nav";
 import { HeaviMap } from "../../components/heavi-map";
 import { HazardDetail } from "../../components/map-detail-panels";
-import { postHazardScoreV2, type HazardScoreV2 } from "../../lib/api";
+import { GeocodeInput } from "../../components/geocode-input";
+import { postHazardScoreV2, resolveLocation, type GeocodeResult, type HazardScoreV2 } from "../../lib/api";
 import { HAZARD_CONSTRAINTS, fc, hazardFeature } from "../../lib/map-features";
 
 /**
@@ -15,6 +16,7 @@ import { HAZARD_CONSTRAINTS, fc, hazardFeature } from "../../lib/map-features";
  */
 export default function HazardProductPage() {
   const [addr, setAddr] = useState("38.4405, -122.7144");
+  const [resolved, setResolved] = useState<GeocodeResult | null>(null);
   const [results, setResults] = useState<Record<string, HazardScoreV2>>({});
   const [order, setOrder] = useState<string[]>([]);
   const [selectedFid, setSelectedFid] = useState<string | null>(null);
@@ -29,14 +31,16 @@ export default function HazardProductPage() {
     setSelectedFid(fid);
   }, []);
 
-  const assess = useCallback(async (e: FormEvent) => {
-    e.preventDefault();
+  const assess = useCallback(async (e?: FormEvent) => {
+    e?.preventDefault();
+    if (!addr.trim()) return;
     setLoading(true); setError(null);
     try {
-      const m = addr.trim().match(/^\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\s*$/);
-      const body = m ? { latitude: parseFloat(m[1]), longitude: parseFloat(m[2]) } : { address: addr.trim() };
-      addResult(await postHazardScoreV2(body));
+      const g = await resolveLocation(addr);
+      setResolved(g);
+      addResult(await postHazardScoreV2({ latitude: g.latitude, longitude: g.longitude }));
     } catch (err) {
+      setResolved(null);
       setError(err instanceof Error ? err.message : "Assessment failed");
     } finally { setLoading(false); }
   }, [addr, addResult]);
@@ -61,13 +65,11 @@ export default function HazardProductPage() {
 
           <form onSubmit={assess} className="space-y-3 border-b border-zinc-800 p-4">
             <p className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500">Assess a property</p>
-            <input value={addr} onChange={(e) => setAddr(e.target.value)} placeholder="address or lat, lng"
-              className="w-full rounded-md border border-zinc-700 bg-zinc-900 px-2 py-1.5 text-sm text-zinc-100" />
+            <GeocodeInput value={addr} onChange={setAddr} onEnter={() => assess()} resolved={resolved} error={error} />
             <button type="submit" disabled={loading}
               className="w-full rounded-md bg-blue-600 px-3 py-2 text-sm font-semibold text-white transition hover:bg-blue-500 disabled:opacity-40">
               {loading ? "Assessing…" : "Assess"}
             </button>
-            {error && <p className="rounded-md border border-red-900/50 bg-red-950/40 px-2 py-1.5 text-[11px] text-red-300">{error}</p>}
             <p className="text-[10px] text-zinc-600">Portfolio CSV → <Link href="/portfolio" className="hover:text-zinc-400">portfolio workflow →</Link></p>
           </form>
 

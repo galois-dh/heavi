@@ -5,7 +5,8 @@ import Link from "next/link";
 import { TopNav } from "../../components/top-nav";
 import { HeaviMap } from "../../components/heavi-map";
 import { EnergyDetail } from "../../components/map-detail-panels";
-import { postSolarScoreV2, type SolarScoreV2 } from "../../lib/api";
+import { GeocodeInput } from "../../components/geocode-input";
+import { postSolarScoreV2, resolveLocation, type GeocodeResult, type SolarScoreV2 } from "../../lib/api";
 import { ENERGY_CONSTRAINTS, fc, solarFeature } from "../../lib/map-features";
 
 /**
@@ -16,8 +17,8 @@ import { ENERGY_CONSTRAINTS, fc, solarFeature } from "../../lib/map-features";
  * by suitability, with toggleable constraint overlays.
  */
 export default function EnergyProductPage() {
-  const [latText, setLatText] = useState("35.35");
-  const [lngText, setLngText] = useState("-119.05");
+  const [query, setQuery] = useState("35.35, -119.05");
+  const [resolved, setResolved] = useState<GeocodeResult | null>(null);
   const [results, setResults] = useState<Record<string, SolarScoreV2>>({});
   const [order, setOrder] = useState<string[]>([]);
   const [selectedFid, setSelectedFid] = useState<string | null>(null);
@@ -38,15 +39,19 @@ export default function EnergyProductPage() {
     addResult(r);
   }, [addResult]);
 
-  const onSubmit = useCallback(async (e: FormEvent) => {
-    e.preventDefault();
-    const lat = Number(latText), lng = Number(lngText);
-    if (Number.isNaN(lat) || Number.isNaN(lng)) { setError("Latitude and longitude must be numbers."); return; }
+  const onSubmit = useCallback(async (e?: FormEvent) => {
+    e?.preventDefault();
+    if (!query.trim()) return;
     setLoading(true); setError(null);
-    try { await scoreOne(lat, lng); }
-    catch (err) { setError(err instanceof Error ? err.message : "Scoring failed"); }
-    finally { setLoading(false); }
-  }, [latText, lngText, scoreOne]);
+    try {
+      const g = await resolveLocation(query);
+      setResolved(g);
+      await scoreOne(g.latitude, g.longitude);
+    } catch (err) {
+      setResolved(null);
+      setError(err instanceof Error ? err.message : "Scoring failed");
+    } finally { setLoading(false); }
+  }, [query, scoreOne]);
 
   const onCsv = useCallback(async (file: File) => {
     setLoading(true); setError(null);
@@ -94,12 +99,7 @@ export default function EnergyProductPage() {
 
           <form onSubmit={onSubmit} className="space-y-3 border-b border-zinc-800 p-4">
             <p className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500">Score a site</p>
-            <div className="grid grid-cols-2 gap-2">
-              <input value={latText} onChange={(e) => setLatText(e.target.value)} placeholder="lat"
-                className="rounded-md border border-zinc-700 bg-zinc-900 px-2 py-1.5 text-sm text-zinc-100" />
-              <input value={lngText} onChange={(e) => setLngText(e.target.value)} placeholder="lng"
-                className="rounded-md border border-zinc-700 bg-zinc-900 px-2 py-1.5 text-sm text-zinc-100" />
-            </div>
+            <GeocodeInput value={query} onChange={setQuery} onEnter={() => onSubmit()} resolved={resolved} error={error} />
             <button type="submit" disabled={loading}
               className="w-full rounded-md bg-blue-600 px-3 py-2 text-sm font-semibold text-white transition hover:bg-blue-500 disabled:opacity-40">
               {loading ? "Scoring…" : "Score this site"}
@@ -109,7 +109,6 @@ export default function EnergyProductPage() {
               <input type="file" accept=".csv,text/csv,text/plain" className="hidden"
                 onChange={(e) => { const f = e.target.files?.[0]; if (f) onCsv(f); e.target.value = ""; }} />
             </label>
-            {error && <p className="rounded-md border border-red-900/50 bg-red-950/40 px-2 py-1.5 text-[11px] text-red-300">{error}</p>}
           </form>
 
           {/* Detail panel — appears on marker selection */}
