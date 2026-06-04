@@ -20,25 +20,18 @@ export const floodRiskAssessmentSchema = z.object({
 });
 export type FloodRiskAssessmentInput = z.infer<typeof floodRiskAssessmentSchema>;
 
-type FloodResponse = {
-  natural_language_summary: string;
+type HazardV2Response = {
   query: Record<string, unknown>;
-  flood_zone: {
-    zone: string | null;
-    zone_subtype: string | null;
-    static_bfe_ft: number | null;
-    in_special_flood_hazard_area: boolean;
-    annual_exceedance_probability: number;
-    return_period_years: number;
+  wildfire: Record<string, unknown>;
+  flood: Record<string, unknown>;
+  confidence: {
+    tier: string;
+    composite: number;
+    statement: string;
+    gaps: string[];
+    per_criterion: Record<string, unknown>;
   };
-  structure: Record<string, unknown> | null;
-  elevation: Record<string, unknown>;
-  damage: Record<string, unknown>;
-  risk_estimate: {
-    annual_risk_estimate_usd: number;
-    risk_tier: string;
-  };
-  methodology_note: string;
+  methodology: Record<string, unknown>;
 };
 
 export async function floodRiskAssessment(input: FloodRiskAssessmentInput) {
@@ -52,25 +45,25 @@ export async function floodRiskAssessment(input: FloodRiskAssessmentInput) {
   }
   if (input.address) body.address = input.address;
 
-  const res = await fetch(`${API_BASE}/flood/risk`, {
+  // v2: the combined hazard endpoint carries the selection-engine confidence.
+  const res = await fetch(`${API_BASE}/hazard/score-v2`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
   });
   if (!res.ok) {
-    throw new Error(`flood_risk_assessment: /flood/risk failed (${res.status}): ${await res.text()}`);
+    throw new Error(`flood_risk_assessment: /hazard/score-v2 failed (${res.status}): ${await res.text()}`);
   }
-  const d = (await res.json()) as FloodResponse;
+  const d = (await res.json()) as HazardV2Response;
 
-  // Lead with the human-readable summary; pass through the structured detail.
   return {
-    natural_language_summary: d.natural_language_summary,
     query: d.query,
-    flood_zone: d.flood_zone,
-    elevation: d.elevation,
-    damage: d.damage,
-    risk_estimate: d.risk_estimate,
-    structure: d.structure,
+    flood: d.flood,
+    // Confidence tier + data gaps so the agent can present data quality.
+    confidence_tier: d.confidence?.tier,
+    confidence_statement: d.confidence?.statement,
+    data_gaps: d.confidence?.gaps ?? [],
+    confidence: d.confidence,
     methodology_citation: METHODOLOGY_CITATION,
   };
 }

@@ -681,3 +681,93 @@ export async function postTradeAreaDiscover(body: {
   }
   return res.json();
 }
+
+// ─── Workflow Integration v2 (hazard + trade area) ─────────────────────────
+
+export interface ConfidenceReport {
+  tier: string;
+  composite: number;
+  statement: string;
+  completeness?: string;
+  gaps: string[];
+  strongest_data?: string[];
+  weakest_data?: string[];
+  per_criterion: Record<
+    string,
+    { confidence: number; tier: string; quality_note: string; selected_source: string | null }
+  >;
+}
+
+export interface HazardScoreV2 {
+  module: string;
+  query: { latitude: number; longitude: number };
+  wildfire: {
+    available: boolean;
+    annual_risk_usd: number | null;
+    risk_tier: string | null;
+    damage_probability: number | null;
+    note?: string;
+    [k: string]: unknown;
+  };
+  flood: {
+    available: boolean;
+    annual_risk_usd: number | null;
+    risk_tier: string | null;
+    flood_zone: string | null;
+    depth_ft: number | null;
+    [k: string]: unknown;
+  };
+  confidence: ConfidenceReport;
+  methodology: Record<string, unknown>;
+}
+
+export async function postHazardScoreV2(body: {
+  address?: string;
+  latitude?: number;
+  longitude?: number;
+}): Promise<HazardScoreV2> {
+  const res = await fetch(`${API_BASE}/hazard/score-v2`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`Hazard score-v2 failed (${res.status}): ${text}`);
+  }
+  return res.json();
+}
+
+export interface TradeAreaScoreV2 {
+  module: string;
+  query: Record<string, unknown>;
+  coverage: string;
+  suitability_score: number;
+  suitability_rating: string;
+  criteria_scores: Record<string, number>;
+  competitive_analysis?: Record<string, unknown> | null;
+  data_sources_used: Record<string, string | null>;
+  coverage_gaps?: string[];
+  coverage_note?: string;
+  confidence: ConfidenceReport;
+  methodology: Record<string, unknown>;
+}
+
+export async function postTradeAreaScoreV2(body: {
+  address?: string;
+  latitude?: number;
+  longitude?: number;
+  business_category?: string;
+  existing_locations?: { latitude: number; longitude: number; name?: string }[];
+}): Promise<TradeAreaScoreV2> {
+  const res = await fetch(`${API_BASE}/trade-area/score-v2`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`Trade area score-v2 failed (${res.status}): ${text}`);
+  }
+  return res.json();
+}

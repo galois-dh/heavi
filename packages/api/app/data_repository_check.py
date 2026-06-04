@@ -108,6 +108,38 @@ async def _probe_postgis(
 ) -> SourceResult:
     """Spatial-existence probe with a small nearest-features pull so the data
     is cached for the selection engine."""
+    if source_id == "census_lehd":
+        # LEHD workplace jobs are keyed by tract_geoid with no geometry column,
+        # so the generic spatial probe can't run. Availability = the point falls
+        # in a loaded tract that has LEHD rows (currently Dallas County only).
+        # This is what lets the selection engine pick LEHD (HIGH) where loaded
+        # and fall back to the ACS commuter proxy everywhere else.
+        try:
+            async with pool.acquire() as conn:
+                n = await conn.fetchval(
+                    """
+                    SELECT COUNT(*)::int
+                    FROM trade_area_census_tracts_dallas t
+                    JOIN trade_area_lehd_dallas l ON l.tract_geoid = t.geoid
+                    WHERE ST_Contains(
+                        t.geometry, ST_SetSRID(ST_MakePoint($1, $2), 4326))
+                    """,
+                    longitude, latitude,
+                )
+        except Exception as e:  # noqa: BLE001 — tables absent → unavailable
+            return SourceResult(
+                source_id=source_id, available=False, quality="unavailable",
+                data=None, error=str(e),
+                note="LEHD coverage tables not available",
+            )
+        return SourceResult(
+            source_id=source_id,
+            available=bool(n and n > 0),
+            quality="full" if n else "unavailable",
+            data={"lehd_tract_rows": int(n) if n else 0},
+            note=("LEHD block-level workplace jobs available at this location"
+                  if n else "no LEHD coverage at this location (loaded: Dallas County)"),
+        )
     if source_id == "hazus_ddfs":
         # Non-spatial lookup table — confirm rows present. The catalog records
         # the logical table name (hazus_ddfs); the physical name in PostGIS is

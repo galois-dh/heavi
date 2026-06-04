@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { TopNav } from "../../components/top-nav";
+import { TradeAreaV2Panel } from "../../components/trade-area-v2-panel";
 
 export default function LocationsProductPage() {
   return (
@@ -47,6 +48,9 @@ export default function LocationsProductPage() {
               </li>
             </ul>
           </div>
+
+          {/* Inline v2 trade-area score (selection-engine confidence) */}
+          <TradeAreaV2Panel />
 
           {/* CTAs */}
           <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2">

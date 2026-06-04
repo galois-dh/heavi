@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { TopNav } from "../../components/top-nav";
+import { HazardV2Panel } from "../../components/hazard-v2-panel";
 
 const HAZARDS = [
   {
@@ -49,6 +50,11 @@ export default function HazardProductPage() {
               or portfolios. Audit-grade methodology documentation suitable for LP,
               board, and lender review.
             </p>
+          </div>
+
+          {/* Combined v2 assessment (wildfire + flood + confidence) */}
+          <div className="mb-6">
+            <HazardV2Panel />
           </div>
 
           {/* Per-hazard cards */}

@@ -78,18 +78,24 @@ export async function tradeAreaAnalysis(input: TradeAreaAnalysisInput) {
   if (input.address) body.address = input.address;
   if (input.existing_locations) body.existing_locations = input.existing_locations;
 
-  const d = (await postJson("/trade-area/score", body)) as Record<string, unknown>;
+  // v2: wired through the selection engine — carries per-criterion confidence
+  // and the POI/daytime source actually used.
+  const d = (await postJson("/trade-area/score-v2", body)) as Record<string, unknown>;
+  const confidence = (d.confidence ?? {}) as Record<string, unknown>;
   return {
-    // Lead with the human-readable summary.
-    natural_language_summary: d.natural_language_summary,
     mode: "score",
     query: d.query,
+    coverage: d.coverage,
     suitability_score: d.suitability_score,
     suitability_rating: d.suitability_rating,
     criteria_scores: d.criteria_scores,
     competitive_analysis: d.competitive_analysis,
     cannibalization: d.cannibalization,
-    trade_area_rings: d.trade_area_rings,
+    data_sources_used: d.data_sources_used,
+    // Confidence tier + data gaps so the agent can present data quality.
+    confidence_tier: confidence.tier,
+    data_gaps: confidence.gaps ?? [],
+    confidence,
     methodology_citation: METHODOLOGY_CITATION,
   };
 }

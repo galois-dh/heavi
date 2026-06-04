@@ -43,10 +43,12 @@ from .solar_scoring import (
     run_discover_mode,
     run_score_mode,
 )
+from .hazard_scoring_v2 import score_hazard as hazard_v2_score
 from .solar_scoring_v2 import score_solar_siting as solar_v2_score
 from .spatial_query import spatial_query
 from .trade_area_scoring import discover_trade_area, score_trade_area
 from .trade_area_scoring import methodology_doc as trade_area_methodology_doc
+from .trade_area_scoring_v2 import score_trade_area_v2
 from .wildfire_loss import wildfire_loss
 
 # Best-effort .env load — for local dev where the file lives at the monorepo
@@ -466,6 +468,47 @@ async def trade_area_discover_endpoint(req: TradeAreaDiscoverRequest) -> dict:
     )
 
 
+class TradeAreaScoreV2Request(BaseModel):
+    latitude: float | None = None
+    longitude: float | None = None
+    address: str | None = None
+    business_category: str = "coffee_shop"
+    custom_categories: list[str] | None = None
+    existing_locations: list[dict] | None = None  # [{latitude, longitude, name?}]
+
+
+@app.post("/trade-area/score-v2")
+async def trade_area_score_v2_endpoint(req: TradeAreaScoreV2Request) -> dict:
+    """Workflow Integration v2 — trade area wired through the selection engine.
+    Returns suitability score + rating + per-criterion confidence (showing which
+    POI source and daytime source were used) + methodology. The legacy
+    POST /trade-area/score is unchanged."""
+    if not pool:
+        raise HTTPException(503, "Database pool not initialized")
+    lat, lng, resolved = req.latitude, req.longitude, None
+    if lat is None or lng is None:
+        if not req.address:
+            raise HTTPException(400, "Provide either address or latitude+longitude")
+        from .portfolio_risk import _geocode_one
+
+        async with httpx.AsyncClient(timeout=20.0) as client:
+            g = await _geocode_one(client, req.address)
+        if not g:
+            raise HTTPException(404, f"Could not geocode: {req.address}")
+        lat, lng, resolved = g
+    try:
+        return await score_trade_area_v2(
+            pool, lat, lng,
+            business_category=req.business_category,
+            custom_categories=req.custom_categories,
+            existing_locations=req.existing_locations,
+            address=req.address,
+            resolved_address=resolved,
+        )
+    except RuntimeError as e:
+        raise HTTPException(502, str(e))
+
+
 @app.get("/trade-area/methodology")
 async def trade_area_methodology_endpoint() -> dict:
     """Trade-area methodology: pipeline, data sources, ACS variables, limitations."""
@@ -525,6 +568,38 @@ async def flood_methodology_endpoint() -> dict:
     """Full flood methodology: pipeline, data sources, HAZUS citations,
     annual-probability assumptions, configurable defaults, and limitations."""
     return flood_methodology_doc()
+
+
+# ─── Hazard assessment v2 (combined wildfire + flood) ──────────────────────
+
+
+class HazardScoreV2Request(BaseModel):
+    latitude: float | None = None
+    longitude: float | None = None
+    address: str | None = None
+
+
+@app.post("/hazard/score-v2")
+async def hazard_score_v2_endpoint(req: HazardScoreV2Request) -> dict:
+    """Workflow Integration v2 — combined wildfire + flood hazard assessment
+    wired through the selection engine. Returns per-peril scores (reported
+    separately, not combined), the per-criterion confidence report for all 10
+    hazard criteria, and the methodology documentation. The legacy
+    POST /wildfire-loss and POST /flood/risk endpoints are unchanged."""
+    if not pool:
+        raise HTTPException(503, "Database pool not initialized")
+    lat, lng = req.latitude, req.longitude
+    if lat is None or lng is None:
+        if not req.address:
+            raise HTTPException(400, "Provide either address or latitude+longitude")
+        from .portfolio_risk import _geocode_one
+
+        async with httpx.AsyncClient(timeout=20.0) as client:
+            g = await _geocode_one(client, req.address)
+        if not g:
+            raise HTTPException(404, f"Could not geocode: {req.address}")
+        lat, lng, _resolved = g
+    return await hazard_v2_score(pool, lat, lng)
 
 
 # ─── Earthquake risk ───────────────────────────────────────────────────────
