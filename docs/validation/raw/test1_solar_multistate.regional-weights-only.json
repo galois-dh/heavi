@@ -9,7 +9,7 @@
     "NV",
     "FL"
   ],
-  "elapsed_s": 874.2,
+  "elapsed_s": 649.9,
   "raw_results": {
     "TX": {
       "eia_count_available": 150,
@@ -23,8 +23,8 @@
           "rating": "High",
           "exclusions": [],
           "confidence_tier": "MODERATE",
-          "composite_confidence": 0.6667,
-          "elapsed_s": 18.94,
+          "composite_confidence": 0.665,
+          "elapsed_s": 10.46,
           "error": null,
           "plant_code": 62249,
           "plant_name": "Misae Solar",
@@ -38,8 +38,8 @@
           "rating": "High",
           "exclusions": [],
           "confidence_tier": "MODERATE",
-          "composite_confidence": 0.6667,
-          "elapsed_s": 17.21,
+          "composite_confidence": 0.665,
+          "elapsed_s": 8.99,
           "error": null,
           "plant_code": 65654,
           "plant_name": "Texas Solar Nova 1",
@@ -50,11 +50,13 @@
           "lat": 32.275814,
           "lng": -102.844806,
           "score": 0.8698,
-          "rating": "High",
-          "exclusions": [],
+          "rating": "Excluded",
+          "exclusions": [
+            "excl_protected"
+          ],
           "confidence_tier": "MODERATE",
-          "composite_confidence": 0.6667,
-          "elapsed_s": 16.7,
+          "composite_confidence": 0.665,
+          "elapsed_s": 11.82,
           "error": null,
           "plant_code": 64325,
           "plant_name": "Prospero Solar II",
@@ -68,8 +70,8 @@
           "rating": "High",
           "exclusions": [],
           "confidence_tier": "MODERATE",
-          "composite_confidence": 0.6667,
-          "elapsed_s": 17.11,
+          "composite_confidence": 0.665,
+          "elapsed_s": 8.48,
           "error": null,
           "plant_code": 65661,
           "plant_name": "Nebula Solar",
@@ -83,8 +85,8 @@
           "rating": "High",
           "exclusions": [],
           "confidence_tier": "MODERATE",
-          "composite_confidence": 0.6667,
-          "elapsed_s": 17.31,
+          "composite_confidence": 0.665,
+          "elapsed_s": 9.95,
           "error": null,
           "plant_code": 62804,
           "plant_name": "Greasewood Solar",
@@ -100,19 +102,21 @@
           "rating": "Low",
           "exclusions": [],
           "confidence_tier": "MODERATE",
-          "composite_confidence": 0.6667,
-          "elapsed_s": 16.95,
+          "composite_confidence": 0.665,
+          "elapsed_s": 11.17,
           "error": null
         },
         {
           "lat": 36.2918,
           "lng": -95.2196,
           "score": 0.7451,
-          "rating": "High",
-          "exclusions": [],
+          "rating": "Excluded",
+          "exclusions": [
+            "excl_protected"
+          ],
           "confidence_tier": "MODERATE",
-          "composite_confidence": 0.6667,
-          "elapsed_s": 7.32,
+          "composite_confidence": 0.665,
+          "elapsed_s": 9.28,
           "error": null
         },
         {
@@ -122,8 +126,8 @@
           "rating": "Low",
           "exclusions": [],
           "confidence_tier": "MODERATE",
-          "composite_confidence": 0.6667,
-          "elapsed_s": 16.74,
+          "composite_confidence": 0.665,
+          "elapsed_s": 11.38,
           "error": null
         },
         {
@@ -133,8 +137,8 @@
           "rating": "Moderate",
           "exclusions": [],
           "confidence_tier": "MODERATE",
-          "composite_confidence": 0.6667,
-          "elapsed_s": 16.81,
+          "composite_confidence": 0.665,
+          "elapsed_s": 10.48,
           "error": null
         },
         {
@@ -146,12 +150,12 @@
             "excl_protected"
           ],
           "confidence_tier": "MODERATE",
-          "composite_confidence": 0.6667,
-          "elapsed_s": 16.72,
+          "composite_confidence": 0.665,
+          "elapsed_s": 8.83,
           "error": null
         }
       ],
-      "elapsed_s": 162.2
+      "elapsed_s": 101.2
     },
     "AZ": {
       "eia_count_available": 142,
@@ -167,8 +171,8 @@
             "excl_urban"
           ],
           "confidence_tier": "MODERATE",
-          "composite_confidence": 0.6667,
-          "elapsed_s": 16.56,
+          "composite_confidence": 0.665,
+          "elapsed_s": 11.64,
           "error": null,
           "plant_code": 61104,
           "plant_name": "Pima Community College - East Campus",
@@ -184,8 +188,8 @@
             "excl_urban"
           ],
           "confidence_tier": "MODERATE",
-          "composite_confidence": 0.6667,
-          "elapsed_s": 16.89,
+          "composite_confidence": 0.665,
+          "elapsed_s": 7.58,
           "error": null,
           "plant_code": 62643,
           "plant_name": "AZ State University - Tempe Campus Solar",
@@ -195,14 +199,15 @@
         {
           "lat": 34.9843,
           "lng": -114.5565,
-          "score": 0.6863,
+          "score": 0.7188,
           "rating": "Excluded",
           "exclusions": [
+            "excl_flood",
             "excl_urban"
           ],
           "confidence_tier": "MODERATE",
-          "composite_confidence": 0.6667,
-          "elapsed_s": 17.86,
+          "composite_confidence": 0.665,
+          "elapsed_s": 7.9,
           "error": null,
           "plant_code": 59819,
           "plant_name": "Mohave Electric at Fort Mohave",
@@ -216,8 +221,8 @@
           "rating": "High",
           "exclusions": [],
           "confidence_tier": "MODERATE",
-          "composite_confidence": 0.6667,
-          "elapsed_s": 17.01,
+          "composite_confidence": 0.665,
+          "elapsed_s": 8.7,
           "error": null,
           "plant_code": 58501,
           "plant_name": "RE Gillespie 1 LLC",
@@ -233,8 +238,8 @@
             "excl_urban"
           ],
           "confidence_tier": "MODERATE",
-          "composite_confidence": 0.6667,
-          "elapsed_s": 16.34,
+          "composite_confidence": 0.665,
+          "elapsed_s": 11.32,
           "error": null,
           "plant_code": 57765,
           "plant_name": "Arizona Western College PV",
@@ -249,44 +254,51 @@
           "score": 0.5874,
           "rating": "Excluded",
           "exclusions": [
+            "excl_protected",
             "excl_steep"
           ],
           "confidence_tier": "MODERATE",
-          "composite_confidence": 0.6667,
-          "elapsed_s": 16.9,
+          "composite_confidence": 0.665,
+          "elapsed_s": 8.08,
           "error": null
         },
         {
           "lat": 32.7363,
           "lng": -113.0628,
           "score": 0.4652,
-          "rating": "Moderate",
-          "exclusions": [],
+          "rating": "Excluded",
+          "exclusions": [
+            "excl_protected"
+          ],
           "confidence_tier": "MODERATE",
-          "composite_confidence": 0.6667,
-          "elapsed_s": 16.39,
+          "composite_confidence": 0.665,
+          "elapsed_s": 9.87,
           "error": null
         },
         {
           "lat": 36.4979,
           "lng": -110.6358,
           "score": 0.4835,
-          "rating": "Moderate",
-          "exclusions": [],
+          "rating": "Excluded",
+          "exclusions": [
+            "excl_protected"
+          ],
           "confidence_tier": "MODERATE",
-          "composite_confidence": 0.6667,
-          "elapsed_s": 17.01,
+          "composite_confidence": 0.665,
+          "elapsed_s": 10.38,
           "error": null
         },
         {
           "lat": 32.6697,
           "lng": -109.6375,
           "score": 0.7245,
-          "rating": "High",
-          "exclusions": [],
+          "rating": "Excluded",
+          "exclusions": [
+            "excl_protected"
+          ],
           "confidence_tier": "MODERATE",
-          "composite_confidence": 0.6667,
-          "elapsed_s": 17.59,
+          "composite_confidence": 0.665,
+          "elapsed_s": 10.91,
           "error": null
         },
         {
@@ -298,12 +310,12 @@
             "excl_protected"
           ],
           "confidence_tier": "MODERATE",
-          "composite_confidence": 0.6667,
-          "elapsed_s": 17.38,
+          "composite_confidence": 0.665,
+          "elapsed_s": 9.33,
           "error": null
         }
       ],
-      "elapsed_s": 170.1
+      "elapsed_s": 95.9
     },
     "NC": {
       "eia_count_available": 783,
@@ -317,8 +329,8 @@
           "rating": "High",
           "exclusions": [],
           "confidence_tier": "MODERATE",
-          "composite_confidence": 0.6667,
-          "elapsed_s": 17.53,
+          "composite_confidence": 0.665,
+          "elapsed_s": 11.9,
           "error": null,
           "plant_code": 64176,
           "plant_name": "Charlie",
@@ -332,8 +344,8 @@
           "rating": "High",
           "exclusions": [],
           "confidence_tier": "MODERATE",
-          "composite_confidence": 0.6667,
-          "elapsed_s": 16.79,
+          "composite_confidence": 0.665,
+          "elapsed_s": 10.74,
           "error": null,
           "plant_code": 58802,
           "plant_name": "Franklin Solar, LLC",
@@ -347,8 +359,8 @@
           "rating": "High",
           "exclusions": [],
           "confidence_tier": "MODERATE",
-          "composite_confidence": 0.6667,
-          "elapsed_s": 18.18,
+          "composite_confidence": 0.665,
+          "elapsed_s": 13.31,
           "error": null,
           "plant_code": 59125,
           "plant_name": "Kinston",
@@ -362,8 +374,8 @@
           "rating": "Moderate",
           "exclusions": [],
           "confidence_tier": "MODERATE",
-          "composite_confidence": 0.6667,
-          "elapsed_s": 22.57,
+          "composite_confidence": 0.665,
+          "elapsed_s": 15.26,
           "error": null,
           "plant_code": 60048,
           "plant_name": "TWE Chocowinity Solar, LLC",
@@ -377,8 +389,8 @@
           "rating": "High",
           "exclusions": [],
           "confidence_tier": "MODERATE",
-          "composite_confidence": 0.6667,
-          "elapsed_s": 22.87,
+          "composite_confidence": 0.665,
+          "elapsed_s": 13.31,
           "error": null,
           "plant_code": 59217,
           "plant_name": "Tiburon Holdings",
@@ -394,22 +406,23 @@
           "rating": "High",
           "exclusions": [],
           "confidence_tier": "MODERATE",
-          "composite_confidence": 0.6667,
-          "elapsed_s": 17.89,
+          "composite_confidence": 0.665,
+          "elapsed_s": 24.24,
           "error": null
         },
         {
           "lat": 34.1738,
           "lng": -78.3907,
-          "score": 0.5063,
+          "score": 0.5388,
           "rating": "Excluded",
           "exclusions": [
+            "excl_flood",
             "excl_protected",
             "excl_wetlands"
           ],
           "confidence_tier": "MODERATE",
-          "composite_confidence": 0.6667,
-          "elapsed_s": 17.72,
+          "composite_confidence": 0.665,
+          "elapsed_s": 21.84,
           "error": null
         },
         {
@@ -419,8 +432,8 @@
           "rating": "Low",
           "exclusions": [],
           "confidence_tier": "MODERATE",
-          "composite_confidence": 0.6667,
-          "elapsed_s": 17.78,
+          "composite_confidence": 0.665,
+          "elapsed_s": 21.81,
           "error": null
         },
         {
@@ -430,8 +443,8 @@
           "rating": "Moderate",
           "exclusions": [],
           "confidence_tier": "MODERATE",
-          "composite_confidence": 0.6667,
-          "elapsed_s": 17.11,
+          "composite_confidence": 0.665,
+          "elapsed_s": 17.59,
           "error": null
         },
         {
@@ -441,12 +454,12 @@
           "rating": "Moderate",
           "exclusions": [],
           "confidence_tier": "MODERATE",
-          "composite_confidence": 0.6667,
-          "elapsed_s": 16.94,
+          "composite_confidence": 0.665,
+          "elapsed_s": 19.76,
           "error": null
         }
       ],
-      "elapsed_s": 185.9
+      "elapsed_s": 170.1
     },
     "NV": {
       "eia_count_available": 94,
@@ -457,11 +470,13 @@
           "lat": 36.629761,
           "lng": -114.684033,
           "score": 0.8793,
-          "rating": "High",
-          "exclusions": [],
+          "rating": "Excluded",
+          "exclusions": [
+            "excl_protected"
+          ],
           "confidence_tier": "MODERATE",
-          "composite_confidence": 0.6667,
-          "elapsed_s": 17.01,
+          "composite_confidence": 0.665,
+          "elapsed_s": 18.01,
           "error": null,
           "plant_code": 61852,
           "plant_name": "Eagle Shadow Mountain Solar Farm",
@@ -472,11 +487,13 @@
           "lat": 35.348,
           "lng": -114.97,
           "score": 0.7572,
-          "rating": "High",
-          "exclusions": [],
+          "rating": "Excluded",
+          "exclusions": [
+            "excl_protected"
+          ],
           "confidence_tier": "MODERATE",
-          "composite_confidence": 0.6667,
-          "elapsed_s": 18.03,
+          "composite_confidence": 0.665,
+          "elapsed_s": 19.28,
           "error": null,
           "plant_code": 60352,
           "plant_name": "Boulder Solar Power, LLC",
@@ -487,11 +504,13 @@
           "lat": 39.667002,
           "lng": -117.693658,
           "score": 0.4113,
-          "rating": "Moderate",
-          "exclusions": [],
+          "rating": "Excluded",
+          "exclusions": [
+            "excl_protected"
+          ],
           "confidence_tier": "MODERATE",
-          "composite_confidence": 0.6667,
-          "elapsed_s": 16.74,
+          "composite_confidence": 0.665,
+          "elapsed_s": 19.59,
           "error": null,
           "plant_code": 60785,
           "plant_name": "Tungsten Mountain",
@@ -502,11 +521,13 @@
           "lat": 39.667002,
           "lng": -117.693658,
           "score": 0.4113,
-          "rating": "Moderate",
-          "exclusions": [],
+          "rating": "Excluded",
+          "exclusions": [
+            "excl_protected"
+          ],
           "confidence_tier": "MODERATE",
-          "composite_confidence": 0.6667,
-          "elapsed_s": 21.68,
+          "composite_confidence": 0.665,
+          "elapsed_s": 18.51,
           "error": null,
           "plant_code": 60785,
           "plant_name": "Tungsten Mountain",
@@ -517,11 +538,13 @@
           "lat": 35.63,
           "lng": -115.32,
           "score": 0.6792,
-          "rating": "Moderate",
-          "exclusions": [],
+          "rating": "Excluded",
+          "exclusions": [
+            "excl_protected"
+          ],
           "confidence_tier": "MODERATE",
-          "composite_confidence": 0.6667,
-          "elapsed_s": 7.03,
+          "composite_confidence": 0.665,
+          "elapsed_s": 16.63,
           "error": null,
           "plant_code": 58644,
           "plant_name": "Silver State Solar Power South",
@@ -539,8 +562,8 @@
             "excl_protected"
           ],
           "confidence_tier": "MODERATE",
-          "composite_confidence": 0.6667,
-          "elapsed_s": 9.88,
+          "composite_confidence": 0.665,
+          "elapsed_s": 11.93,
           "error": null
         },
         {
@@ -549,11 +572,12 @@
           "score": 0.279,
           "rating": "Excluded",
           "exclusions": [
+            "excl_protected",
             "excl_steep"
           ],
           "confidence_tier": "MODERATE",
-          "composite_confidence": 0.6667,
-          "elapsed_s": 10.58,
+          "composite_confidence": 0.665,
+          "elapsed_s": 14.93,
           "error": null
         },
         {
@@ -563,19 +587,21 @@
           "rating": "Low",
           "exclusions": [],
           "confidence_tier": "MODERATE",
-          "composite_confidence": 0.6667,
-          "elapsed_s": 22.28,
+          "composite_confidence": 0.665,
+          "elapsed_s": 14.76,
           "error": null
         },
         {
           "lat": 38.405,
           "lng": -115.8784,
           "score": 0.3847,
-          "rating": "Low",
-          "exclusions": [],
+          "rating": "Excluded",
+          "exclusions": [
+            "excl_protected"
+          ],
           "confidence_tier": "MODERATE",
-          "composite_confidence": 0.6667,
-          "elapsed_s": 19.52,
+          "composite_confidence": 0.665,
+          "elapsed_s": 11.05,
           "error": null
         },
         {
@@ -588,12 +614,12 @@
             "excl_steep"
           ],
           "confidence_tier": "MODERATE",
-          "composite_confidence": 0.6667,
-          "elapsed_s": 8.33,
+          "composite_confidence": 0.665,
+          "elapsed_s": 11.04,
           "error": null
         }
       ],
-      "elapsed_s": 151.2
+      "elapsed_s": 156.0
     },
     "FL": {
       "eia_count_available": 149,
@@ -607,8 +633,8 @@
           "rating": "Moderate",
           "exclusions": [],
           "confidence_tier": "MODERATE",
-          "composite_confidence": 0.6667,
-          "elapsed_s": 11.13,
+          "composite_confidence": 0.665,
+          "elapsed_s": 10.77,
           "error": null,
           "plant_code": 65431,
           "plant_name": "Anhinga Solar Energy Center",
@@ -618,14 +644,15 @@
         {
           "lat": 29.756944,
           "lng": -81.897222,
-          "score": 0.702,
+          "score": 0.7345,
           "rating": "Excluded",
           "exclusions": [
+            "excl_flood",
             "excl_urban"
           ],
           "confidence_tier": "MODERATE",
-          "composite_confidence": 0.6667,
-          "elapsed_s": 20.52,
+          "composite_confidence": 0.665,
+          "elapsed_s": 10.37,
           "error": null,
           "plant_code": 61022,
           "plant_name": "Coral Farms Solar Energy Center",
@@ -639,8 +666,8 @@
           "rating": "High",
           "exclusions": [],
           "confidence_tier": "MODERATE",
-          "composite_confidence": 0.6667,
-          "elapsed_s": 9.2,
+          "composite_confidence": 0.665,
+          "elapsed_s": 10.58,
           "error": null,
           "plant_code": 61653,
           "plant_name": "Alafia Solar",
@@ -654,8 +681,8 @@
           "rating": "Moderate",
           "exclusions": [],
           "confidence_tier": "MODERATE",
-          "composite_confidence": 0.6667,
-          "elapsed_s": 21.04,
+          "composite_confidence": 0.665,
+          "elapsed_s": 8.93,
           "error": null,
           "plant_code": 65424,
           "plant_name": "First City Solar Energy Center",
@@ -671,8 +698,8 @@
             "excl_wetlands"
           ],
           "confidence_tier": "MODERATE",
-          "composite_confidence": 0.6667,
-          "elapsed_s": 18.23,
+          "composite_confidence": 0.665,
+          "elapsed_s": 11.52,
           "error": null,
           "plant_code": 59993,
           "plant_name": "Babcock Solar Energy Center Hybrid",
@@ -688,8 +715,8 @@
           "rating": "Moderate",
           "exclusions": [],
           "confidence_tier": "MODERATE",
-          "composite_confidence": 0.6667,
-          "elapsed_s": 17.66,
+          "composite_confidence": 0.665,
+          "elapsed_s": 10.73,
           "error": null
         },
         {
@@ -699,8 +726,8 @@
           "rating": "Low",
           "exclusions": [],
           "confidence_tier": "LOW",
-          "composite_confidence": 0.6167,
-          "elapsed_s": 33.29,
+          "composite_confidence": 0.6125,
+          "elapsed_s": 23.65,
           "error": null
         },
         {
@@ -712,8 +739,8 @@
             "excl_wetlands"
           ],
           "confidence_tier": "MODERATE",
-          "composite_confidence": 0.6667,
-          "elapsed_s": 24.67,
+          "composite_confidence": 0.665,
+          "elapsed_s": 14.01,
           "error": null
         },
         {
@@ -723,8 +750,8 @@
           "rating": "Low",
           "exclusions": [],
           "confidence_tier": "LOW",
-          "composite_confidence": 0.6167,
-          "elapsed_s": 25.21,
+          "composite_confidence": 0.6125,
+          "elapsed_s": 13.12,
           "error": null
         },
         {
@@ -734,43 +761,53 @@
           "rating": "Low",
           "exclusions": [],
           "confidence_tier": "LOW",
-          "composite_confidence": 0.6167,
-          "elapsed_s": 23.42,
+          "composite_confidence": 0.6125,
+          "elapsed_s": 12.78,
           "error": null
         }
       ],
-      "elapsed_s": 204.7
+      "elapsed_s": 126.7
     }
   },
   "summary": {
     "per_state": {
       "TX": {
         "eia_sample_size": 5,
-        "eia_pct_high": 100.0,
+        "eia_pct_high": 80.0,
         "eia_mean_score": 0.8298,
         "eia_rating_distribution": {
-          "High": 5
+          "High": 4,
+          "Excluded": 1
         },
         "eia_confidence_tier_distribution": {
           "MODERATE": 5
         },
         "eia_errors": 0,
         "random_sample_size": 5,
-        "random_pct_high": 20.0,
+        "random_pct_high": 0.0,
         "random_mean_score": 0.4242,
         "random_rating_distribution": {
           "Low": 2,
-          "High": 1,
-          "Moderate": 1,
-          "Excluded": 1
+          "Excluded": 2,
+          "Moderate": 1
         },
         "score_separation": 0.4056,
-        "low_scoring_eia_installations": []
+        "low_scoring_eia_installations": [
+          {
+            "plant_code": 64325,
+            "plant_name": "Prospero Solar II",
+            "score": 0.8698,
+            "rating": "Excluded",
+            "exclusions": [
+              "excl_protected"
+            ]
+          }
+        ]
       },
       "AZ": {
         "eia_sample_size": 5,
         "eia_pct_high": 20.0,
-        "eia_mean_score": 0.7538,
+        "eia_mean_score": 0.7603,
         "eia_rating_distribution": {
           "Excluded": 4,
           "High": 1
@@ -780,14 +817,12 @@
         },
         "eia_errors": 0,
         "random_sample_size": 5,
-        "random_pct_high": 20.0,
+        "random_pct_high": 0.0,
         "random_mean_score": 0.5785,
         "random_rating_distribution": {
-          "Excluded": 2,
-          "Moderate": 2,
-          "High": 1
+          "Excluded": 5
         },
-        "score_separation": 0.1753,
+        "score_separation": 0.1818,
         "low_scoring_eia_installations": [
           {
             "plant_code": 61104,
@@ -810,9 +845,10 @@
           {
             "plant_code": 59819,
             "plant_name": "Mohave Electric at Fort Mohave",
-            "score": 0.6863,
+            "score": 0.7188,
             "rating": "Excluded",
             "exclusions": [
+              "excl_flood",
               "excl_urban"
             ]
           },
@@ -841,23 +877,22 @@
         "eia_errors": 0,
         "random_sample_size": 5,
         "random_pct_high": 20.0,
-        "random_mean_score": 0.5249,
+        "random_mean_score": 0.5314,
         "random_rating_distribution": {
           "High": 1,
           "Excluded": 1,
           "Low": 1,
           "Moderate": 2
         },
-        "score_separation": 0.2278,
+        "score_separation": 0.2213,
         "low_scoring_eia_installations": []
       },
       "NV": {
         "eia_sample_size": 5,
-        "eia_pct_high": 40.0,
+        "eia_pct_high": 0.0,
         "eia_mean_score": 0.6277,
         "eia_rating_distribution": {
-          "High": 2,
-          "Moderate": 3
+          "Excluded": 5
         },
         "eia_confidence_tier_distribution": {
           "MODERATE": 5
@@ -867,16 +902,62 @@
         "random_pct_high": 0.0,
         "random_mean_score": 0.3819,
         "random_rating_distribution": {
-          "Excluded": 3,
-          "Low": 2
+          "Excluded": 4,
+          "Low": 1
         },
         "score_separation": 0.2458,
-        "low_scoring_eia_installations": []
+        "low_scoring_eia_installations": [
+          {
+            "plant_code": 61852,
+            "plant_name": "Eagle Shadow Mountain Solar Farm",
+            "score": 0.8793,
+            "rating": "Excluded",
+            "exclusions": [
+              "excl_protected"
+            ]
+          },
+          {
+            "plant_code": 60352,
+            "plant_name": "Boulder Solar Power, LLC",
+            "score": 0.7572,
+            "rating": "Excluded",
+            "exclusions": [
+              "excl_protected"
+            ]
+          },
+          {
+            "plant_code": 60785,
+            "plant_name": "Tungsten Mountain",
+            "score": 0.4113,
+            "rating": "Excluded",
+            "exclusions": [
+              "excl_protected"
+            ]
+          },
+          {
+            "plant_code": 60785,
+            "plant_name": "Tungsten Mountain",
+            "score": 0.4113,
+            "rating": "Excluded",
+            "exclusions": [
+              "excl_protected"
+            ]
+          },
+          {
+            "plant_code": 58644,
+            "plant_name": "Silver State Solar Power South",
+            "score": 0.6792,
+            "rating": "Excluded",
+            "exclusions": [
+              "excl_protected"
+            ]
+          }
+        ]
       },
       "FL": {
         "eia_sample_size": 5,
         "eia_pct_high": 20.0,
-        "eia_mean_score": 0.7299,
+        "eia_mean_score": 0.7364,
         "eia_rating_distribution": {
           "Moderate": 2,
           "Excluded": 2,
@@ -894,14 +975,15 @@
           "Low": 3,
           "Excluded": 1
         },
-        "score_separation": 0.3499,
+        "score_separation": 0.3564,
         "low_scoring_eia_installations": [
           {
             "plant_code": 61022,
             "plant_name": "Coral Farms Solar Energy Center",
-            "score": 0.702,
+            "score": 0.7345,
             "rating": "Excluded",
             "exclusions": [
+              "excl_flood",
               "excl_urban"
             ]
           },
@@ -920,9 +1002,9 @@
     "aggregate": {
       "total_eia_scored": 25,
       "total_random_scored": 25,
-      "national_pct_high": 52.0,
-      "national_mean_eia": 0.7388,
-      "national_mean_random": 0.4579,
+      "national_pct_high": 40.0,
+      "national_mean_eia": 0.7414,
+      "national_mean_random": 0.4592,
       "states_passing_70pct": 2,
       "states_passing_60pct": 2
     },

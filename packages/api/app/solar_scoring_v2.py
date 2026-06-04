@@ -42,7 +42,13 @@ from .methodology_repository import get_methodology_doc
 from .nerc_regions import get_nerc_region
 
 MODULE_NAME = "solar_siting_scoring_v2"
-MODULE_VERSION = "0.4.0"  # Phase 4 (selection-engine-driven)
+MODULE_VERSION = "0.5.0"  # exclusion-precision refinements (GAP/NLCD/flood/slope)
+
+# Slope exclusion threshold (percent). Raised from 15% to 20% per the Exclusion
+# Precision Spec: literature ranges from 3% (Hernandez 2015, conservative) to 20°
+# (~36%); 20% (~11.3°) is moderate and accommodates single-axis trackers on
+# rolling terrain.
+SLOPE_EXCLUSION_THRESHOLD = 20.0
 
 
 # ─── Measurement cache — one query per source per assessment ──────────────
@@ -352,10 +358,61 @@ async def _score_solar_ej(m: _Measurements) -> tuple[float, dict[str, Any]]:
 
 
 async def _excl_protected(m: _Measurements) -> tuple[bool, dict[str, Any]]:
+    """Hard-exclude only GAP 1-2 (biodiversity-managed: wilderness, nature
+    preserves, national parks). GAP 3-4 (BLM/national forest/multi-use, tribal,
+    DOD, conservation easement) frequently permit solar with approvals — these
+    become an advisory, not an exclusion. Per the Exclusion Precision Spec; many
+    of the largest US solar farms sit on GAP 3 BLM land."""
     pa = await m.padus()
-    if pa:
-        return True, {"units": [p.get("unit_name") for p in pa if p.get("unit_name")][:3]}
-    return False, {}
+    if not pa:
+        return False, {}
+    hard = [p for p in pa if str(p.get("gap_status")) in ("1", "2")]
+    if hard:
+        return True, {
+            "gap_status":   sorted({str(p.get("gap_status")) for p in hard}),
+            "units":        [p.get("unit_name") for p in hard if p.get("unit_name")][:3],
+            "designations": [p.get("designation_type") for p in hard if p.get("designation_type")][:3],
+            "reason": ("GAP 1-2 protected area — managed for biodiversity, "
+                       "development not permitted"),
+        }
+    # Only GAP 3-4 overlap → advisory, NOT a hard exclusion.
+    return False, {
+        "advisory":        True,
+        "gap_status":      sorted({str(p.get("gap_status")) for p in pa}),
+        "units":           [p.get("unit_name") for p in pa if p.get("unit_name")][:3],
+        "managing_agency": [p.get("manager_name") for p in pa if p.get("manager_name")][:3],
+        "designations":    [p.get("designation_type") for p in pa if p.get("designation_type")][:3],
+        "note": ("GAP 3-4 managed land (multiple-use) — solar may be permitted "
+                 "with appropriate approvals; verify permitted use with the "
+                 "managing agency"),
+    }
+
+
+async def _score_solar_flood(m: _Measurements) -> tuple[float, dict[str, Any]]:
+    """Flood as a SCORED criterion (Exclusion Precision Spec): A/AE 100-year
+    floodplains no longer hard-exclude — solar operates there with elevated
+    mounting and floodplain permitting — they take a scored penalty instead. V
+    zones (coastal high hazard, wave action) remain a hard exclusion, signalled
+    via ``hard_exclude`` in the basis. Outside the SFHA → full credit."""
+    z = await m.nfhl_zone()
+    if z is None:
+        return 0.5, {"flood_zone": None, "reason": "NFHL query failed — midpoint"}
+    zu = (z or "").upper()
+    if zu.startswith("V"):
+        return 0.0, {
+            "flood_zone": z, "hard_exclude": True,
+            "reason": ("FEMA Zone " + z + " — coastal high hazard; wave action "
+                       "incompatible with ground-mount solar"),
+        }
+    if zu.startswith("A"):
+        return 0.35, {
+            "flood_zone": z, "penalty": True,
+            "note": ("FEMA Zone " + z + " — 100-year floodplain. Solar development "
+                     "possible with elevated mounting and floodplain permitting; "
+                     "insurance costs may be higher."),
+        }
+    return 1.0, {"flood_zone": z or "X/none",
+                 "note": "outside the Special Flood Hazard Area"}
 
 
 async def _excl_wetlands(
@@ -399,17 +456,13 @@ async def _excl_critical_habitat(m: _Measurements) -> tuple[bool, dict[str, Any]
     return False, {}
 
 
-async def _excl_flood(m: _Measurements) -> tuple[bool | None, dict[str, Any]]:
-    z = await m.nfhl_zone()
-    if z is None:
-        return None, {"reason": "NFHL query failed"}
-    z_up = (z or "").upper()
-    in_sfha = z_up.startswith("A") or z_up.startswith("V")
-    return in_sfha, {"flood_zone": z}
+# NOTE: flood is no longer a hard-exclusion check — it is a scored criterion
+# (_score_solar_flood above), with V zones signalling a hard exclusion via the
+# basis. The old binary _excl_flood (A or V → excluded) has been removed.
 
 
 async def _excl_steep(
-    m: _Measurements, threshold_pct: float = 15.0,
+    m: _Measurements, threshold_pct: float = SLOPE_EXCLUSION_THRESHOLD,
 ) -> tuple[bool | None, dict[str, Any]]:
     t = await m.terrain()
     s = t and t.get("slope_pct")
@@ -420,14 +473,27 @@ async def _excl_steep(
 
 
 async def _excl_urban(m: _Measurements) -> tuple[bool | None, dict[str, Any]]:
+    """Hard-exclude only NLCD 23-24 (medium/high-intensity development —
+    incompatible with utility-scale solar). NLCD 21 (Developed Open Space:
+    parks, golf courses, campuses) and 22 (Low Intensity) become an advisory,
+    not an exclusion, per the Exclusion Precision Spec."""
     lc = await m.land_cover()
     if not lc:
         return None, {"reason": "NLCD unavailable"}
     code = lc.get("code")
-    return (code in (23, 24)), {
-        "nlcd_code": code, "nlcd_label": lc.get("label"),
-        "threshold": "developed medium/high intensity (23, 24)",
-    }
+    if code in (23, 24):
+        return True, {
+            "nlcd_code": code, "nlcd_label": lc.get("label"),
+            "reason": (f"NLCD {code} ({lc.get('label')}) — dense development "
+                       "incompatible with utility-scale solar"),
+        }
+    if code in (21, 22):
+        return False, {
+            "advisory": True, "nlcd_code": code, "nlcd_label": lc.get("label"),
+            "note": (f"NLCD {code} ({lc.get('label')}) — developed context; "
+                     "verify zoning permits solar"),
+        }
+    return False, {"nlcd_code": code, "nlcd_label": lc.get("label")}
 
 
 # ─── Regional weight resolution (Weight Adaptation Spec, Step 6) ───────────
@@ -530,6 +596,9 @@ _SCORERS = {
     "solar_land_cover":   _score_solar_land_cover,
     "solar_soil":         _score_solar_soil,
     "solar_ej":           _score_solar_ej,
+    # excl_flood was reclassified exclusion → scored (A/AE = penalty, V = hard
+    # exclusion via the basis); scored here like any other criterion.
+    "excl_flood":         _score_solar_flood,
     # solar_transmission is handled specially (needs the SelectionResult).
 }
 
@@ -600,6 +669,10 @@ async def score_solar_siting(
                     "confidence":             sel.confidence,
                     "selected_source":        selected_source,
                 }
+                # A scored criterion may still signal a hard exclusion (flood V
+                # zone): honour it so the rating becomes "Excluded".
+                if isinstance(basis, dict) and basis.get("hard_exclude"):
+                    exclusions.append(sel.criterion_id)
             else:  # exclusion
                 if sel.confidence == 0.0:
                     exclusion_results[sel.criterion_id] = {
@@ -615,8 +688,6 @@ async def score_solar_siting(
                     excluded, basis = await _excl_wetlands(meas, sel)
                 elif sel.criterion_id == "excl_critical_habitat":
                     excluded, basis = await _excl_critical_habitat(meas)
-                elif sel.criterion_id == "excl_flood":
-                    excluded, basis = await _excl_flood(meas)
                 elif sel.criterion_id == "excl_steep":
                     excluded, basis = await _excl_steep(meas)
                 elif sel.criterion_id == "excl_urban":
@@ -633,10 +704,14 @@ async def score_solar_siting(
                     exclusions.append(sel.criterion_id)
 
     # Step 4 — composite (weighted scored, exclusion overrides to "Excluded").
+    # Flood is excluded from the weighted average and applied as a *deduction*
+    # (Exclusion Precision Spec, Step 3): adding it as an averaged term would lift
+    # every flood-free site toward 1.0 and compress EIA-vs-random separation. As
+    # a penalty it leaves the majority (outside-SFHA) composites untouched.
     valid = [
         (cs["score"], cs["weight"])
-        for cs in criteria_scores.values()
-        if cs["score"] is not None and cs["weight"]
+        for cid, cs in criteria_scores.items()
+        if cid != "excl_flood" and cs["score"] is not None and cs["weight"]
     ]
     if valid:
         num = sum(s * w for s, w in valid)
@@ -644,6 +719,19 @@ async def score_solar_siting(
         composite = num / den if den > 0 else 0.0
     else:
         composite = 0.0
+
+    # Flood penalty — only A/AE zones (basis.penalty) deduct weight·(1−score);
+    # outside-SFHA and unavailable-NFHL sites are unaffected; V zones already
+    # hard-excluded above.
+    flood_cs = criteria_scores.get("excl_flood")
+    if flood_cs is not None:
+        flood_cs["applied_as"] = "penalty_deduction"
+        deduction = 0.0
+        if (flood_cs.get("basis") or {}).get("penalty") and flood_cs["score"] is not None:
+            deduction = flood_cs["weight"] * (1.0 - flood_cs["score"])
+            composite = max(0.0, composite - deduction)
+        # display the actual composite effect (a deduction), not a positive term
+        flood_cs["weighted_contribution"] = -round(deduction, 4)
 
     if exclusions:
         rating = "Excluded"

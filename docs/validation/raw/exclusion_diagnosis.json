@@ -1,0 +1,525 @@
+{
+  "n_excluded": 12,
+  "rows": [
+    {
+      "plant": "Prospero Solar II",
+      "state": "TX",
+      "capacity_mw": 250.0,
+      "criterion": "excl_protected",
+      "trigger": [
+        {
+          "gap_status": "4",
+          "designation": "State Resource Management Area",
+          "manager": "State Land Board",
+          "unit": "Permanent University Fund"
+        }
+      ],
+      "assessment": "FALSE POSITIVE (GAP 3-4 \u2014 multi-use, solar often permitted)"
+    },
+    {
+      "plant": "Pima Community College - East Campus",
+      "state": "AZ",
+      "capacity_mw": 1.3,
+      "criterion": "excl_urban",
+      "trigger": {
+        "nlcd_code": 24,
+        "label": "Developed, High Intensity"
+      },
+      "assessment": "TRUE (NLCD 23-24, dense development)"
+    },
+    {
+      "plant": "AZ State University - Tempe Campus Solar",
+      "state": "AZ",
+      "capacity_mw": 0.1,
+      "criterion": "excl_urban",
+      "trigger": {
+        "nlcd_code": 23,
+        "label": "Developed, Medium Intensity"
+      },
+      "assessment": "TRUE (NLCD 23-24, dense development)"
+    },
+    {
+      "plant": "Mohave Electric at Fort Mohave",
+      "state": "AZ",
+      "capacity_mw": 4.4,
+      "criterion": "excl_urban",
+      "trigger": {
+        "nlcd_code": 23,
+        "label": "Developed, Medium Intensity"
+      },
+      "assessment": "TRUE (NLCD 23-24, dense development)"
+    },
+    {
+      "plant": "Mohave Electric at Fort Mohave",
+      "state": "AZ",
+      "capacity_mw": 4.4,
+      "criterion": "excl_flood",
+      "trigger": {
+        "flood_zone": "AO"
+      },
+      "assessment": "FALSE POSITIVE (A/AE \u2014 solar permitted w/ elevated mounting)"
+    },
+    {
+      "plant": "Arizona Western College PV",
+      "state": "AZ",
+      "capacity_mw": 1.0,
+      "criterion": "excl_urban",
+      "trigger": {
+        "nlcd_code": 24,
+        "label": "Developed, High Intensity"
+      },
+      "assessment": "TRUE (NLCD 23-24, dense development)"
+    },
+    {
+      "plant": "Eagle Shadow Mountain Solar Farm",
+      "state": "NV",
+      "capacity_mw": 300.0,
+      "criterion": "excl_protected",
+      "trigger": [
+        {
+          "gap_status": "4",
+          "designation": "Native American Land Area",
+          "manager": "American Indian Lands",
+          "unit": "Moapa River Indian Reservation"
+        }
+      ],
+      "assessment": "FALSE POSITIVE (GAP 3-4 \u2014 multi-use, solar often permitted)"
+    },
+    {
+      "plant": "Boulder Solar Power, LLC",
+      "state": "NV",
+      "capacity_mw": 100.0,
+      "criterion": "excl_protected",
+      "trigger": [
+        {
+          "gap_status": "3",
+          "designation": "Area of Critical Environmental Concern",
+          "manager": "Bureau of Land Management",
+          "unit": "Piute/eldorado Area of Critical Environmental Concern"
+        }
+      ],
+      "assessment": "FALSE POSITIVE (GAP 3-4 \u2014 multi-use, solar often permitted)"
+    },
+    {
+      "plant": "Tungsten Mountain",
+      "state": "NV",
+      "capacity_mw": 5.0,
+      "criterion": "excl_protected",
+      "trigger": [
+        {
+          "gap_status": "3",
+          "designation": "National Public Lands",
+          "manager": "Bureau of Land Management",
+          "unit": "Stillwater Field Office"
+        }
+      ],
+      "assessment": "FALSE POSITIVE (GAP 3-4 \u2014 multi-use, solar often permitted)"
+    },
+    {
+      "plant": "Tungsten Mountain",
+      "state": "NV",
+      "capacity_mw": 7.3,
+      "criterion": "excl_protected",
+      "trigger": [
+        {
+          "gap_status": "3",
+          "designation": "National Public Lands",
+          "manager": "Bureau of Land Management",
+          "unit": "Stillwater Field Office"
+        }
+      ],
+      "assessment": "FALSE POSITIVE (GAP 3-4 \u2014 multi-use, solar often permitted)"
+    },
+    {
+      "plant": "Silver State Solar Power South",
+      "state": "NV",
+      "capacity_mw": 35.7,
+      "criterion": "excl_protected",
+      "trigger": [
+        {
+          "gap_status": "3",
+          "designation": "Area of Critical Environmental Concern",
+          "manager": "Bureau of Land Management",
+          "unit": "Ivanpah Area of Critical Environmental Concern"
+        }
+      ],
+      "assessment": "FALSE POSITIVE (GAP 3-4 \u2014 multi-use, solar often permitted)"
+    },
+    {
+      "plant": "Coral Farms Solar Energy Center",
+      "state": "FL",
+      "capacity_mw": 74.5,
+      "criterion": "excl_urban",
+      "trigger": {
+        "nlcd_code": 23,
+        "label": "Developed, Medium Intensity"
+      },
+      "assessment": "TRUE (NLCD 23-24, dense development)"
+    },
+    {
+      "plant": "Coral Farms Solar Energy Center",
+      "state": "FL",
+      "capacity_mw": 74.5,
+      "criterion": "excl_flood",
+      "trigger": {
+        "flood_zone": "A"
+      },
+      "assessment": "FALSE POSITIVE (A/AE \u2014 solar permitted w/ elevated mounting)"
+    },
+    {
+      "plant": "Babcock Solar Energy Center Hybrid",
+      "state": "FL",
+      "capacity_mw": 74.5,
+      "criterion": "excl_wetlands",
+      "trigger": {
+        "note": "see scoring basis (NWI/SSURGO)"
+      },
+      "assessment": "REVIEW"
+    }
+  ],
+  "detail": [
+    {
+      "lat": 32.275814,
+      "lng": -102.844806,
+      "score": 0.8698,
+      "rating": "Excluded",
+      "exclusions": [
+        "excl_protected"
+      ],
+      "confidence_tier": "MODERATE",
+      "composite_confidence": 0.665,
+      "elapsed_s": 11.82,
+      "error": null,
+      "plant_code": 64325,
+      "plant_name": "Prospero Solar II",
+      "county": "Andrews",
+      "capacity_mw": 250.0,
+      "state": "TX",
+      "technology": "Solar Photovoltaic",
+      "operating_year": 2021,
+      "triggers": {
+        "excl_protected": [
+          {
+            "gap_status": "4",
+            "designation": "State Resource Management Area",
+            "manager": "State Land Board",
+            "unit": "Permanent University Fund"
+          }
+        ]
+      }
+    },
+    {
+      "lat": 32.146142,
+      "lng": -110.990639,
+      "score": 0.7446,
+      "rating": "Excluded",
+      "exclusions": [
+        "excl_urban"
+      ],
+      "confidence_tier": "MODERATE",
+      "composite_confidence": 0.665,
+      "elapsed_s": 11.64,
+      "error": null,
+      "plant_code": 61104,
+      "plant_name": "Pima Community College - East Campus",
+      "county": "Pima",
+      "capacity_mw": 1.3,
+      "state": "AZ",
+      "technology": "Solar Photovoltaic",
+      "operating_year": 2017,
+      "triggers": {
+        "excl_urban": {
+          "nlcd_code": 24,
+          "label": "Developed, High Intensity"
+        }
+      }
+    },
+    {
+      "lat": 33.424279,
+      "lng": -111.92822,
+      "score": 0.8218,
+      "rating": "Excluded",
+      "exclusions": [
+        "excl_urban"
+      ],
+      "confidence_tier": "MODERATE",
+      "composite_confidence": 0.665,
+      "elapsed_s": 7.58,
+      "error": null,
+      "plant_code": 62643,
+      "plant_name": "AZ State University - Tempe Campus Solar",
+      "county": "Maricopa",
+      "capacity_mw": 0.1,
+      "state": "AZ",
+      "technology": "Solar Photovoltaic",
+      "operating_year": 2013,
+      "triggers": {
+        "excl_urban": {
+          "nlcd_code": 23,
+          "label": "Developed, Medium Intensity"
+        }
+      }
+    },
+    {
+      "lat": 34.9843,
+      "lng": -114.5565,
+      "score": 0.7188,
+      "rating": "Excluded",
+      "exclusions": [
+        "excl_flood",
+        "excl_urban"
+      ],
+      "confidence_tier": "MODERATE",
+      "composite_confidence": 0.665,
+      "elapsed_s": 7.9,
+      "error": null,
+      "plant_code": 59819,
+      "plant_name": "Mohave Electric at Fort Mohave",
+      "county": "Mohave",
+      "capacity_mw": 4.4,
+      "state": "AZ",
+      "technology": "Solar Photovoltaic",
+      "operating_year": 2015,
+      "triggers": {
+        "excl_urban": {
+          "nlcd_code": 23,
+          "label": "Developed, Medium Intensity"
+        },
+        "excl_flood": {
+          "flood_zone": "AO"
+        }
+      }
+    },
+    {
+      "lat": 32.687778,
+      "lng": -114.49611,
+      "score": 0.7677,
+      "rating": "Excluded",
+      "exclusions": [
+        "excl_urban"
+      ],
+      "confidence_tier": "MODERATE",
+      "composite_confidence": 0.665,
+      "elapsed_s": 11.32,
+      "error": null,
+      "plant_code": 57765,
+      "plant_name": "Arizona Western College PV",
+      "county": "Yuma",
+      "capacity_mw": 1.0,
+      "state": "AZ",
+      "technology": "Solar Photovoltaic",
+      "operating_year": 2011,
+      "triggers": {
+        "excl_urban": {
+          "nlcd_code": 24,
+          "label": "Developed, High Intensity"
+        }
+      }
+    },
+    {
+      "lat": 36.629761,
+      "lng": -114.684033,
+      "score": 0.8793,
+      "rating": "Excluded",
+      "exclusions": [
+        "excl_protected"
+      ],
+      "confidence_tier": "MODERATE",
+      "composite_confidence": 0.665,
+      "elapsed_s": 18.01,
+      "error": null,
+      "plant_code": 61852,
+      "plant_name": "Eagle Shadow Mountain Solar Farm",
+      "county": "Clark",
+      "capacity_mw": 300.0,
+      "state": "NV",
+      "technology": "Solar Photovoltaic",
+      "operating_year": 2023,
+      "triggers": {
+        "excl_protected": [
+          {
+            "gap_status": "4",
+            "designation": "Native American Land Area",
+            "manager": "American Indian Lands",
+            "unit": "Moapa River Indian Reservation"
+          }
+        ]
+      }
+    },
+    {
+      "lat": 35.348,
+      "lng": -114.97,
+      "score": 0.7572,
+      "rating": "Excluded",
+      "exclusions": [
+        "excl_protected"
+      ],
+      "confidence_tier": "MODERATE",
+      "composite_confidence": 0.665,
+      "elapsed_s": 19.28,
+      "error": null,
+      "plant_code": 60352,
+      "plant_name": "Boulder Solar Power, LLC",
+      "county": "Clark",
+      "capacity_mw": 100.0,
+      "state": "NV",
+      "technology": "Solar Photovoltaic",
+      "operating_year": 2016,
+      "triggers": {
+        "excl_protected": [
+          {
+            "gap_status": "3",
+            "designation": "Area of Critical Environmental Concern",
+            "manager": "Bureau of Land Management",
+            "unit": "Piute/eldorado Area of Critical Environmental Concern"
+          }
+        ]
+      }
+    },
+    {
+      "lat": 39.667002,
+      "lng": -117.693658,
+      "score": 0.4113,
+      "rating": "Excluded",
+      "exclusions": [
+        "excl_protected"
+      ],
+      "confidence_tier": "MODERATE",
+      "composite_confidence": 0.665,
+      "elapsed_s": 19.59,
+      "error": null,
+      "plant_code": 60785,
+      "plant_name": "Tungsten Mountain",
+      "county": "Churchill",
+      "capacity_mw": 5.0,
+      "state": "NV",
+      "technology": "Solar Photovoltaic",
+      "operating_year": 2023,
+      "triggers": {
+        "excl_protected": [
+          {
+            "gap_status": "3",
+            "designation": "National Public Lands",
+            "manager": "Bureau of Land Management",
+            "unit": "Stillwater Field Office"
+          }
+        ]
+      }
+    },
+    {
+      "lat": 39.667002,
+      "lng": -117.693658,
+      "score": 0.4113,
+      "rating": "Excluded",
+      "exclusions": [
+        "excl_protected"
+      ],
+      "confidence_tier": "MODERATE",
+      "composite_confidence": 0.665,
+      "elapsed_s": 18.51,
+      "error": null,
+      "plant_code": 60785,
+      "plant_name": "Tungsten Mountain",
+      "county": "Churchill",
+      "capacity_mw": 7.3,
+      "state": "NV",
+      "technology": "Solar Photovoltaic",
+      "operating_year": 2023,
+      "triggers": {
+        "excl_protected": [
+          {
+            "gap_status": "3",
+            "designation": "National Public Lands",
+            "manager": "Bureau of Land Management",
+            "unit": "Stillwater Field Office"
+          }
+        ]
+      }
+    },
+    {
+      "lat": 35.63,
+      "lng": -115.32,
+      "score": 0.6792,
+      "rating": "Excluded",
+      "exclusions": [
+        "excl_protected"
+      ],
+      "confidence_tier": "MODERATE",
+      "composite_confidence": 0.665,
+      "elapsed_s": 16.63,
+      "error": null,
+      "plant_code": 58644,
+      "plant_name": "Silver State Solar Power South",
+      "county": "Clark",
+      "capacity_mw": 35.7,
+      "state": "NV",
+      "technology": "Solar Photovoltaic",
+      "operating_year": 2015,
+      "triggers": {
+        "excl_protected": [
+          {
+            "gap_status": "3",
+            "designation": "Area of Critical Environmental Concern",
+            "manager": "Bureau of Land Management",
+            "unit": "Ivanpah Area of Critical Environmental Concern"
+          }
+        ]
+      }
+    },
+    {
+      "lat": 29.756944,
+      "lng": -81.897222,
+      "score": 0.7345,
+      "rating": "Excluded",
+      "exclusions": [
+        "excl_flood",
+        "excl_urban"
+      ],
+      "confidence_tier": "MODERATE",
+      "composite_confidence": 0.665,
+      "elapsed_s": 10.37,
+      "error": null,
+      "plant_code": 61022,
+      "plant_name": "Coral Farms Solar Energy Center",
+      "county": "Putnam",
+      "capacity_mw": 74.5,
+      "state": "FL",
+      "technology": "Solar Photovoltaic",
+      "operating_year": 2018,
+      "triggers": {
+        "excl_urban": {
+          "nlcd_code": 23,
+          "label": "Developed, Medium Intensity"
+        },
+        "excl_flood": {
+          "flood_zone": "A"
+        }
+      }
+    },
+    {
+      "lat": 26.861592,
+      "lng": -81.751011,
+      "score": 0.79,
+      "rating": "Excluded",
+      "exclusions": [
+        "excl_wetlands"
+      ],
+      "confidence_tier": "MODERATE",
+      "composite_confidence": 0.665,
+      "elapsed_s": 11.52,
+      "error": null,
+      "plant_code": 59993,
+      "plant_name": "Babcock Solar Energy Center Hybrid",
+      "county": "Charlotte",
+      "capacity_mw": 74.5,
+      "state": "FL",
+      "technology": "Solar Photovoltaic",
+      "operating_year": 2016,
+      "triggers": {
+        "excl_wetlands": {
+          "note": "see scoring basis (NWI/SSURGO)"
+        }
+      }
+    }
+  ]
+}
