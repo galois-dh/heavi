@@ -344,6 +344,25 @@ async def _probe_wms(
     )
 
 
+async def _probe_wcs(
+    source_id: str, access_config: dict[str, Any], reliability: str,
+) -> SourceResult:
+    """WCS / on-demand coverage sources (LANDFIRE). Like WMS, a verified
+    catalog-declared coverage is treated as available without a live probe; the
+    actual point value is pulled at scoring time."""
+    if reliability == "verified":
+        return SourceResult(
+            source_id=source_id, available=True, quality="full",
+            data={"endpoint": access_config.get("endpoint"),
+                  "layer": access_config.get("layer") or access_config.get("coverage")},
+            note="catalog-declared verified WCS coverage (on-demand point query)",
+        )
+    return SourceResult(
+        source_id=source_id, available=False, quality="degraded",
+        data=None, note="WCS reliability is degraded; live probe not implemented",
+    )
+
+
 async def _probe_file(
     source_id: str, access_config: dict[str, Any], reliability: str,
 ) -> SourceResult:
@@ -379,6 +398,16 @@ async def check_source_availability(
     feature context that downstream stages (and the Phase 3 selection engine)
     can reuse it without re-querying.
     """
+    # euclidean_buffer is a computed in-process fallback, not a data_sources row
+    # (Data Tree Completeness Spec): always available so ta_accessibility never
+    # collapses to NONE when ORS is exhausted.
+    if source_id == "euclidean_buffer":
+        return SourceResult(
+            source_id=source_id, available=True, quality="proxy",
+            data={"computed": True},
+            note="in-process Euclidean-buffer fallback (no external source)",
+        )
+
     async with pool.acquire() as conn:
         row = await conn.fetchrow(
             """
@@ -409,6 +438,8 @@ async def check_source_availability(
         return await _probe_rest(source_id, config, reliability, latitude, longitude)
     if method == "wms":
         return await _probe_wms(source_id, config, reliability)
+    if method == "wcs":
+        return await _probe_wcs(source_id, config, reliability)
     if method == "file":
         return await _probe_file(source_id, config, reliability)
     return SourceResult(

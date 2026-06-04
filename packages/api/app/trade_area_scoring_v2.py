@@ -225,6 +225,64 @@ async def _national_fallback(
     }
 
 
+# ─── Euclidean-buffer accessibility fallback (when ORS is unavailable) ─────
+
+# Approximate drive-time radii (~suburban speeds): 5 min ~3 km, 10 ~7 km, 15 ~12 km.
+_EUCLIDEAN_RADII_M = {5: 3000, 10: 7000, 15: 12000}
+
+
+def _circle_geojson(lat: float, lng: float, radius_m: float, n: int = 48) -> dict[str, Any]:
+    """A circular-buffer polygon (the euclidean_buffer proxy — no external API)."""
+    import math
+    ring = []
+    for i in range(n + 1):
+        a = 2 * math.pi * i / n
+        dlat = (radius_m * math.cos(a)) / 111_320.0
+        dlng = (radius_m * math.sin(a)) / (111_320.0 * max(math.cos(math.radians(lat)), 0.1))
+        ring.append([lng + dlng, lat + dlat])
+    return {"type": "Polygon", "coordinates": [ring]}
+
+
+async def _euclidean_dallas_score(
+    pool: asyncpg.Pool, latitude: float, longitude: float, business_category: str,
+    custom_categories: list[str] | None,
+) -> dict[str, Any]:
+    """Trade-area score using circular buffers instead of ORS drive-time
+    isochrones (Data Tree Completeness Spec). Same Census/POI aggregation against
+    the buffer polygons; ta_accessibility confidence drops to 0.3."""
+    exact, prefix = ta.category_match(business_category, custom_categories)
+    ref_density = ta.REFERENCE_DENSITY.get(business_category, ta.DEFAULT_REFERENCE_DENSITY)
+    demographics = await ta.get_tract_demographics(ta.DALLAS_STATE, ta.DALLAS_COUNTY)
+    rings = [{"drive_time_minutes": m, "isochrone": _circle_geojson(latitude, longitude, r)}
+             for m, r in _EUCLIDEAN_RADII_M.items()]
+    profiles = []
+    for ring in rings:
+        prof = await ta.profile_ring(pool, ring["isochrone"], demographics)
+        comp = await ta._competitive_ring(
+            pool, ring["isochrone"], exact, prefix, prof["population"], ref_density)
+        profiles.append({**ring, **prof, **comp})
+    road_dist, road_score = await ta._road_proximity(pool, latitude, longitude)
+    in_sfha = await ta._in_sfha(latitude, longitude)
+    ring10 = ta._pick_ring(profiles, 10)
+    ring5 = ta._pick_ring(profiles, 5)
+    composite, crit = ta._composite(ring10, ring5, road_score, in_sfha, ta.DEFAULT_WEIGHTS)
+    return {
+        "coverage": "full_euclidean_fallback",
+        "suitability_score": round(composite, 3),
+        "suitability_rating": _rating(composite),
+        "criteria_scores": crit,
+        "competitive_analysis": {"reference_density_per_10k": ref_density,
+                                 "per_ring": profiles},
+        "trade_area_rings": profiles,
+        "competitor_pois": await _dallas_competitor_pois(
+            pool, ring10.get("isochrone"), business_category, custom_categories),
+        "accessibility_method": "euclidean_buffer",
+        "accessibility_confidence": 0.3,
+        "coverage_note": ("ORS isochrones unavailable — used circular buffers "
+                          "(euclidean_buffer proxy, confidence 0.3) for accessibility."),
+    }
+
+
 # ─── Orchestrator ──────────────────────────────────────────────────────────
 
 
@@ -253,14 +311,28 @@ async def score_trade_area_v2(
     poi_source = sources_used["poi_source"]
     base: dict[str, Any]
     if poi_source == "osm_pois":
-        full = await ta.score_trade_area(
-            pool,
-            latitude=latitude, longitude=longitude,
-            business_category=business_category,
-            custom_categories=custom_categories,
-            existing_locations=existing_locations,
-            address=address, resolved_address=resolved_address,
-        )
+        try:
+            full = await ta.score_trade_area(
+                pool,
+                latitude=latitude, longitude=longitude,
+                business_category=business_category,
+                custom_categories=custom_categories,
+                existing_locations=existing_locations,
+                address=address, resolved_address=resolved_address,
+            )
+        except RuntimeError:
+            # ORS isochrones unavailable (rate-limited / key missing) → the
+            # euclidean_buffer fallback node (ta_accessibility, confidence 0.3).
+            base = await _euclidean_dallas_score(
+                pool, latitude, longitude, business_category, custom_categories)
+            return {
+                "module": MODULE_NAME, "module_version": MODULE_VERSION,
+                "query": {"latitude": latitude, "longitude": longitude,
+                          "address": address, "resolved_address": resolved_address,
+                          "business_category": business_category},
+                **base, "data_sources_used": sources_used,
+                "confidence": confidence, "methodology": methodology,
+            }
         # Competitor POI points within the 10-min isochrone (for the map markers).
         rings = full.get("trade_area_rings") or []
         iso10 = next((r.get("isochrone") for r in rings

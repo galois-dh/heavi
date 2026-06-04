@@ -38,10 +38,20 @@ from .flood_scoring import (
     query_nfhl,
     query_nsi,
 )
+from .integrations import (
+    query_landfire_canopy,
+    query_landfire_fuel,
+    query_nifc_perimeters,
+)
 from .methodology_repository import get_methodology_doc
 
 MODULE_NAME = "hazard_assessment_scoring_v2"
-MODULE_VERSION = "0.1.0"
+MODULE_VERSION = "0.2.0"  # data-tree completeness: NIFC + LANDFIRE WCS fallback
+
+# National median single-family structure replacement value, used only as an
+# exposure floor when NSI returns no structure but the wildfire hazard is real
+# (so a genuine fire-shed isn't reported as $0 for lack of an exposure match).
+_DEFAULT_STRUCTURE_VALUE_USD = 200_000.0
 
 WILDFIRE_CRITERIA = {
     "wf_likelihood", "wf_fuel_proximity", "wf_canopy", "wf_slope", "wf_structure",
@@ -68,24 +78,19 @@ def _tier(annual_risk: float | None) -> str | None:
 # ─── Wildfire peril ────────────────────────────────────────────────────────
 
 
-async def _wildfire_block(
-    pool: asyncpg.Pool, latitude: float, longitude: float,
-) -> dict[str, Any]:
-    """Score wildfire via the Sonoma vulnerability model. When no NSI structure
-    with pre-computed features is within range (i.e. outside loaded coverage),
-    report the peril as unavailable rather than fabricating a score."""
-    res = await wildfire_loss.score_property(pool, latitude, longitude)
-    if res.get("match") is None:
-        return {
-            "available": False,
-            "annual_risk_usd": None,
-            "risk_tier": None,
-            "damage_probability": None,
-            "note": (
-                "No structure with pre-computed wildfire features within range. "
-                + _WILDFIRE_CALIBRATION_NOTE
-            ),
-        }
+def _picks(selection: Any) -> dict[str, tuple[str | None, float]]:
+    """criterion_id → (selected_source_id, confidence) from the selection."""
+    return {
+        c.criterion_id: (
+            (c.selected_sources[0]["source_id"] if c.selected_sources else None),
+            c.confidence,
+        )
+        for c in selection.criteria
+    }
+
+
+def _fsim_result(res: dict[str, Any]) -> dict[str, Any]:
+    """Shape the pre-loaded FSim/LANDFIRE structure-model result."""
     pv = res["property_vulnerability"]
     risk = res["risk_estimate"]
     annual = (
@@ -95,14 +100,100 @@ async def _wildfire_block(
     )
     return {
         "available": True,
+        "method": "fsim_preloaded",
         "annual_risk_usd": annual,
         "risk_tier": _tier(annual),
         "damage_probability": pv.get("damage_probability"),
-        "exceeds_risk_threshold": pv.get("exceeds_risk_threshold"),
         "features": res.get("features"),
         "match": res.get("match"),
         "validation_auc_roc": pv.get("validation_auc_roc"),
+        "confidence": 1.0,
         "note": _WILDFIRE_CALIBRATION_NOTE,
+    }
+
+
+async def _wildfire_block(
+    pool: asyncpg.Pool, latitude: float, longitude: float, selection: Any,
+) -> dict[str, Any]:
+    """Score wildfire from the sources the selection engine actually picked
+    (Data Tree Completeness Spec).
+
+    - wf_likelihood = FSim (pre-loaded) → use the validated structure model.
+    - wf_likelihood = NIFC fire perimeters (proxy) → historical fire frequency
+      × damage factor (from LANDFIRE WCS fuel/canopy) × NSI replacement value.
+    - wf_likelihood unavailable (all nodes exhausted) → CANNOT ASSESS.
+    """
+    picks = _picks(selection)
+    like_src, like_conf = picks.get("wf_likelihood", (None, 0.0))
+    fuel_src, fuel_conf = picks.get("wf_fuel_proximity", (None, 0.0))
+    canopy_src, canopy_conf = picks.get("wf_canopy", (None, 0.0))
+
+    # CANNOT ASSESS only when the likelihood tree is fully exhausted.
+    if like_src is None:
+        return {
+            "available": False, "cannot_assess": True,
+            "annual_risk_usd": None, "risk_tier": None, "damage_probability": None,
+            "note": ("CANNOT ASSESS — no wildfire-likelihood source available "
+                     "(FSim and NIFC fire perimeters both unavailable)."),
+        }
+
+    # FSim pre-loaded path (authoritative) when the catalog FSim source resolves.
+    if like_src == "usfs_fsim":
+        res = await wildfire_loss.score_property(pool, latitude, longitude)
+        if res.get("match") is not None:
+            return _fsim_result(res)
+
+    # Proxy/fallback path: NIFC frequency + LANDFIRE WCS fuel/canopy + NSI value.
+    async with httpx.AsyncClient(timeout=30.0) as client:
+        nifc = (
+            await query_nifc_perimeters(client, latitude=latitude, longitude=longitude)
+            if like_src == "nifc_fire_perimeters" else None
+        )
+        fuel = (
+            await query_landfire_fuel(client, latitude=latitude, longitude=longitude)
+            if fuel_src == "landfire_wcs_fuel" else None
+        )
+        canopy_pct = (
+            await query_landfire_canopy(client, latitude=latitude, longitude=longitude)
+            if canopy_src == "landfire_wcs_canopy" else None
+        )
+        nsi = await query_nsi(client, longitude, latitude)
+
+    fire_frequency = float((nifc or {}).get("fire_frequency") or 0.0)
+    val_struct = float(nsi["val_struct"]) if nsi and nsi.get("val_struct") else 0.0
+    if val_struct <= 0 and fire_frequency > 0:
+        val_struct = _DEFAULT_STRUCTURE_VALUE_USD  # exposure floor
+
+    # Damage given a fire reaches the vicinity: fuel burnability + canopy density.
+    burnable = fuel.get("burnable") if fuel else None
+    burnable_factor = 1.0 if burnable else (0.25 if burnable is False else 0.5)
+    canopy_factor = (canopy_pct / 100.0) if canopy_pct is not None else 0.0
+    damage_probability = max(0.0, min(1.0, 0.30 + 0.40 * burnable_factor + 0.30 * canopy_factor))
+
+    annual_risk = round(fire_frequency * damage_probability * val_struct, 2)
+    wf_conf = min(like_conf, fuel_conf or 1.0, canopy_conf or 1.0)
+
+    return {
+        "available": True,
+        "method": "proxy_fallback",
+        "annual_risk_usd": annual_risk,
+        "risk_tier": _tier(annual_risk),
+        "damage_probability": round(damage_probability, 3),
+        "fire_frequency_per_year": round(fire_frequency, 4),
+        "historical_fires": (nifc or {}).get("fires"),
+        "fuel_model_fbfm40": (fuel or {}).get("fbfm40"),
+        "canopy_cover_pct": canopy_pct,
+        "replacement_value_usd": val_struct,
+        "confidence": round(wf_conf, 2),
+        "sources_used": {
+            "wf_likelihood": like_src, "wf_fuel_proximity": fuel_src, "wf_canopy": canopy_src,
+        },
+        "note": (
+            "Proxy/fallback wildfire estimate: NIFC historical fire frequency "
+            "(burn-probability proxy) × LANDFIRE on-demand fuel/canopy damage "
+            "factor × NSI replacement value. Lower confidence than FSim. "
+            + _WILDFIRE_CALIBRATION_NOTE
+        ),
     }
 
 
@@ -228,7 +319,7 @@ async def score_hazard(
     selection = await select_data(pool, "hazard_assessment", latitude, longitude)
     methodology = await get_methodology_doc(pool, "hazard_assessment")
 
-    wildfire = await _wildfire_block(pool, latitude, longitude)
+    wildfire = await _wildfire_block(pool, latitude, longitude, selection)
     flood = await _flood_block(pool, latitude, longitude)
 
     confidence = _confidence_report(selection)

@@ -30,7 +30,13 @@ Known unavailable as of 2026-06-05:
 
 from .epa_ejscreen import ejscreen_at_point, geocode_block_group
 from .google_grrr import grrr_return_periods
+from .landfire_wcs import (
+    query_landfire_canopy,
+    query_landfire_fuel,
+    query_landfire_value,
+)
 from .mrlc_nlcd import nlcd_class_at_point
+from .nifc_fire import query_nifc_perimeters
 from .nrel_pvwatts import pvwatts_v8
 from .openfema import disaster_declarations, nfip_claims_by_zip
 from .usda_ssurgo import sda_point
@@ -58,6 +64,10 @@ __all__ = [
     "padus_at_point",
     "padus_in_envelope",
     "peak_flows_for_site",
+    "query_landfire_canopy",
+    "query_landfire_fuel",
+    "query_landfire_value",
+    "query_nifc_perimeters",
     "pvwatts_v8",
     "sda_point",
     "slope_aspect_from_grid",
