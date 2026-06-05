@@ -294,6 +294,45 @@ async def solar_score_v2_batch(req: SolarBatchRequest) -> dict:
     return {"count": len(results), "results": results}
 
 
+@app.get("/solar/score-v2/pdf")
+async def solar_score_v2_pdf(lat: float, lng: float, address: str | None = None) -> Response:
+    """Single-site solar assessment as a professional PDF (Month-1 Sprint F3)."""
+    if not pool:
+        raise HTTPException(503, "Database pool not initialized")
+    from .solar_pdf import solar_single_pdf
+    result = await solar_v2_score(pool, lat, lng)
+    pdf = solar_single_pdf(result, address=address)
+    return Response(
+        content=pdf, media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="heavi-solar-{lat:.4f}_{lng:.4f}.pdf"'},
+    )
+
+
+@app.post("/solar/score-v2/batch/pdf")
+async def solar_score_v2_batch_pdf(req: SolarBatchRequest) -> Response:
+    """Batch portfolio PDF: ranked summary + one detail page per site (F3)."""
+    if not pool:
+        raise HTTPException(503, "Database pool not initialized")
+    if not req.locations:
+        raise HTTPException(400, "No locations provided")
+    if len(req.locations) > SOLAR_BATCH_LIMIT:
+        raise HTTPException(400, f"Batch limit is {SOLAR_BATCH_LIMIT} locations")
+    from .solar_pdf import solar_batch_pdf
+    results: list[dict] = []
+    for loc in req.locations:
+        try:
+            r = await solar_v2_score(pool, loc.latitude, loc.longitude)
+            results.append({**r, "name": loc.name})
+        except Exception:  # noqa: BLE001
+            results.append({"query": {"latitude": loc.latitude, "longitude": loc.longitude},
+                            "name": loc.name, "score": None, "rating": "CANNOT ASSESS"})
+    pdf = solar_batch_pdf(results)
+    return Response(
+        content=pdf, media_type="application/pdf",
+        headers={"Content-Disposition": 'attachment; filename="heavi-solar-portfolio.pdf"'},
+    )
+
+
 @app.get("/data-selection")
 async def data_selection_endpoint(
     workflow: str, lat: float, lng: float,

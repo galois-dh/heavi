@@ -7,7 +7,7 @@ import { HeaviMap } from "../../components/heavi-map";
 import { EnergyDetail } from "../../components/map-detail-panels";
 import { GeocodeInput } from "../../components/geocode-input";
 import { BatchRankedList, type BatchResult } from "../../components/batch-ranked-list";
-import { postSolarScoreV2, resolveLocation, type GeocodeResult } from "../../lib/api";
+import { downloadSolarBatchPdf, downloadSolarPdf, postSolarScoreV2, resolveLocation, type GeocodeResult } from "../../lib/api";
 import { parseLocationCsv } from "../../lib/csv-locations";
 import { ENERGY_CONSTRAINTS, fc, solarFeature } from "../../lib/map-features";
 
@@ -27,6 +27,7 @@ export default function EnergyProductPage() {
   const [loading, setLoading] = useState(false);
   const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [pdfBusy, setPdfBusy] = useState<"single" | "batch" | null>(null);
   const counter = useRef(0);
 
   const addResult = useCallback((r: BatchResult, name?: string, select = true) => {
@@ -75,6 +76,28 @@ export default function EnergyProductPage() {
     setProgress(null);
     setLoading(false);
   }, [addResult]);
+
+  const exportSingle = useCallback(async () => {
+    if (!selectedFid) return;
+    const r = results[selectedFid];
+    setPdfBusy("single"); setError(null);
+    try { await downloadSolarPdf(r.query.latitude, r.query.longitude, r.name); }
+    catch (e) { setError(e instanceof Error ? e.message : "PDF export failed"); }
+    finally { setPdfBusy(null); }
+  }, [selectedFid, results]);
+
+  const exportBatch = useCallback(async () => {
+    setPdfBusy("batch"); setError(null);
+    try {
+      const locs = order.map((fid) => ({
+        latitude: results[fid].query.latitude,
+        longitude: results[fid].query.longitude,
+        name: results[fid].name,
+      }));
+      await downloadSolarBatchPdf(locs);
+    } catch (e) { setError(e instanceof Error ? e.message : "PDF export failed"); }
+    finally { setPdfBusy(null); }
+  }, [order, results]);
 
   const features = useMemo(
     () => fc(order.map((fid) => solarFeature(fid, results[fid]))),
@@ -129,14 +152,28 @@ export default function EnergyProductPage() {
           <div className="flex-1 space-y-3 p-4">
             {isBatch && order.length > 0 && (
               <div>
-                <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-zinc-500">
-                  Ranked results ({order.length}{progress ? ` of ${progress.total}` : ""})
-                </p>
+                <div className="mb-1.5 flex items-center justify-between">
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500">
+                    Ranked results ({order.length}{progress ? ` of ${progress.total}` : ""})
+                  </p>
+                  {!progress && (
+                    <button onClick={exportBatch} disabled={pdfBusy !== null}
+                      className="rounded border border-zinc-700 px-2 py-0.5 text-[10px] text-zinc-300 transition hover:border-zinc-500 hover:text-white disabled:opacity-40">
+                      {pdfBusy === "batch" ? "Generating…" : "Export portfolio PDF"}
+                    </button>
+                  )}
+                </div>
                 <BatchRankedList results={results} order={order} selectedFid={selectedFid} onSelect={setSelectedFid} />
               </div>
             )}
             {selected ? (
               <div className={isBatch ? "border-t border-zinc-800 pt-3" : ""}>
+                <div className="mb-2 flex justify-end">
+                  <button onClick={exportSingle} disabled={pdfBusy !== null}
+                    className="rounded-md bg-zinc-800 px-3 py-1.5 text-[11px] font-medium text-zinc-200 transition hover:bg-zinc-700 disabled:opacity-40">
+                    {pdfBusy === "single" ? "Generating PDF…" : "Export PDF"}
+                  </button>
+                </div>
                 <EnergyDetail r={selected} />
               </div>
             ) : !isBatch ? (

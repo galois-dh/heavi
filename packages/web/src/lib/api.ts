@@ -830,3 +830,37 @@ export async function resolveLocation(input: string): Promise<GeocodeResult> {
   }
   return res.json();
 }
+
+// ─── Solar PDF export (Month-1 Sprint, Feature 3) ──────────────────────────
+
+function triggerDownload(blob: Blob, filename: string): void {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
+/** Download the single-site assessment PDF (re-scores server-side). */
+export async function downloadSolarPdf(lat: number, lng: number, address?: string): Promise<void> {
+  const q = `lat=${lat}&lng=${lng}${address ? `&address=${encodeURIComponent(address)}` : ""}`;
+  const res = await fetch(`${API_BASE}/solar/score-v2/pdf?${q}`);
+  if (!res.ok) throw new Error(`PDF export failed (${res.status})`);
+  triggerDownload(await res.blob(), `heavi-solar-${lat.toFixed(4)}_${lng.toFixed(4)}.pdf`);
+}
+
+/** Download the batch portfolio PDF for many sites. */
+export async function downloadSolarBatchPdf(
+  locations: Array<{ latitude: number; longitude: number; name?: string }>,
+): Promise<void> {
+  const res = await fetch(`${API_BASE}/solar/score-v2/batch/pdf`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ locations }),
+  });
+  if (!res.ok) throw new Error(`Portfolio PDF export failed (${res.status})`);
+  triggerDownload(await res.blob(), "heavi-solar-portfolio.pdf");
+}
