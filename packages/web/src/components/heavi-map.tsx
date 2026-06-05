@@ -89,6 +89,9 @@ export function HeaviMap({
   const scaleRef = useRef(scoreColorScale);
   scaleRef.current = scoreColorScale;
 
+  const featuresRef = useRef(scoredFeatures);
+  featuresRef.current = scoredFeatures;
+
   const [ready, setReady] = useState(false);
   const [enabled, setEnabled] = useState<Set<string>>(
     () => new Set(constraints.filter((c) => c.defaultVisible).map((c) => c.id)),
@@ -190,11 +193,18 @@ export function HeaviMap({
     }
   }, [scoredFeatures, scoreColorScale, ready, fitOnUpdate]);
 
-  // ── Selection highlight ─────────────────────────────────────────────────
+  // ── Selection highlight + pan to the selected feature ──────────────────
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !ready) return;
     map.setFilter("scored-selected", ["==", ["get", "fid"], selectedFid ?? ""]);
+    if (selectedFid != null && selectedFid !== "") {
+      const f = featuresRef.current?.features.find((x) => x.properties?.fid === selectedFid);
+      const g = f?.geometry;
+      if (g?.type === "Point") {
+        map.flyTo({ center: g.coordinates as [number, number], zoom: Math.max(map.getZoom(), 11), duration: 700 });
+      }
+    }
   }, [selectedFid, ready]);
 
   // ── Overlays (isochrones, POIs) — add/update/remove ─────────────────────

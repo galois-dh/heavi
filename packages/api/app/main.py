@@ -252,6 +252,48 @@ async def solar_score_v2(req: SolarScoreV2Request) -> dict:
     )
 
 
+class BatchLocation(BaseModel):
+    latitude: float
+    longitude: float
+    name: str | None = None
+
+
+class SolarBatchRequest(BaseModel):
+    locations: list[BatchLocation]
+
+
+# Batch limit — at ~10s/location, 200 locations ≈ 33 min; demos keep to 20-50.
+SOLAR_BATCH_LIMIT = 200
+
+
+@app.post("/solar/score-v2/batch")
+async def solar_score_v2_batch(req: SolarBatchRequest) -> dict:
+    """Score many candidate parcels (Month-1 Sprint F2). Calls score_solar_siting
+    for each location sequentially and returns the full array. Cap is 200 — at
+    ~10s/location a 200-site batch takes ~33 min, so demos should keep to 20-50.
+    The web UI scores per-location for live progress; this endpoint is for
+    programmatic batch use (and the batch PDF in F3)."""
+    if not pool:
+        raise HTTPException(503, "Database pool not initialized")
+    if not req.locations:
+        raise HTTPException(400, "No locations provided")
+    if len(req.locations) > SOLAR_BATCH_LIMIT:
+        raise HTTPException(
+            400, f"Batch limit is {SOLAR_BATCH_LIMIT} locations; got {len(req.locations)}")
+    results: list[dict] = []
+    for loc in req.locations:
+        try:
+            r = await solar_v2_score(pool, loc.latitude, loc.longitude)
+            results.append({**r, "name": loc.name})
+        except Exception as e:  # noqa: BLE001 — one bad row shouldn't fail the batch
+            results.append({
+                "query": {"latitude": loc.latitude, "longitude": loc.longitude},
+                "name": loc.name, "score": None, "rating": None,
+                "error": f"{type(e).__name__}: {e}",
+            })
+    return {"count": len(results), "results": results}
+
+
 @app.get("/data-selection")
 async def data_selection_endpoint(
     workflow: str, lat: float, lng: float,
