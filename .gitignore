@@ -14,3 +14,7 @@ __pycache__/
 transcript-analysis/
 build/
 packages/api/weight_cache/
+# Interconnection source data: the LBNL xlsx is a 15 MB upstream binary and the
+# Census gazetteer is auto-downloaded by load_interconnection_queue.py.
+data/interconnection/*.xlsx
+data/interconnection/2024_Gaz_counties_national.txt

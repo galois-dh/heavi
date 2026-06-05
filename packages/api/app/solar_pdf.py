@@ -239,16 +239,14 @@ def _interconnection_section(st: dict, ic: dict[str, Any] | None) -> list:
         f"Existing capacity (within {ic.get('radius_km', 50):.0f} km): "
         f"{ic.get('existing_capacity_mw')} MW across {ic.get('existing_plant_count')} "
         "operating plants (EIA Form 860).", st["body"]))
-    qs = ic.get("queue_summary") or {}
     story.append(Paragraph(
         f"Queue activity ({ic.get('iso') or 'n/a'}): {ic.get('queue_projects_nearby')} active "
-        f"solar projects totaling {ic.get('queue_capacity_mw')} MW; "
-        f"{qs.get('active', 0)} active, {qs.get('completed', 0)} completed, "
-        f"{qs.get('withdrawn', 0)} withdrawn (all fuels).", st["body"]))
+        f"solar interconnection requests totaling {ic.get('queue_capacity_mw')} MW within "
+        f"{ic.get('radius_km', 50):.0f} km.", st["body"]))
     story.append(Paragraph(
         "NOTE: Informational context from public data, not an interconnection study. "
         "Actual capacity availability requires an interconnection application with the "
-        "ISO/RTO. Queue dataset is representative for demonstration.", st["small"]))
+        "ISO/RTO. Queue data: LBNL “Queued Up” 2025, county-centroid precision.", st["small"]))
     return story
 
 

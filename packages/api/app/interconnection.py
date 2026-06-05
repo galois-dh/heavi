@@ -5,8 +5,9 @@ nearest substation: existing connected capacity (EIA Form 860), interconnection-
 queue activity (interconnection_queue), a queue-status breakdown, and the ISO.
 
 This is informational context from public data — NOT a power-flow / interconnection
-study (PVcase's domain). The queue dataset is representative (see
-load_interconnection_queue.py); actual capacity requires an ISO application.
+study (PVcase's domain). The queue dataset is LBNL "Queued Up" 2025 (see
+load_interconnection_queue.py), placed at county-centroid precision; actual
+capacity requires an ISO application.
 """
 
 from __future__ import annotations
@@ -20,8 +21,8 @@ import asyncpg
 _NOTE = (
     "This is informational context from public data, not an interconnection "
     "study. Actual capacity availability requires filing an interconnection "
-    "application with the relevant ISO/RTO. The queue dataset is representative "
-    "for demonstration; production uses live ISO queue files."
+    "application with the relevant ISO/RTO. Queue data is LBNL 'Queued Up' 2025 "
+    "(active solar requests); projects are located at county-centroid precision."
 )
 
 
@@ -59,19 +60,22 @@ async def get_interconnection_context(
         )
         try:
             queue = await conn.fetch(
-                f"""SELECT iso, fuel_type, status, capacity_mw, project_name, queue_date
+                f"""SELECT iso, fuel_type, status, capacity_mw, project_name,
+                       queue_date, data_source
                     FROM interconnection_queue
                     WHERE ST_DWithin(geometry::geography, {pt}::geography, $3)
-                    ORDER BY queue_date DESC""",
+                    ORDER BY queue_date DESC NULLS LAST""",
                 longitude, latitude, radius_m,
             )
         except Exception:  # noqa: BLE001 — table absent → empty queue
             queue = []
 
     active = [q for q in queue if q["status"] == "Active"]
-    active_solar = [q for q in active if (q["fuel_type"] or "").lower() == "solar"]
+    active_solar = [q for q in active if (q["fuel_type"] or "").lower().startswith("solar")]
     iso = Counter(q["iso"] for q in queue).most_common(1)[0][0] if queue else None
     status_counts = Counter(q["status"] for q in queue)
+    source = (Counter(q["data_source"] for q in queue).most_common(1)[0][0]
+              if queue else "lbnl_queued_up_2025")
 
     nearest = None
     if sub is not None:
@@ -97,6 +101,6 @@ async def get_interconnection_context(
         },
         "iso": iso,
         "radius_km": radius_km,
-        "data_source": "representative",
+        "data_source": source,
         "note": _NOTE,
     }

@@ -101,12 +101,12 @@ export function EnergyDetail({ r }: { r: SolarScoreV2 }) {
                 <span className="text-zinc-200">{sub ? `${sub.distance_mi} mi${sub.voltage_kv ? ` · ${sub.voltage_kv} kV` : ""}` : "—"}</span></div>
               <div className="flex justify-between"><span className="text-zinc-400">Existing capacity</span>
                 <span className="text-zinc-200">{Math.round(ic.existing_capacity_mw)} MW · {ic.existing_plant_count} plants</span></div>
-              <div className="flex justify-between"><span className="text-zinc-400">Queue ({ic.iso ?? "—"})</span>
-                <span className="text-zinc-200">{ic.queue_projects_nearby} solar · {Math.round(ic.queue_capacity_mw)} MW</span></div>
-              <div className="flex justify-between"><span className="text-zinc-400">Queue status</span>
-                <span className="text-zinc-500">{ic.queue_summary.active} active / {ic.queue_summary.completed} done / {ic.queue_summary.withdrawn} withdrawn</span></div>
+              <div className="flex justify-between"><span className="text-zinc-400">Active solar queue ({ic.iso ?? "—"})</span>
+                <span className="text-zinc-200">{ic.queue_projects_nearby} projects · {Math.round(ic.queue_capacity_mw)} MW</span></div>
+              <div className="flex justify-between"><span className="text-zinc-400">Source</span>
+                <span className="text-zinc-500">LBNL Queued Up 2025</span></div>
             </div>
-            <p className="mt-1.5 text-[10px] italic text-zinc-500">Informational context, not an interconnection study.</p>
+            <p className="mt-1.5 text-[10px] italic text-zinc-500">Informational context, not an interconnection study. County-centroid precision.</p>
           </div>
         );
       })()}

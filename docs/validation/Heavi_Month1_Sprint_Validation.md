@@ -47,23 +47,26 @@ substation, existing EIA-860 capacity, ISO queue activity (active solar
 count/MW), a status breakdown, and the ISO to every `score-v2` output and the
 PDF; queue projects are a togglable purple map layer.
 
-1. 5 ISOs loaded (CAISO/ERCOT/PJM + MISO/SPP) · 2. score-v2 has
-interconnection_context · 3. Kern → 314 MW existing + 6 CAISO queue solar
-(1668 MW) near the nearest substation · 4. Houston → 10 ERCOT queue solar
-(1740 MW) · 5. UI detail section · 6. togglable queue map layer (35 features in
-Kern bbox) · 7. "informational, not an interconnection study" note · 8. PDF
-includes the interconnection section.
+1. all ISOs/utilities loaded (MISO/ERCOT/PJM/SPP/CAISO + FPL/Duke/BPA/NYISO/…) ·
+2. score-v2 has interconnection_context · 3. Kern → 314 MW existing + 52 active
+solar queue projects (13,169 MW) · 4. Houston → 4 active solar queue (994 MW) ·
+5. UI detail section · 6. togglable queue map layer · 7. "informational, not an
+interconnection study" note · 8. PDF includes the interconnection section.
 
-### Honest scope note (Feature 4 data)
+### Data source (Feature 4) — UPDATED to live LBNL data
 
-The live ISO queue portals (CAISO RIMS, ERCOT GIS report, PJM, MISO, SPP) require
-authenticated/interactive downloads not reachable from this environment
-(gridstatus 401, LBNL 403, PJM/interconnection.fyi redirect). The
-`interconnection_queue` is therefore a **representative dataset anchored to real
-substation coordinates** (substations_osm_us near Kern/Houston) with realistic
-project profiles, flagged `data_source='representative'`. Existing capacity (EIA
-Form 860) and the nearest-substation lookup use real loaded data. The output and
-PDF state the context is informational, not an interconnection study, and the
-dataset is representative. Production should replace the loader body with live
-ISO queue files — the table schema, context computation, scoring/PDF/UI/map
-integration are all production-ready.
+The `interconnection_queue` is now loaded from **LBNL "Queued Up" 2025** (Lawrence
+Berkeley National Laboratory's aggregated national ISO/RTO + utility
+interconnection queue, `data/interconnection/LBNL_Ix_Queue_Data_File_thru2025.xlsx`,
+sheet "03. Complete Queue Data"), filtered to **active solar requests**
+(`q_status='active'`, `type_clean ∈ {Solar, Solar+Battery}`): **4,426 projects,
+794,818 MW**, flagged `data_source='lbnl_queued_up_2025'`.
+
+The LBNL file has no coordinates, so each project is placed at its **county
+centroid** (5-digit FIPS → Census 2024 county gazetteer); 32 rows without a usable
+FIPS/geocode were skipped. County-centroid precision is appropriate for the 50 km
+proximity context (which counts nearby queue activity) but is not a precise
+project location — the API/PDF/UI state this explicitly. Existing capacity (EIA
+Form 860) and the nearest-substation lookup use real loaded data. This replaces
+the earlier representative dataset. (The loader, `load_interconnection_queue.py`,
+auto-downloads the Census gazetteer and re-runs idempotently.)
