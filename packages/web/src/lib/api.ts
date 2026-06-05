@@ -51,6 +51,17 @@ export interface SolarScoreV2 {
     n_installations_in_calibration?: number;
     note?: string;
   };
+  interconnection_context?: {
+    nearest_substation: { name: string; voltage_kv: number | null; distance_mi: number } | null;
+    existing_capacity_mw: number;
+    existing_plant_count: number;
+    queue_projects_nearby: number;
+    queue_capacity_mw: number;
+    queue_summary: { active: number; withdrawn: number; completed: number; suspended: number };
+    iso: string | null;
+    radius_km: number;
+    note: string;
+  };
   criteria_scores: Record<string, {
     score: number | null;
     weight: number | null;

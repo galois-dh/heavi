@@ -44,6 +44,7 @@ from .critical_sources import (
     scoring_critical_gap,
     selection_critical_gaps,
 )
+from .interconnection import get_interconnection_context
 from .methodology_repository import get_methodology_doc
 from .nerc_regions import get_nerc_region
 
@@ -639,6 +640,10 @@ async def score_solar_siting(
         default_weights, region, profile, weights_override
     )
 
+    # Interconnection proximity context (F4) — informational, independent of the
+    # suitability score, so it is attached whether or not the site is assessable.
+    interconnection = await get_interconnection_context(pool, latitude, longitude)
+
     # Step 3 — score + check exclusions, sharing one measurement cache.
     criteria_scores: dict[str, Any] = {}
     exclusion_results: dict[str, Any] = {}
@@ -731,6 +736,7 @@ async def score_solar_siting(
             "missing_sources": critical_gaps,
             "message":         critical_gaps[0]["message"],
             "weight_profile":  weight_profile,
+            "interconnection_context": interconnection,
             "criteria_scores": criteria_scores,
             "confidence": {
                 "tier":      CANNOT_ASSESS,
@@ -789,6 +795,7 @@ async def score_solar_siting(
         "rating":          rating,
         "exclusions":      exclusions,
         "weight_profile":  weight_profile,
+        "interconnection_context": interconnection,
         "criteria_scores": criteria_scores,
         "exclusion_results": exclusion_results,
         "confidence": {

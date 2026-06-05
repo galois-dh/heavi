@@ -22,6 +22,7 @@ _POSTGIS_LAYERS: dict[str, tuple[str, str]] = {
     "substations":  ("substations_osm_us", "geometry"),
     "eia_solar":    ("solar_eia_installations", "geometry"),
     "nwi":          ("solar_wetlands_ca", "geometry"),
+    "interconnection_queue": ("interconnection_queue", "geometry"),
 }
 
 # REST-backed layers proxied to ArcGIS (envelope query, geojson out).

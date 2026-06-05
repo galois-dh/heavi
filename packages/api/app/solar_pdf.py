@@ -179,6 +179,9 @@ def _single_story(st: dict, r: dict[str, Any], address: str | None) -> list:
         for g in gaps[:6]:
             story.append(Paragraph(f"• {g}", st["body"]))
 
+    # Interconnection context (F4) — below the score, above the criterion detail.
+    story += _interconnection_section(st, r.get("interconnection_context"))
+
     # Exclusion screening
     excl = r.get("exclusion_results") or {}
     if excl:
@@ -220,6 +223,32 @@ def _single_story(st: dict, r: dict[str, Any], address: str | None) -> list:
                    if n else str(wp.get("method") or "literature default weights")))
         story.append(Spacer(1, 4))
         story.append(Paragraph(note, st["small"]))
+    return story
+
+
+def _interconnection_section(st: dict, ic: dict[str, Any] | None) -> list:
+    if not ic:
+        return []
+    story: list = [Paragraph("INTERCONNECTION CONTEXT", st["h2"])]
+    sub = ic.get("nearest_substation")
+    if sub:
+        v = f", {sub['voltage_kv']} kV" if sub.get("voltage_kv") else ""
+        story.append(Paragraph(
+            f"Nearest substation: {sub.get('name')} ({sub.get('distance_mi')} mi{v})", st["body"]))
+    story.append(Paragraph(
+        f"Existing capacity (within {ic.get('radius_km', 50):.0f} km): "
+        f"{ic.get('existing_capacity_mw')} MW across {ic.get('existing_plant_count')} "
+        "operating plants (EIA Form 860).", st["body"]))
+    qs = ic.get("queue_summary") or {}
+    story.append(Paragraph(
+        f"Queue activity ({ic.get('iso') or 'n/a'}): {ic.get('queue_projects_nearby')} active "
+        f"solar projects totaling {ic.get('queue_capacity_mw')} MW; "
+        f"{qs.get('active', 0)} active, {qs.get('completed', 0)} completed, "
+        f"{qs.get('withdrawn', 0)} withdrawn (all fuels).", st["body"]))
+    story.append(Paragraph(
+        "NOTE: Informational context from public data, not an interconnection study. "
+        "Actual capacity availability requires an interconnection application with the "
+        "ISO/RTO. Queue dataset is representative for demonstration.", st["small"]))
     return story
 
 

@@ -48,6 +48,7 @@ export const ENERGY_CONSTRAINTS: ConstraintDescriptor[] = [
   { id: "transmission", name: "Transmission Lines", category: "Infrastructure", geomKind: "line", color: "#eab308", defaultVisible: false },
   { id: "substations", name: "Substations", category: "Infrastructure", geomKind: "circle", color: "#fb923c", defaultVisible: false },
   { id: "eia_solar", name: "EIA Solar Installations", category: "Infrastructure", geomKind: "circle", color: "#22c55e", defaultVisible: true },
+  { id: "interconnection_queue", name: "Interconnection Queue", category: "Infrastructure", geomKind: "circle", color: "#a855f7", defaultVisible: false },
 ];
 
 export const HAZARD_CONSTRAINTS: ConstraintDescriptor[] = [

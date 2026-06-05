@@ -90,6 +90,27 @@ export function EnergyDetail({ r }: { r: SolarScoreV2 }) {
         </div>
       )}
 
+      {r.interconnection_context && (() => {
+        const ic = r.interconnection_context!;
+        const sub = ic.nearest_substation;
+        return (
+          <div className="rounded-md border border-violet-500/20 bg-violet-500/5 p-2">
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-violet-300">Interconnection context</p>
+            <div className="mt-1 space-y-0.5">
+              <div className="flex justify-between"><span className="text-zinc-400">Nearest substation</span>
+                <span className="text-zinc-200">{sub ? `${sub.distance_mi} mi${sub.voltage_kv ? ` · ${sub.voltage_kv} kV` : ""}` : "—"}</span></div>
+              <div className="flex justify-between"><span className="text-zinc-400">Existing capacity</span>
+                <span className="text-zinc-200">{Math.round(ic.existing_capacity_mw)} MW · {ic.existing_plant_count} plants</span></div>
+              <div className="flex justify-between"><span className="text-zinc-400">Queue ({ic.iso ?? "—"})</span>
+                <span className="text-zinc-200">{ic.queue_projects_nearby} solar · {Math.round(ic.queue_capacity_mw)} MW</span></div>
+              <div className="flex justify-between"><span className="text-zinc-400">Queue status</span>
+                <span className="text-zinc-500">{ic.queue_summary.active} active / {ic.queue_summary.completed} done / {ic.queue_summary.withdrawn} withdrawn</span></div>
+            </div>
+            <p className="mt-1.5 text-[10px] italic text-zinc-500">Informational context, not an interconnection study.</p>
+          </div>
+        );
+      })()}
+
       <div>
         <p className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-zinc-500">Per-criterion scores</p>
         {Object.entries(r.criteria_scores).map(([id, c]) => (
