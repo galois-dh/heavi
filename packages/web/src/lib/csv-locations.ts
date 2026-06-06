@@ -9,9 +9,12 @@ export interface CsvLocation {
   name?: string;
 }
 
-const BATCH_LIMIT = 200;
+export const DEFAULT_BATCH_LIMIT = 200;
 
-export function parseLocationCsv(text: string): { rows: CsvLocation[]; error?: string } {
+export function parseLocationCsv(
+  text: string,
+  limit: number = DEFAULT_BATCH_LIMIT,
+): { rows: CsvLocation[]; error?: string } {
   const lines = text.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
   if (!lines.length) return { rows: [], error: "The CSV is empty." };
 
@@ -29,8 +32,8 @@ export function parseLocationCsv(text: string): { rows: CsvLocation[]; error?: s
   }
 
   const dataLines = hasHeader ? lines.slice(1) : lines;
-  if (dataLines.length > BATCH_LIMIT) {
-    return { rows: [], error: `Batch limit is ${BATCH_LIMIT} rows; the CSV has ${dataLines.length}.` };
+  if (dataLines.length > limit) {
+    return { rows: [], error: `Batch limit is ${limit} rows; the CSV has ${dataLines.length}.` };
   }
 
   const rows: CsvLocation[] = [];

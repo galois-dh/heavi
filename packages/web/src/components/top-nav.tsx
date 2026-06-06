@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { UserButton, useUser } from "@clerk/nextjs";
 
 type NavKey =
   | "energy" | "hazard" | "locations"
@@ -32,6 +33,22 @@ const PRODUCT_OF: Record<string, "energy" | "hazard" | "locations" | undefined> 
   portfolio: "hazard",
   "trade-area": "locations",
 };
+
+/** Sign-in link when signed out, UserButton (avatar + sign-out) when signed in. */
+function AuthControls() {
+  const { isLoaded, isSignedIn } = useUser();
+  if (!isLoaded) return null;
+  return isSignedIn ? (
+    <UserButton />
+  ) : (
+    <Link
+      href="/sign-in"
+      className="rounded-md px-3 py-1.5 font-semibold text-zinc-200 transition hover:bg-zinc-800 hover:text-white"
+    >
+      Sign in
+    </Link>
+  );
+}
 
 export function TopNav({ active }: { active?: NavKey }) {
   const productContext = active ? PRODUCT_OF[active] : undefined;
@@ -97,6 +114,10 @@ export function TopNav({ active }: { active?: NavKey }) {
             </Link>
           </div>
         </details>
+
+        <span className="mx-2 hidden h-4 w-px bg-zinc-800 sm:block" />
+
+        <AuthControls />
       </nav>
     </header>
   );

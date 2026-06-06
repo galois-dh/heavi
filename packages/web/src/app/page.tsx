@@ -1,8 +1,17 @@
 import Link from "next/link";
+import { currentUser } from "@clerk/nextjs/server";
 import { TopNav } from "../components/top-nav";
-import { ProductCard } from "../components/product-card";
+import { ProductCard, type CardAccess } from "../components/product-card";
+import { hasModuleAccess, readModuleMeta, type ModuleId } from "../lib/module-access";
 
-export default function Home() {
+export default async function Home() {
+  // The landing page is public; show product cards as open / locked / signed-out
+  // based on the viewer's module access (Auth + Module Permissioning Spec, Step 8).
+  const user = await currentUser();
+  const meta = readModuleMeta(user?.publicMetadata);
+  const accessFor = (product: ModuleId): CardAccess =>
+    !user ? "signed-out" : hasModuleAccess(meta, product) ? "open" : "locked";
+
   return (
     <div className="flex h-full flex-col">
       <TopNav />
@@ -26,6 +35,7 @@ export default function Home() {
           <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
             <ProductCard
               product="energy"
+              access={accessFor("energy")}
               title="Heavi Energy"
               tagline="Site screening for renewable development"
               buyer="solar, wind, battery storage, and data-center developers"
@@ -45,6 +55,7 @@ export default function Home() {
 
             <ProductCard
               product="hazard"
+              access={accessFor("hazard")}
               title="Heavi Hazard"
               tagline="Natural hazard intelligence for investment decisions"
               buyer="CRE acquisition, commercial lenders, portfolio managers"
@@ -63,6 +74,7 @@ export default function Home() {
 
             <ProductCard
               product="locations"
+              access={accessFor("locations")}
               title="Heavi Locations"
               tagline="Trade area & site intelligence"
               buyer="retail expansion, QSR, healthcare, bank-branch teams"

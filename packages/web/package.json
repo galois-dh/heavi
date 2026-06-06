@@ -9,6 +9,7 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@clerk/nextjs": "^7.4.3",
     "html2canvas": "^1.4.1",
     "jspdf": "^4.2.1",
     "maplibre-gl": "^5.1.0",
