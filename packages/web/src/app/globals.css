@@ -1,2 +1,25 @@
 @import "tailwindcss";
 @import "maplibre-gl/dist/maplibre-gl.css";
+
+/* Landing-page entrance: staggered fade-up applied via .heavi-reveal + inline
+   animation-delay. Honors reduced-motion. */
+@keyframes heavi-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.heavi-reveal {
+  animation: heavi-fade-up 0.7s cubic-bezier(0.16, 0.84, 0.44, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .heavi-reveal {
+    animation: none;
+  }
+}
