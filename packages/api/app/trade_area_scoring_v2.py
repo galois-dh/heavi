@@ -34,6 +34,7 @@ from .critical_sources import (
     selection_critical_gaps,
 )
 from .data_selection import select_data
+from .display_names import criterion_name, enrich_result, gap_message
 from .flood_scoring import classify_zone, query_nfhl
 from .methodology_repository import get_methodology_doc
 
@@ -313,17 +314,17 @@ async def score_trade_area_v2(
     sources_used = _sources_used(selection)
 
     def _wrap(base: dict[str, Any]) -> dict[str, Any]:
-        return {
+        return enrich_result({
             "module": MODULE_NAME, "module_version": MODULE_VERSION,
             "query": {"latitude": latitude, "longitude": longitude,
                       "address": address, "resolved_address": resolved_address,
                       "business_category": business_category},
             **base, "data_sources_used": sources_used,
             "confidence": confidence, "methodology": methodology,
-        }
+        })
 
     def _cannot_assess(gaps: list[dict[str, Any]]) -> dict[str, Any]:
-        return {
+        return enrich_result({
             "module": MODULE_NAME, "module_version": MODULE_VERSION,
             "query": {"latitude": latitude, "longitude": longitude,
                       "address": address, "resolved_address": resolved_address,
@@ -334,9 +335,15 @@ async def score_trade_area_v2(
             "data_sources_used": sources_used,
             "confidence": {"tier": CANNOT_ASSESS, "composite": None,
                            "statement": cannot_assess_statement(gaps),
-                           "gaps": [g["message"] for g in gaps]},
+                           "gaps": [
+                               {"criterion": g["criterion"],
+                                "display_name": criterion_name(g["criterion"]),
+                                "message": g.get("message") or gap_message(g["criterion"]),
+                                "tried": g.get("sources", [])}
+                               for g in gaps
+                           ]},
             "methodology": methodology,
-        }
+        })
 
     # Critical-source check: resident demographics (Census ACS / ta_population)
     # are required to score a trade area. If that whole tree is exhausted, CANNOT
@@ -394,7 +401,7 @@ async def score_trade_area_v2(
             pool, latitude, longitude, business_category, custom_categories, selection,
         )
 
-    return {
+    return enrich_result({
         "module":            MODULE_NAME,
         "module_version":    MODULE_VERSION,
         "query": {
@@ -406,4 +413,4 @@ async def score_trade_area_v2(
         "data_sources_used": sources_used,
         "confidence":        confidence,
         "methodology":       methodology,
-    }
+    })

@@ -1,6 +1,7 @@
 "use client";
 
 import type { SolarScoreV2, HazardScoreV2, TradeAreaScoreV2 } from "../lib/api";
+import { criterionName, sourceName } from "../lib/display-names";
 
 const TIER_CHIP: Record<string, string> = {
   HIGH: "bg-emerald-500/15 text-emerald-300 border-emerald-500/30",
@@ -86,7 +87,7 @@ export function EnergyDetail({ r }: { r: SolarScoreV2 }) {
       {r.confidence.gaps.length > 0 && (
         <div className="rounded-md border border-amber-500/20 bg-amber-500/5 p-2">
           <p className="text-[10px] font-semibold uppercase tracking-wider text-amber-300">Data gaps ({r.confidence.gaps.length})</p>
-          <ul className="mt-1 space-y-0.5 text-zinc-400">{r.confidence.gaps.map((g, i) => <li key={i}>• {g}</li>)}</ul>
+          <ul className="mt-1 space-y-0.5 text-zinc-400">{r.confidence.gaps.map((g, i) => <li key={i}>• {g.message}</li>)}</ul>
         </div>
       )}
 
@@ -115,7 +116,7 @@ export function EnergyDetail({ r }: { r: SolarScoreV2 }) {
         <p className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-zinc-500">Per-criterion scores</p>
         {Object.entries(r.criteria_scores).map(([id, c]) => (
           <div key={id} className="flex justify-between py-0.5">
-            <span className="text-zinc-300">{id}</span>
+            <span className="text-zinc-300">{c.display_name ?? criterionName(id)}</span>
             <span className="font-mono text-zinc-200">{c.score == null ? "—" : Math.round(c.score * 100)}</span>
           </div>
         ))}
@@ -125,10 +126,10 @@ export function EnergyDetail({ r }: { r: SolarScoreV2 }) {
         <p className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-zinc-500">Exclusions</p>
         {Object.entries(r.exclusion_results).map(([id, ex]) => (
           <div key={id} className="flex justify-between py-0.5">
-            <span className="text-zinc-300">{id.replace("excl_", "")}</span>
+            <span className="text-zinc-300">{ex.display_name ?? criterionName(id)}</span>
             <span className={ex.excluded ? "text-red-400" : "text-emerald-400"}>
               {ex.excluded === null ? "no data" : ex.excluded ? "EXCLUDED" : "pass"}
-              <span className="text-zinc-600"> · {ex.selected_source ?? "—"}</span>
+              <span className="text-zinc-600"> · {ex.source_display ?? sourceName(ex.selected_source)}</span>
             </span>
           </div>
         ))}
@@ -190,12 +191,34 @@ export function HazardDetail({ r }: { r: HazardScoreV2 }) {
       </div>
       <p className="leading-relaxed text-zinc-400">{r.confidence.statement}</p>
 
+      <PerilCriteria title="Wildfire criteria" map={wf.criteria_confidence as CriteriaConfidence} />
+      <PerilCriteria title="Flood criteria" map={fl.criteria_confidence as CriteriaConfidence} />
+
       {r.confidence.gaps.length > 0 && (
         <div className="rounded-md border border-amber-500/20 bg-amber-500/5 p-2">
           <p className="text-[10px] font-semibold uppercase tracking-wider text-amber-300">Data gaps ({r.confidence.gaps.length})</p>
-          <ul className="mt-1 space-y-0.5 text-zinc-400">{r.confidence.gaps.map((g, i) => <li key={i}>• {g}</li>)}</ul>
+          <ul className="mt-1 space-y-0.5 text-zinc-400">{r.confidence.gaps.map((g, i) => <li key={i}>• {g.message}</li>)}</ul>
         </div>
       )}
+    </div>
+  );
+}
+
+type CriteriaConfidence = Record<string, { tier?: string; display_name?: string }> | undefined;
+
+/** Per-criterion list for a hazard peril, with natural-language criterion names. */
+function PerilCriteria({ title, map }: { title: string; map: CriteriaConfidence }) {
+  const entries = Object.entries(map ?? {});
+  if (entries.length === 0) return null;
+  return (
+    <div>
+      <p className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-zinc-500">{title}</p>
+      {entries.map(([id, c]) => (
+        <div key={id} className="flex justify-between py-0.5">
+          <span className="text-zinc-300">{c.display_name ?? criterionName(id)}</span>
+          <span className="text-zinc-500">{c.tier ?? "—"}</span>
+        </div>
+      ))}
     </div>
   );
 }
@@ -258,12 +281,24 @@ export function LocationsDetail({ r }: { r: TradeAreaScoreV2 }) {
         </div>
       )}
 
+      {Object.keys(r.criteria_scores ?? {}).length > 0 && (
+        <div>
+          <p className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-zinc-500">Criteria</p>
+          {Object.entries(r.criteria_scores).map(([id, score]) => (
+            <div key={id} className="flex justify-between py-0.5">
+              <span className="text-zinc-300">{criterionName(id)}</span>
+              <span className="font-mono text-zinc-200">{score == null ? "—" : Math.round((score as number) * 100)}</span>
+            </div>
+          ))}
+        </div>
+      )}
+
       <div>
         <p className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-zinc-500">Data sources</p>
         {[["POIs", src.poi_source], ["Daytime", src.daytime_source], ["Population", src.population_source], ["Flood", src.flood_source]].map(([label, val]) => (
           <div key={label} className="flex justify-between py-0.5">
             <span className="text-zinc-300">{label}</span>
-            <span className="text-zinc-400">{val ?? "—"}</span>
+            <span className="text-zinc-400">{sourceName(val as string | null)}</span>
           </div>
         ))}
       </div>
@@ -271,7 +306,7 @@ export function LocationsDetail({ r }: { r: TradeAreaScoreV2 }) {
       {(r.coverage_gaps?.length ?? 0) > 0 && (
         <div className="rounded-md border border-amber-500/20 bg-amber-500/5 p-2">
           <p className="text-[10px] font-semibold uppercase tracking-wider text-amber-300">Data gaps ({r.coverage_gaps!.length})</p>
-          <ul className="mt-1 space-y-0.5 text-zinc-400">{r.coverage_gaps!.map((g, i) => <li key={i}>• {g}</li>)}</ul>
+          <ul className="mt-1 space-y-0.5 text-zinc-400">{r.coverage_gaps!.map((g, i) => <li key={i}>• {criterionName(g)}</li>)}</ul>
         </div>
       )}
     </div>

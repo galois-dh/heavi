@@ -27,7 +27,14 @@ from typing import Any
 import asyncpg
 import httpx
 
+from .critical_sources import (
+    CANNOT_ASSESS,
+    cannot_assess_statement,
+    scoring_critical_gap,
+    selection_critical_gaps,
+)
 from .data_selection import CriterionSelection, DataSelectionResult, select_data
+from .display_names import criterion_name, enrich_result, gap_message
 from .integrations import (
     critical_habitat_at_point,
     ejscreen_at_point,
@@ -37,12 +44,6 @@ from .integrations import (
     pvwatts_v8,
     sda_point,
     slope_aspect_from_grid,
-)
-from .critical_sources import (
-    CANNOT_ASSESS,
-    cannot_assess_statement,
-    scoring_critical_gap,
-    selection_critical_gaps,
 )
 from .interconnection import get_interconnection_context
 from .methodology_repository import get_methodology_doc
@@ -726,7 +727,7 @@ async def score_solar_siting(
     ):
         critical_gaps.append(scoring_critical_gap("solar_siting", "solar_ghi"))
     if critical_gaps:
-        return {
+        return enrich_result({
             "module":          MODULE_NAME,
             "module_version":  MODULE_VERSION,
             "query":           {"latitude": latitude, "longitude": longitude},
@@ -742,10 +743,16 @@ async def score_solar_siting(
                 "tier":      CANNOT_ASSESS,
                 "composite": None,
                 "statement": cannot_assess_statement(critical_gaps),
-                "gaps":      [g["message"] for g in critical_gaps],
+                "gaps":      [
+                    {"criterion": g["criterion"],
+                     "display_name": criterion_name(g["criterion"]),
+                     "message": g.get("message") or gap_message(g["criterion"]),
+                     "tried": g.get("sources", [])}
+                    for g in critical_gaps
+                ],
             },
             "methodology":     methodology,
-        }
+        })
 
     # Step 4 — composite (weighted scored, exclusion overrides to "Excluded").
     # Flood is excluded from the weighted average and applied as a *deduction*
@@ -787,7 +794,7 @@ async def score_solar_siting(
         rating = "Low"
 
     # Step 5 — assemble output.
-    return {
+    return enrich_result({
         "module":          MODULE_NAME,
         "module_version":  MODULE_VERSION,
         "query":           {"latitude": latitude, "longitude": longitude},
@@ -817,4 +824,4 @@ async def score_solar_siting(
             },
         },
         "methodology": methodology,
-    }
+    })

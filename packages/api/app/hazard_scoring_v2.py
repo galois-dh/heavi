@@ -27,7 +27,9 @@ import asyncpg
 import httpx
 
 from . import wildfire_loss
+from .critical_sources import CANNOT_ASSESS, selection_critical_gaps
 from .data_selection import select_data
+from .display_names import enrich_result
 from .flood_scoring import (
     DEFAULT_FIRST_FLOOR_HEIGHT_FT,
     DEFAULT_SFHA_DEPTH_ABOVE_GRADE_FT,
@@ -38,7 +40,6 @@ from .flood_scoring import (
     query_nfhl,
     query_nsi,
 )
-from .critical_sources import CANNOT_ASSESS, selection_critical_gaps
 from .integrations import (
     query_landfire_canopy,
     query_landfire_fuel,
@@ -378,7 +379,7 @@ async def score_hazard(
         k: v for k, v in confidence["per_criterion"].items() if k in FLOOD_CRITERIA
     }
 
-    return {
+    return enrich_result({
         "module":         MODULE_NAME,
         "module_version": MODULE_VERSION,
         "query":          {"latitude": latitude, "longitude": longitude},
@@ -386,4 +387,4 @@ async def score_hazard(
         "flood":          flood,
         "confidence":     confidence,
         "methodology":    methodology,
-    }
+    })

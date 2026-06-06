@@ -20,7 +20,6 @@ from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.lib.units import inch
 from reportlab.platypus import (
     HRFlowable,
-    KeepTogether,
     PageBreak,
     Paragraph,
     SimpleDocTemplate,
@@ -28,6 +27,8 @@ from reportlab.platypus import (
     Table,
     TableStyle,
 )
+
+from .display_names import criterion_name, source_name
 
 # ─── Palette ────────────────────────────────────────────────────────────────
 NAVY = colors.HexColor("#0a2540")
@@ -177,7 +178,8 @@ def _single_story(st: dict, r: dict[str, Any], address: str | None) -> list:
     if gaps:
         story.append(Paragraph("DATA GAPS", st["h2"]))
         for g in gaps[:6]:
-            story.append(Paragraph(f"• {g}", st["body"]))
+            msg = g.get("message") if isinstance(g, dict) else g
+            story.append(Paragraph(f"• {msg}", st["body"]))
 
     # Interconnection context (F4) — below the score, above the criterion detail.
     story += _interconnection_section(st, r.get("interconnection_context"))
@@ -191,9 +193,11 @@ def _single_story(st: dict, r: dict[str, Any], address: str | None) -> list:
         for cid, e in excl.items():
             ex = e.get("excluded")
             mark = "✓ pass" if ex is False else ("✗ EXCLUDED" if ex else "— no data")
-            rows.append([Paragraph(_EXCL_NAMES.get(cid, cid), st["cell"]),
+            label = e.get("display_name") or criterion_name(cid)
+            source = e.get("source_display") or source_name(e.get("selected_source"))
+            rows.append([Paragraph(label, st["cell"]),
                          Paragraph(mark, st["cell"]),
-                         Paragraph(str(e.get("selected_source") or "—"), st["cell"])])
+                         Paragraph(source, st["cell"])])
         t = Table(rows, colWidths=[2.4 * inch, 1.6 * inch, 2.6 * inch])
         t.setStyle(_table_style())
         story.append(t)
@@ -205,11 +209,13 @@ def _single_story(st: dict, r: dict[str, Any], address: str | None) -> list:
     rows = [[Paragraph(h, st["cellb"]) for h in ("Criterion", "Weight", "Score", "Source", "Confidence")]]
     for cid, c in cs.items():
         sc = c.get("score")
+        label = c.get("display_name") or criterion_name(cid)
+        source = c.get("source_display") or source_name(c.get("selected_source"))
         rows.append([
-            Paragraph(cid, st["cell"]),
+            Paragraph(label, st["cell"]),
             Paragraph(f"{c.get('weight'):.2f}" if c.get("weight") is not None else "—", st["cell"]),
             Paragraph("—" if sc is None else str(round(sc * 100)), st["cell"]),
-            Paragraph(str(c.get("selected_source") or "—"), st["cell"]),
+            Paragraph(source, st["cell"]),
             Paragraph(str((per.get(cid) or {}).get("tier") or "—"), st["cell"]),
         ])
     t = Table(rows, colWidths=[1.7 * inch, 0.8 * inch, 0.7 * inch, 2.2 * inch, 1.2 * inch])

@@ -96,7 +96,9 @@ def scoring_critical_gap(workflow: str, criterion_id: str) -> dict[str, Any]:
 
 
 def cannot_assess_statement(gaps: list[dict[str, Any]]) -> str:
-    """Confidence statement naming the missing critical sources (AC8)."""
+    """Confidence statement naming the missing critical sources, by display name."""
+    from .display_names import source_name
     srcs = sorted({s for g in gaps for s in g.get("sources", [])})
-    detail = (" Missing: " + ", ".join(srcs) + ".") if srcs else ""
+    names = sorted({source_name(s) for s in srcs})
+    detail = (" Missing: " + ", ".join(names) + ".") if names else ""
     return "Critical data sources unavailable. Assessment cannot be produced." + detail

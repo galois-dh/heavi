@@ -35,6 +35,15 @@ export async function postQuery(question: string): Promise<QueryResult> {
 
 // ─── Heavi Energy — solar siting v2 (Phase 4 / 5) ────────────────────────
 
+/** A buyer-facing data gap: a criterion whose data tree was fully exhausted.
+ *  `message` is the human-readable explanation (Natural Language Display Spec). */
+export interface DataGap {
+  criterion: string;
+  display_name: string;
+  message: string;
+  tried: string[];
+}
+
 export interface SolarScoreV2 {
   module: string;
   module_version: string;
@@ -69,19 +78,23 @@ export interface SolarScoreV2 {
     basis: Record<string, unknown>;
     confidence: number;
     selected_source: string | null;
+    display_name?: string;
+    source_display?: string;
   }>;
   exclusion_results: Record<string, {
     excluded: boolean | null;
     basis: Record<string, unknown>;
     confidence: number;
     selected_source: string | null;
+    display_name?: string;
+    source_display?: string;
   }>;
   confidence: {
     tier: "HIGH" | "MODERATE" | "LOW" | "INSUFFICIENT";
     composite: number;
     statement: string;
     completeness: string;
-    gaps: string[];
+    gaps: DataGap[];
     strongest_data: string[];
     weakest_data: string[];
     per_criterion: Record<string, {
@@ -89,6 +102,8 @@ export interface SolarScoreV2 {
       tier: "HIGH" | "MODERATE" | "LOW" | "NONE";
       quality_note: string;
       selected_source: string | null;
+      display_name?: string;
+      source_display?: string;
     }>;
   };
   methodology: {
@@ -709,12 +724,13 @@ export interface ConfidenceReport {
   composite: number;
   statement: string;
   completeness?: string;
-  gaps: string[];
+  gaps: DataGap[];
   strongest_data?: string[];
   weakest_data?: string[];
   per_criterion: Record<
     string,
-    { confidence: number; tier: string; quality_note: string; selected_source: string | null }
+    { confidence: number; tier: string; quality_note: string; selected_source: string | null;
+      display_name?: string; source_display?: string }
   >;
 }
 

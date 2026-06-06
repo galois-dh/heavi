@@ -23,6 +23,7 @@ from typing import Any
 import asyncpg
 
 from .data_repository_check import SourceResult, check_source_availability
+from .display_names import criterion_name, make_gap
 from .methodology_repository import (
     CriterionSpec,
     get_all_source_ids_for_workflow,
@@ -70,7 +71,7 @@ class DataSelectionResult:
     confidence_tier:      str         # 'HIGH' | 'MODERATE' | 'LOW' | 'INSUFFICIENT'
     confidence_statement: str
     completeness:         str
-    gaps:                 list[str]
+    gaps:                 list[dict[str, Any]]   # {criterion, display_name, message, tried}
     strongest_data:       list[str]
     weakest_data:         list[str]
     source_cache:         dict[str, SourceResult]
@@ -135,7 +136,8 @@ async def resolve_sources(
 
     Set HEAVI_SELECTION_TIMING=1 to print per-source probe wall time to
     stdout (diagnostic only — no impact when unset)."""
-    import os, time  # local import keeps prod hot-path imports unchanged
+    import os
+    import time  # local import keeps prod hot-path imports unchanged
     log_timing = os.getenv("HEAVI_SELECTION_TIMING") == "1"
 
     source_ids = await get_all_source_ids_for_workflow(pool, workflow_type)
@@ -152,7 +154,7 @@ async def resolve_sources(
 
     if log_timing:
         total_ms = sum(ms for _, ms in timings)
-        print(f"  --- top 5 slowest ---", flush=True)
+        print("  --- top 5 slowest ---", flush=True)
         for sid, ms in sorted(timings, key=lambda x: -x[1])[:5]:
             share = (ms / total_ms) * 100.0 if total_ms else 0.0
             print(f"  {sid}: {ms:.1f} ms  ({share:.1f}% of probe wall)", flush=True)
@@ -403,18 +405,17 @@ def compute_composite_confidence(
         if worst_excl_sel else None
     )
 
+    # Join a list of criterion IDs as human-readable display names.
+    def _names(ids: list[str]) -> str:
+        return ", ".join(criterion_name(i) for i in ids)
+
     if tier == "HIGH":
         if non_auth_scored or weak_excl_ids:
-            bits = []
-            if non_auth_scored:
-                bits.append(f"scored: {', '.join(non_auth_scored)}")
-            if weak_excl_ids:
-                bits.append(f"exclusion: {', '.join(weak_excl_ids)}")
+            proxied = _names(non_auth_scored + weak_excl_ids)
             statement = (
                 "This assessment uses authoritative data for the majority of "
-                "criteria. Proxy or partial data was used for: "
-                + "; ".join(bits)
-                + ". Verify those before relying on the result."
+                f"criteria. Proxy or partial data was used for {proxied}. "
+                "Verify those before relying on the result."
             )
         else:
             statement = (
@@ -429,32 +430,25 @@ def compute_composite_confidence(
                 f"{exclusion_factor:.2f} = {composite:.2f})."
             )
         else:
-            bits = []
-            if non_auth_scored:
-                bits.append(f"scored: {', '.join(non_auth_scored)}")
-            if weak_excl_ids:
-                bits.append(f"exclusion: {', '.join(weak_excl_ids)}")
-            if none_excl_ids:
-                bits.append(f"exclusion gaps: {', '.join(none_excl_ids)}")
-            detail = "; ".join(bits) if bits else "see per-criterion detail"
+            proxied = _names(non_auth_scored + weak_excl_ids + none_excl_ids)
+            detail = proxied or "see per-criterion detail"
             statement = (
-                f"This assessment uses proxy or partial data for some criteria — "
-                f"{detail}. Results are directionally reliable but should be "
-                "verified for those gaps."
+                f"This assessment uses proxy or partial data for {detail}. "
+                "Results are directionally reliable but should be verified for those gaps."
             )
     elif tier == "LOW":
         gaps = [s.criterion_id for s in selections if s.confidence < 0.4]
         lead = worst_guidance + " " if worst_guidance else ""
         statement = (
             f"{lead}This assessment has significant data gaps affecting "
-            f"{len(gaps)} criteria: {', '.join(gaps) or '(see per-criterion detail)'}."
+            f"{len(gaps)} criteria: {_names(gaps) or '(see per-criterion detail)'}."
             " Results should be treated as preliminary screening, not definitive."
         )
     else:  # INSUFFICIENT
         gaps = [s.criterion_id for s in selections if s.confidence == 0.0]
         statement = (
             "Insufficient data available at this location to produce a reliable "
-            f"assessment. Missing: {', '.join(gaps[:5]) or '(see per-criterion detail)'}."
+            f"assessment. Missing: {_names(gaps[:5]) or '(see per-criterion detail)'}."
         )
     return composite, tier, statement
 
@@ -477,8 +471,10 @@ async def select_data(
 
     composite, tier, statement = compute_composite_confidence(selections, specs)
 
+    # Structured, buyer-facing data gaps (Display Spec §7): {criterion,
+    # display_name, message, tried}. One per fully-exhausted criterion tree.
     gaps = [
-        f"{s.criterion_id}: {s.quality_note}"
+        make_gap(s.criterion_id, [t.get("source_id") for t in s.sources_tried])
         for s in selections if s.confidence == 0.0
     ]
     strongest = [
