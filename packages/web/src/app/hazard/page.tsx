@@ -6,7 +6,7 @@ import { TopNav } from "../../components/top-nav";
 import { HeaviMap } from "../../components/heavi-map";
 import { HazardDetail } from "../../components/map-detail-panels";
 import { GeocodeInput } from "../../components/geocode-input";
-import { postHazardScoreV2, resolveLocation, type GeocodeResult, type HazardScoreV2 } from "../../lib/api";
+import { downloadHazardPdf, postHazardScoreV2, resolveLocation, type GeocodeResult, type HazardScoreV2 } from "../../lib/api";
 import { HAZARD_CONSTRAINTS, fc, hazardFeature } from "../../lib/map-features";
 
 /**
@@ -22,6 +22,7 @@ export default function HazardProductPage() {
   const [selectedFid, setSelectedFid] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [pdfBusy, setPdfBusy] = useState(false);
   const counter = useRef(0);
 
   const addResult = useCallback((r: HazardScoreV2) => {
@@ -75,7 +76,23 @@ export default function HazardProductPage() {
 
           <div className="flex-1 p-4">
             {selected ? (
-              <HazardDetail r={selected} />
+              <>
+                <div className="mb-2 flex justify-end">
+                  <button
+                    onClick={async () => {
+                      const q = selected.query as { latitude: number; longitude: number };
+                      setPdfBusy(true);
+                      try { await downloadHazardPdf(q.latitude, q.longitude, addr); }
+                      catch (err) { setError(err instanceof Error ? err.message : "PDF export failed"); }
+                      finally { setPdfBusy(false); }
+                    }}
+                    disabled={pdfBusy}
+                    className="rounded-md bg-zinc-800 px-3 py-1.5 text-[11px] font-medium text-zinc-200 transition hover:bg-zinc-700 disabled:opacity-40">
+                    {pdfBusy ? "Generating PDF…" : "Export PDF"}
+                  </button>
+                </div>
+                <HazardDetail r={selected} />
+              </>
             ) : (
               <p className="text-[11px] text-zinc-500">
                 {order.length > 0 ? "Click a property marker to inspect its hazard assessment." : "Assess a property to see it on the map."}

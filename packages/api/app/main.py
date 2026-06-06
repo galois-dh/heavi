@@ -14,12 +14,13 @@ from pydantic import BaseModel
 
 from .constraints import (
     SUPPORTED_LAYERS as CONSTRAINT_LAYERS,
+)
+from .constraints import (
     get_constraint_geojson,
 )
 from .data_repository import get_source_availability, get_sources_for_workflow
 from .data_repository_check import check_source_availability
 from .data_selection import select_data
-from .geocoding import geocode as geocode_query
 from .decision_trail import RequestContext, persist_trail
 from .earthquake_scoring import assess_earthquake_risk
 from .earthquake_scoring import methodology_doc as earthquake_methodology_doc
@@ -27,6 +28,8 @@ from .flood_scoring import MODULE_NAME as FLOOD_MODULE
 from .flood_scoring import MODULE_VERSION as FLOOD_VERSION
 from .flood_scoring import assess_flood_risk
 from .flood_scoring import methodology_doc as flood_methodology_doc
+from .geocoding import geocode as geocode_query
+from .hazard_scoring_v2 import score_hazard as hazard_v2_score
 from .methodology_repository import (
     get_all_source_ids_for_workflow,
     get_methodology_doc,
@@ -48,7 +51,6 @@ from .solar_scoring import (
     run_discover_mode,
     run_score_mode,
 )
-from .hazard_scoring_v2 import score_hazard as hazard_v2_score
 from .solar_scoring_v2 import score_solar_siting as solar_v2_score
 from .spatial_query import spatial_query
 from .trade_area_scoring import discover_trade_area, score_trade_area
@@ -721,6 +723,23 @@ async def hazard_score_v2_endpoint(req: HazardScoreV2Request) -> dict:
             raise HTTPException(404, f"Could not geocode: {req.address}")
         lat, lng, _resolved = g
     return await hazard_v2_score(pool, lat, lng)
+
+
+@app.get("/hazard/score-v2/pdf")
+async def hazard_score_v2_pdf(lat: float, lng: float, address: str | None = None) -> Response:
+    """Single-site property hazard assessment (wildfire + flood) as a PDF, with
+    NSI replacement-value provenance."""
+    if not pool:
+        raise HTTPException(503, "Database pool not initialized")
+    result = await hazard_v2_score(pool, lat, lng)
+    from .hazard_pdf import hazard_single_pdf
+
+    pdf = hazard_single_pdf(result, address=address)
+    fname = f"heavi-hazard-{lat:.4f}_{lng:.4f}.pdf"
+    return Response(
+        content=pdf, media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="{fname}"'},
+    )
 
 
 # ─── Earthquake risk ───────────────────────────────────────────────────────

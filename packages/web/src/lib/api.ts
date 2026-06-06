@@ -743,6 +743,10 @@ export interface HazardScoreV2 {
     annual_risk_usd: number | null;
     risk_tier: string | null;
     damage_probability: number | null;
+    nsi_replacement_value?: number | null;
+    nsi_building_type?: string | null;
+    nsi_source?: string | null;
+    nsi_available?: boolean;
     message?: string;
     missing_sources?: string[];
     note?: string;
@@ -755,6 +759,10 @@ export interface HazardScoreV2 {
     risk_tier: string | null;
     flood_zone: string | null;
     depth_ft: number | null;
+    nsi_replacement_value?: number | null;
+    nsi_building_type?: string | null;
+    nsi_source?: string | null;
+    nsi_available?: boolean;
     message?: string;
     missing_sources?: string[];
     [k: string]: unknown;
@@ -877,6 +885,14 @@ export async function downloadSolarPdf(lat: number, lng: number, address?: strin
   const res = await fetch(`${API_BASE}/solar/score-v2/pdf?${q}`);
   if (!res.ok) throw new Error(`PDF export failed (${res.status})`);
   triggerDownload(await res.blob(), `heavi-solar-${lat.toFixed(4)}_${lng.toFixed(4)}.pdf`);
+}
+
+/** Download the single-site property hazard assessment PDF (wildfire + flood). */
+export async function downloadHazardPdf(lat: number, lng: number, address?: string): Promise<void> {
+  const q = `lat=${lat}&lng=${lng}${address ? `&address=${encodeURIComponent(address)}` : ""}`;
+  const res = await fetch(`${API_BASE}/hazard/score-v2/pdf?${q}`);
+  if (!res.ok) throw new Error(`PDF export failed (${res.status})`);
+  triggerDownload(await res.blob(), `heavi-hazard-${lat.toFixed(4)}_${lng.toFixed(4)}.pdf`);
 }
 
 /** Download the batch portfolio PDF for many sites. */

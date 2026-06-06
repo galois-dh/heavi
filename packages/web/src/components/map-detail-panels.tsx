@@ -19,6 +19,33 @@ const TIER_CHIP: Record<string, string> = {
 const chip = (t: string | null | undefined) => TIER_CHIP[(t ?? "NONE").toUpperCase()] ?? TIER_CHIP.NONE;
 const usd = (v: number | null | undefined) => (v == null ? "—" : `$${Math.round(v).toLocaleString("en-US")}/yr`);
 
+/** Annual-risk dollar figure plus its NSI replacement-value provenance. When no
+ *  NSI structure is matched, the dollar estimate is N/A rather than a default. */
+function RiskDollar({ peril }: {
+  peril: {
+    annual_risk_usd: number | null;
+    nsi_available?: boolean;
+    nsi_replacement_value?: number | null;
+    nsi_building_type?: string | null;
+  };
+}) {
+  if (peril.nsi_available === false) {
+    return <p className="text-base font-bold text-zinc-400">N/A — no structure data available</p>;
+  }
+  return (
+    <>
+      <p className="text-base font-bold text-zinc-100">{usd(peril.annual_risk_usd)}</p>
+      {peril.nsi_replacement_value != null && (
+        <p className="text-[10px] text-zinc-500">
+          Based on NSI estimated replacement value of $
+          {Math.round(peril.nsi_replacement_value).toLocaleString("en-US")}
+          {peril.nsi_building_type ? ` (${peril.nsi_building_type})` : ""}
+        </p>
+      )}
+    </>
+  );
+}
+
 /** CANNOT ASSESS explanatory block — message + named missing sources + the
  *  "does NOT mean low risk" disclaimer (Insufficient Data Handling Spec, AC3). */
 export function CannotAssess({
@@ -161,9 +188,9 @@ export function HazardDetail({ r }: { r: HazardScoreV2 }) {
         <div className="rounded-md border border-zinc-800 bg-zinc-950/60 p-2">
           <div className="flex items-center justify-between">
             <span className="font-semibold text-white">Wildfire</span>
-            <span className={`rounded border px-1.5 py-0.5 ${chip(wf.risk_tier)}`}>{wf.available ? wf.risk_tier : "NO DATA"}</span>
+            <span className={`rounded border px-1.5 py-0.5 ${chip(wf.risk_tier)}`}>{wf.risk_tier ?? "N/A"}</span>
           </div>
-          <p className="text-base font-bold text-zinc-100">{usd(wf.annual_risk_usd)}</p>
+          <RiskDollar peril={wf} />
           {wf.damage_probability != null && <p className="text-zinc-500">damage prob {Math.round(wf.damage_probability * 100)}%</p>}
         </div>
       )}
@@ -174,9 +201,9 @@ export function HazardDetail({ r }: { r: HazardScoreV2 }) {
         <div className="rounded-md border border-zinc-800 bg-zinc-950/60 p-2">
           <div className="flex items-center justify-between">
             <span className="font-semibold text-white">Flood</span>
-            <span className={`rounded border px-1.5 py-0.5 ${chip(fl.risk_tier)}`}>{fl.risk_tier ?? "—"}</span>
+            <span className={`rounded border px-1.5 py-0.5 ${chip(fl.risk_tier)}`}>{fl.risk_tier ?? "N/A"}</span>
           </div>
-          <p className="text-base font-bold text-zinc-100">{usd(fl.annual_risk_usd)}</p>
+          <RiskDollar peril={fl} />
           <p className="text-zinc-500">
             zone {fl.flood_zone ?? "X/unmapped"}{fl.depth_ft != null && ` · depth ${fl.depth_ft} ft`}
           </p>

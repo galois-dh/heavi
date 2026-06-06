@@ -50,11 +50,6 @@ from .methodology_repository import get_methodology_doc
 MODULE_NAME = "hazard_assessment_scoring_v2"
 MODULE_VERSION = "0.2.0"  # data-tree completeness: NIFC + LANDFIRE WCS fallback
 
-# National median single-family structure replacement value, used only as an
-# exposure floor when NSI returns no structure but the wildfire hazard is real
-# (so a genuine fire-shed isn't reported as $0 for lack of an exposure match).
-_DEFAULT_STRUCTURE_VALUE_USD = 200_000.0
-
 WILDFIRE_CRITERIA = {
     "wf_likelihood", "wf_fuel_proximity", "wf_canopy", "wf_slope", "wf_structure",
 }
@@ -75,6 +70,46 @@ def _tier(annual_risk: float | None) -> str | None:
     if annual_risk is None:
         return None
     return "HIGH" if annual_risk > 500 else "MODERATE" if annual_risk >= 50 else "LOW"
+
+
+NSI_SOURCE = "USACE National Structure Inventory"
+
+# NSI occupancy-type prefix → plain-English structure category.
+_NSI_OCC_CATEGORY = {
+    "RES": "residential", "COM": "commercial", "IND": "industrial",
+    "AGR": "agricultural", "REL": "religious", "GOV": "government",
+    "EDU": "educational", "PUB": "public",
+}
+# NSI building-material code → plain-English construction type.
+_NSI_BLDG_MATERIAL = {
+    "W": "wood frame", "M": "masonry", "C": "concrete", "S": "steel",
+    "H": "manufactured", "MH": "manufactured",
+}
+
+
+def _nsi_building_type(occtype: str | None, bldgtype: str | None) -> str | None:
+    """Human-readable building type from NSI codes, e.g. ('RES1','W') →
+    'residential wood frame'. Returns None when neither code is present."""
+    occ = (occtype or "").upper()
+    category = next((v for k, v in _NSI_OCC_CATEGORY.items() if occ.startswith(k)), None)
+    material = _NSI_BLDG_MATERIAL.get((bldgtype or "").upper())
+    parts = [p for p in (category, material) if p]
+    return " ".join(parts) if parts else None
+
+
+def _nsi_attribution(nsi: dict[str, Any] | None) -> dict[str, Any]:
+    """Replacement-value provenance fields shared by both perils. A structure is
+    'matched' only when NSI returns a positive replacement value; otherwise the
+    dollar estimate is N/A (no structure to value), never a default/zero."""
+    val = (float(nsi["val_struct"])
+           if nsi and nsi.get("val_struct") not in (None, 0, 0.0) else None)
+    return {
+        "nsi_replacement_value": val,
+        "nsi_building_type": (_nsi_building_type(nsi.get("occtype"), nsi.get("bldgtype"))
+                              if nsi else None),
+        "nsi_source": NSI_SOURCE if nsi else None,
+        "nsi_available": val is not None,
+    }
 
 
 # ─── Wildfire peril ────────────────────────────────────────────────────────
@@ -197,9 +232,8 @@ async def _wildfire_block(
         nsi = await query_nsi(client, longitude, latitude)
 
     fire_frequency = float((nifc or {}).get("fire_frequency") or 0.0)
-    val_struct = float(nsi["val_struct"]) if nsi and nsi.get("val_struct") else 0.0
-    if val_struct <= 0 and fire_frequency > 0:
-        val_struct = _DEFAULT_STRUCTURE_VALUE_USD  # exposure floor
+    nsi_attr = _nsi_attribution(nsi)
+    val_struct = nsi_attr["nsi_replacement_value"]  # None when no structure matched
 
     # Damage given a fire reaches the vicinity: fuel burnability + canopy density.
     burnable = fuel.get("burnable") if fuel else None
@@ -207,7 +241,9 @@ async def _wildfire_block(
     canopy_factor = (canopy_pct / 100.0) if canopy_pct is not None else 0.0
     damage_probability = max(0.0, min(1.0, 0.30 + 0.40 * burnable_factor + 0.30 * canopy_factor))
 
-    annual_risk = round(fire_frequency * damage_probability * val_struct, 2)
+    # No NSI structure → the dollar estimate is N/A, not a default-valued guess.
+    annual_risk = (round(fire_frequency * damage_probability * val_struct, 2)
+                   if val_struct is not None else None)
     wf_conf = min(like_conf, fuel_conf or 1.0, canopy_conf or 1.0)
 
     return {
@@ -221,6 +257,7 @@ async def _wildfire_block(
         "fuel_model_fbfm40": (fuel or {}).get("fbfm40"),
         "canopy_cover_pct": canopy_pct,
         "replacement_value_usd": val_struct,
+        **nsi_attr,
         "confidence": round(wf_conf, 2),
         "sources_used": {
             "wf_likelihood": like_src, "wf_fuel_proximity": fuel_src, "wf_canopy": canopy_src,
@@ -278,20 +315,26 @@ async def _flood_block(
         map_occupancy_class(nsi.get("occtype"), nsi.get("num_story"), nsi.get("found_type"))
         if nsi else "RES1-1SNB"
     )
-    val_struct = float(nsi["val_struct"]) if nsi and nsi.get("val_struct") is not None else 0.0
-    val_cont = float(nsi["val_cont"]) if nsi and nsi.get("val_cont") is not None else 0.0
+    nsi_attr = _nsi_attribution(nsi)
+    val_struct = nsi_attr["nsi_replacement_value"]  # None when no structure matched
+    val_cont = float(nsi["val_cont"]) if nsi and nsi.get("val_cont") is not None else None
 
     struct_pct = cont_pct = 0.0
-    if depth_ft is not None:
+    if depth_ft is not None and val_struct is not None:
         ddf = await ddf_lookup(pool, occupancy_class, depth_ft)
         if ddf:
             struct_pct = float(ddf["structural_damage_pct"])
             cont_pct = float(ddf["contents_damage_pct"])
 
-    structural_loss = round(val_struct * struct_pct / 100.0, 2)
-    contents_loss = round(val_cont * cont_pct / 100.0, 2)
-    total_loss = round(structural_loss + contents_loss, 2)
-    annual_risk = round(total_loss * zinfo["annual_probability"], 2)
+    if val_struct is None:
+        # No NSI structure → dollar loss is N/A; a structure that isn't there
+        # cannot be valued at zero or a default.
+        structural_loss = contents_loss = total_loss = annual_risk = None
+    else:
+        structural_loss = round(val_struct * struct_pct / 100.0, 2)
+        contents_loss = round((val_cont or 0.0) * cont_pct / 100.0, 2)
+        total_loss = round(structural_loss + contents_loss, 2)
+        annual_risk = round(total_loss * zinfo["annual_probability"], 2)
 
     return {
         "available": zone is not None or nsi is not None,
@@ -313,6 +356,7 @@ async def _flood_block(
             "contents_loss_usd": contents_loss,
             "total_loss_usd": total_loss,
         },
+        **nsi_attr,
         "structure_matched": nsi is not None,
     }
 
