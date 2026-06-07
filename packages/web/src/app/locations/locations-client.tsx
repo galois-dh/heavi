@@ -1,7 +1,6 @@
 "use client";
 
 import { type FormEvent, useCallback, useMemo, useRef, useState } from "react";
-import Link from "next/link";
 import { TopNav } from "../../components/top-nav";
 import { HeaviMap, type MapOverlay } from "../../components/heavi-map";
 import { LocationsDetail } from "../../components/map-detail-panels";
@@ -122,7 +121,7 @@ export default function LocationsClient() {
               className="w-full rounded-md bg-emerald-600 px-3 py-2 text-sm font-semibold text-white transition hover:bg-emerald-500 disabled:opacity-40">
               {loading ? "Scoring…" : "Score"}
             </button>
-            <p className="text-[10px] text-zinc-600">Full coverage in Dallas County · <Link href="/trade-area" className="hover:text-zinc-400">advanced workflow →</Link></p>
+            <p className="text-[10px] text-zinc-600">Full coverage in Dallas County</p>
           </form>
 
           <div className="flex-1 p-4">

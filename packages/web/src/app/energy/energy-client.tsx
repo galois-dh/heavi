@@ -1,7 +1,6 @@
 "use client";
 
 import { type FormEvent, useCallback, useMemo, useRef, useState } from "react";
-import Link from "next/link";
 import { TopNav } from "../../components/top-nav";
 import { HeaviMap } from "../../components/heavi-map";
 import { EnergyDetail } from "../../components/map-detail-panels";
@@ -181,9 +180,6 @@ export default function EnergyClient({ batchLimit }: { batchLimit: number }) {
                 {order.length > 0 ? "Click a marker to inspect its assessment." : "Score a site to see it on the map."}
               </p>
             ) : null}
-            {order.length > 1 && (
-              <p className="text-[10px] text-zinc-600"><Link href="/portfolio" className="hover:text-zinc-400">portfolio workflow →</Link></p>
-            )}
           </div>
         </aside>
 
