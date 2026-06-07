@@ -8,12 +8,18 @@ export const metadata: Metadata = {
 };
 
 // Dark-theme Clerk appearance shared across <SignIn/>, <SignUp/>, <UserButton/>.
+// colorNeutral must be a LIGHT base: Clerk derives the UserButton dropdown's
+// action-button text, secondary text, icons, and borders from it, so a dark
+// default renders dark-on-dark (invisible) on our dark surface. A light base
+// produces visible neutral shades. Tones match the site's zinc palette.
 const clerkAppearance = {
   variables: {
     colorPrimary: "#3b82f6",
-    colorBackground: "#111827",
-    colorText: "#f9fafb",
-    colorInputBackground: "#1f2937",
+    colorBackground: "#18181b", // zinc-900 — card/popover surface
+    colorText: "#f9fafb", // zinc-50 — primary text
+    colorTextSecondary: "#a1a1aa", // zinc-400 — emails, labels, hints
+    colorNeutral: "#fafafa", // light base for derived neutral shades on dark bg
+    colorInputBackground: "#27272a", // zinc-800
     colorInputText: "#f9fafb",
   },
 };
