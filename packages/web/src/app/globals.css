@@ -24,6 +24,72 @@
   }
 }
 
+/* Scroll-reveal: hidden until <Reveal> adds .is-visible (IntersectionObserver). */
+.reveal {
+  opacity: 0;
+  transform: translateY(24px);
+  transition:
+    opacity 0.7s cubic-bezier(0.16, 0.84, 0.44, 1),
+    transform 0.7s cubic-bezier(0.16, 0.84, 0.44, 1);
+}
+.reveal.is-visible {
+  opacity: 1;
+  transform: none;
+}
+
+/* Hero topographic contour field: concentric rings around two focal points,
+   slowly drifting. GPU-friendly (animates transform, not background). */
+.hero-topo {
+  background-image:
+    repeating-radial-gradient(
+      circle at 22% 38%,
+      rgba(245, 158, 11, 0.05) 0 1px,
+      transparent 1px 46px
+    ),
+    repeating-radial-gradient(
+      circle at 82% 68%,
+      rgba(96, 165, 250, 0.045) 0 1px,
+      transparent 1px 52px
+    );
+  animation: hero-topo-drift 32s ease-in-out infinite alternate;
+}
+@keyframes hero-topo-drift {
+  from {
+    transform: translate3d(0, 0, 0) scale(1.05);
+  }
+  to {
+    transform: translate3d(-3.5%, -3%, 0) scale(1.12);
+  }
+}
+
+/* Glowing map points: pulse opacity + scale; per-dot timing via --d / --delay. */
+.map-dot {
+  animation: map-dot-pulse var(--d, 6s) ease-in-out var(--delay, 0s) infinite;
+}
+@keyframes map-dot-pulse {
+  0%,
+  100% {
+    opacity: 0.2;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.75;
+    transform: scale(1.7);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reveal {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+  .hero-topo,
+  .map-dot {
+    animation: none;
+  }
+}
+
 /* Clerk UserButton dropdown: force the user identifier (name/email) and action
    text light on our dark popover. Clerk renders stable .cl-* classes; the email
    at the top of the dropdown is the user-preview identifier, which the appearance
