@@ -23,3 +23,20 @@
     animation: none;
   }
 }
+
+/* Clerk UserButton dropdown: force the user identifier (name/email) and action
+   text light on our dark popover. Clerk renders stable .cl-* classes; the email
+   at the top of the dropdown is the user-preview identifier, which the appearance
+   variables don't reliably lighten. !important guarantees contrast regardless of
+   Clerk's inline/derived styles. */
+.cl-userPreviewMainIdentifier,
+.cl-userButtonPopoverActionButton,
+.cl-userButtonPopoverActionButtonText,
+.cl-userButtonPopoverActionButton__manageAccount,
+.cl-userButtonPopoverActionButton__signOut {
+  color: #f9fafb !important;
+}
+
+.cl-userPreviewSecondaryIdentifier {
+  color: #d4d4d8 !important; /* zinc-300 */
+}

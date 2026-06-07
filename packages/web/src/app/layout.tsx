@@ -22,6 +22,16 @@ const clerkAppearance = {
     colorInputBackground: "#27272a", // zinc-800
     colorInputText: "#f9fafb",
   },
+  // Target the UserButton popover identifier (name/email) and action buttons
+  // explicitly. The email at the top of the dropdown is the user-preview
+  // identifier, which colorNeutral does not reliably lighten. globals.css also
+  // forces these via .cl-* selectors as a belt-and-suspenders fallback.
+  elements: {
+    userButtonPopoverCard: { backgroundColor: "#18181b", borderColor: "#27272a" },
+    userButtonPopoverActionButton: { color: "#f9fafb" },
+    userPreviewMainIdentifier: { color: "#f9fafb" }, // zinc-50
+    userPreviewSecondaryIdentifier: { color: "#d4d4d8" }, // zinc-300
+  },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
