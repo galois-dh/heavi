@@ -1,0 +1,11 @@
+name,latitude,longitude,category
+Solar Star Corridor 1,34.82,-118.36,corridor_greenfield
+Solar Star Corridor 2,34.835,-118.385,corridor_greenfield
+Solar Star Corridor 3,34.81,-118.34,corridor_greenfield
+Edwards-Sanborn Corridor 4,34.85,-118.405,corridor_greenfield
+Edwards-Sanborn Corridor 5,34.795,-118.325,corridor_greenfield
+San Joaquin Valley Ag 1 (W of Wasco),35.58,-119.42,valley_agricultural
+San Joaquin Valley Ag 2 (Buttonwillow),35.39,-119.55,valley_agricultural
+San Joaquin Valley Ag 3 (Semitropic),35.56,-119.65,valley_agricultural
+San Joaquin Valley Ag 4 (near Shafter),35.508,-119.273,valley_agricultural
+San Joaquin Valley Ag 5 (near Lost Hills),35.615,-119.69,valley_agricultural
