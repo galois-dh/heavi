@@ -24,17 +24,12 @@
   }
 }
 
-/* Scroll-reveal: hidden until <Reveal> adds .is-visible (IntersectionObserver). */
+/* Section entrance: pure-CSS fade-up on mount. No JS / IntersectionObserver
+   dependency, so content can never get stuck hidden (it ends visible via the
+   `both` fill even if scripts fail). Below-fold sections finish animating
+   off-screen and are simply visible once scrolled to. */
 .reveal {
-  opacity: 0;
-  transform: translateY(24px);
-  transition:
-    opacity 0.7s cubic-bezier(0.16, 0.84, 0.44, 1),
-    transform 0.7s cubic-bezier(0.16, 0.84, 0.44, 1);
-}
-.reveal.is-visible {
-  opacity: 1;
-  transform: none;
+  animation: heavi-fade-up 0.7s cubic-bezier(0.16, 0.84, 0.44, 1) both;
 }
 
 /* Hero topographic contour field: concentric rings around two focal points,
@@ -79,11 +74,7 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .reveal {
-    opacity: 1;
-    transform: none;
-    transition: none;
-  }
+  .reveal,
   .hero-topo,
   .map-dot {
     animation: none;
