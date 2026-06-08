@@ -1,20 +1,10 @@
-import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
+import { clerkMiddleware } from "@clerk/nextjs/server";
 
-// Public routes: the landing page, the auth pages, and webhooks. Everything else
-// (the product modules and their sub-pages) requires an authenticated session —
-// frontend-only protection per the Auth + Module Permissioning Spec (Option A).
-const isPublicRoute = createRouteMatcher([
-  "/",
-  "/sign-in(.*)",
-  "/sign-up(.*)",
-  "/api/webhooks(.*)",
-]);
-
-export default clerkMiddleware(async (auth, request) => {
-  if (!isPublicRoute(request)) {
-    await auth.protect();
-  }
-});
+// Public demo: every route is open. clerkMiddleware() still attaches Clerk's
+// auth context (so ClerkProvider / useUser work for the optional sign-in UI),
+// but it protects nothing — there is no auth.protect() call. The product pages
+// (/energy, /hazard, /locations) render for anonymous visitors.
+export default clerkMiddleware();
 
 export const config = {
   matcher: ["/((?!.*\\..*|_next).*)", "/", "/(api|trpc)(.*)"],

@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { currentUser } from "@clerk/nextjs/server";
 import { Upload, Map as MapIcon, FileText } from "lucide-react";
 import { LandingNav } from "../components/landing-nav";
 import { Reveal, StatCounter } from "../components/landing-fx";
@@ -37,11 +36,9 @@ const DOTS = [
   { top: "52%", left: "48%", color: "#60a5fa", size: 8, d: "2s", delay: "0.8s" },
 ];
 
-export default async function Home() {
-  const user = await currentUser();
-  // "Start screening" goes straight to the product when signed in, otherwise
-  // through sign-in (the /energy server wrapper would redirect there anyway).
-  const startHref = user ? "/energy" : "/sign-in";
+export default function Home() {
+  // Public demo: "Start screening" goes straight to the (now public) product.
+  const startHref = "/energy";
 
   return (
     <div className="relative bg-zinc-950">
