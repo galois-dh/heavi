@@ -32,50 +32,72 @@
   animation: heavi-fade-up 0.7s cubic-bezier(0.16, 0.84, 0.44, 1) both;
 }
 
-/* Hero topographic contour field: concentric rings around two focal points,
-   slowly drifting. GPU-friendly (animates transform, not background). */
-.hero-topo {
-  background-image:
-    repeating-radial-gradient(
-      circle at 22% 38%,
-      rgba(245, 158, 11, 0.05) 0 1px,
-      transparent 1px 46px
-    ),
-    repeating-radial-gradient(
-      circle at 82% 68%,
-      rgba(96, 165, 250, 0.045) 0 1px,
-      transparent 1px 52px
-    );
-  animation: hero-topo-drift 32s ease-in-out infinite alternate;
+/* Hero topographic contour rings: large circle outlines that slowly drift and
+   breathe. GPU-friendly — transform only. Concentric pairs share a keyframe so
+   they translate by the same pixel amount and stay concentric. */
+.hero-ring {
+  position: absolute;
+  border-radius: 9999px;
+  border-width: 1px;
+  border-style: solid;
+  will-change: transform;
 }
-@keyframes hero-topo-drift {
+.hero-ring-a {
+  animation: hero-ring-drift-a 26s ease-in-out infinite alternate;
+}
+.hero-ring-b {
+  animation: hero-ring-drift-b 32s ease-in-out infinite alternate;
+}
+.hero-ring-c {
+  animation: hero-ring-drift-c 40s ease-in-out infinite alternate;
+}
+@keyframes hero-ring-drift-a {
   from {
-    transform: translate3d(0, 0, 0) scale(1.05);
+    transform: translate3d(0, 0, 0) scale(1);
   }
   to {
-    transform: translate3d(-3.5%, -3%, 0) scale(1.12);
+    transform: translate3d(34px, 26px, 0) scale(1.12);
+  }
+}
+@keyframes hero-ring-drift-b {
+  from {
+    transform: translate3d(0, 0, 0) scale(1.08);
+  }
+  to {
+    transform: translate3d(-40px, -20px, 0) scale(0.97);
+  }
+}
+@keyframes hero-ring-drift-c {
+  from {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  to {
+    transform: translate3d(24px, -34px, 0) scale(1.07);
   }
 }
 
 /* Glowing map points: pulse opacity + scale; per-dot timing via --d / --delay. */
 .map-dot {
+  opacity: 0.25;
   animation: map-dot-pulse var(--d, 6s) ease-in-out var(--delay, 0s) infinite;
 }
 @keyframes map-dot-pulse {
   0%,
   100% {
-    opacity: 0.2;
+    opacity: 0.25;
     transform: scale(1);
   }
   50% {
-    opacity: 0.75;
-    transform: scale(1.7);
+    opacity: 0.85;
+    transform: scale(1.8);
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .reveal,
-  .hero-topo,
+  .hero-ring-a,
+  .hero-ring-b,
+  .hero-ring-c,
   .map-dot {
     animation: none;
   }

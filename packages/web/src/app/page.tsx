@@ -16,15 +16,25 @@ const STATS = [
   { value: 4426, label: "active queue projects" },
 ];
 
+// Drifting concentric contour rings on the hero backdrop. Each pair shares a
+// center (cx/cy) and a drift animation so they stay concentric while moving.
+const RINGS = [
+  { cx: "26%", cy: "34%", size: 460, color: "rgba(245,158,11,0.16)", drift: "a" },
+  { cx: "26%", cy: "34%", size: 720, color: "rgba(245,158,11,0.09)", drift: "a" },
+  { cx: "80%", cy: "60%", size: 520, color: "rgba(96,165,250,0.15)", drift: "b" },
+  { cx: "80%", cy: "60%", size: 820, color: "rgba(96,165,250,0.08)", drift: "b" },
+  { cx: "52%", cy: "46%", size: 1040, color: "rgba(244,244,245,0.05)", drift: "c" },
+];
+
 // Glowing "map point" dots scattered across the hero backdrop. Timing/size vary
 // per dot so the pulse looks organic rather than synchronized.
 const DOTS = [
-  { top: "26%", left: "14%", color: "#fbbf24", size: 6, d: "5.5s", delay: "0s" },
-  { top: "38%", left: "84%", color: "#60a5fa", size: 5, d: "6.5s", delay: "1.2s" },
-  { top: "62%", left: "22%", color: "#60a5fa", size: 4, d: "7s", delay: "0.6s" },
-  { top: "70%", left: "72%", color: "#fbbf24", size: 6, d: "6s", delay: "2s" },
-  { top: "18%", left: "60%", color: "#fbbf24", size: 4, d: "8s", delay: "0.3s" },
-  { top: "52%", left: "48%", color: "#60a5fa", size: 5, d: "5s", delay: "1.6s" },
+  { top: "26%", left: "14%", color: "#fbbf24", size: 7, d: "5.5s", delay: "0s" },
+  { top: "38%", left: "84%", color: "#60a5fa", size: 6, d: "6.5s", delay: "1.2s" },
+  { top: "62%", left: "22%", color: "#60a5fa", size: 5, d: "7s", delay: "0.6s" },
+  { top: "70%", left: "72%", color: "#fbbf24", size: 7, d: "6s", delay: "2s" },
+  { top: "18%", left: "60%", color: "#fbbf24", size: 5, d: "8s", delay: "0.3s" },
+  { top: "52%", left: "48%", color: "#60a5fa", size: 6, d: "5s", delay: "1.6s" },
 ];
 
 export default async function Home() {
@@ -43,7 +53,6 @@ export default async function Home() {
           {/* Animated, CSS-only backdrop: topographic contours, atmospheric
               glow, pulsing map points, and a fade into the page below. */}
           <div aria-hidden className="pointer-events-none absolute inset-0">
-            <div className="hero-topo absolute inset-0" />
             <div
               className="absolute inset-0"
               style={{
@@ -51,6 +60,21 @@ export default async function Home() {
                   "radial-gradient(60% 55% at 50% 8%, rgba(245,158,11,0.16) 0%, rgba(245,158,11,0) 60%), radial-gradient(45% 45% at 82% 28%, rgba(59,130,246,0.12) 0%, rgba(59,130,246,0) 70%)",
               }}
             />
+            {RINGS.map((r, i) => (
+              <span
+                key={`ring-${i}`}
+                className={`hero-ring hero-ring-${r.drift}`}
+                style={{
+                  left: r.cx,
+                  top: r.cy,
+                  width: r.size,
+                  height: r.size,
+                  marginLeft: -r.size / 2,
+                  marginTop: -r.size / 2,
+                  borderColor: r.color,
+                }}
+              />
+            ))}
             {DOTS.map((dot, i) => (
               <span
                 key={i}
