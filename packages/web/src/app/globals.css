@@ -43,28 +43,28 @@
   will-change: transform;
 }
 .hero-ring-a {
-  animation: hero-ring-drift-a 26s ease-in-out infinite alternate;
+  animation: hero-ring-drift-a 15s ease-in-out infinite alternate;
 }
 .hero-ring-b {
-  animation: hero-ring-drift-b 32s ease-in-out infinite alternate;
+  animation: hero-ring-drift-b 17s ease-in-out infinite alternate;
 }
 .hero-ring-c {
-  animation: hero-ring-drift-c 40s ease-in-out infinite alternate;
+  animation: hero-ring-drift-c 19s ease-in-out infinite alternate;
 }
 @keyframes hero-ring-drift-a {
   from {
     transform: translate3d(0, 0, 0) scale(1);
   }
   to {
-    transform: translate3d(34px, 26px, 0) scale(1.12);
+    transform: translate3d(60px, 44px, 0) scale(1.16);
   }
 }
 @keyframes hero-ring-drift-b {
   from {
-    transform: translate3d(0, 0, 0) scale(1.08);
+    transform: translate3d(0, 0, 0) scale(1.12);
   }
   to {
-    transform: translate3d(-40px, -20px, 0) scale(0.97);
+    transform: translate3d(-66px, -34px, 0) scale(0.95);
   }
 }
 @keyframes hero-ring-drift-c {
@@ -72,24 +72,24 @@
     transform: translate3d(0, 0, 0) scale(1);
   }
   to {
-    transform: translate3d(24px, -34px, 0) scale(1.07);
+    transform: translate3d(42px, -58px, 0) scale(1.12);
   }
 }
 
 /* Glowing map points: pulse opacity + scale; per-dot timing via --d / --delay. */
 .map-dot {
-  opacity: 0.25;
-  animation: map-dot-pulse var(--d, 6s) ease-in-out var(--delay, 0s) infinite;
+  opacity: 0.3;
+  animation: map-dot-pulse var(--d, 2.6s) ease-in-out var(--delay, 0s) infinite;
 }
 @keyframes map-dot-pulse {
   0%,
   100% {
-    opacity: 0.25;
+    opacity: 0.3;
     transform: scale(1);
   }
   50% {
-    opacity: 0.85;
-    transform: scale(1.8);
+    opacity: 0.95;
+    transform: scale(1.9);
   }
 }
 

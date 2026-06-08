@@ -19,22 +19,22 @@ const STATS = [
 // Drifting concentric contour rings on the hero backdrop. Each pair shares a
 // center (cx/cy) and a drift animation so they stay concentric while moving.
 const RINGS = [
-  { cx: "26%", cy: "34%", size: 460, color: "rgba(245,158,11,0.16)", drift: "a" },
-  { cx: "26%", cy: "34%", size: 720, color: "rgba(245,158,11,0.09)", drift: "a" },
-  { cx: "80%", cy: "60%", size: 520, color: "rgba(96,165,250,0.15)", drift: "b" },
-  { cx: "80%", cy: "60%", size: 820, color: "rgba(96,165,250,0.08)", drift: "b" },
-  { cx: "52%", cy: "46%", size: 1040, color: "rgba(244,244,245,0.05)", drift: "c" },
+  { cx: "26%", cy: "34%", size: 460, color: "rgba(245,158,11,0.22)", drift: "a" },
+  { cx: "26%", cy: "34%", size: 720, color: "rgba(245,158,11,0.13)", drift: "a" },
+  { cx: "80%", cy: "60%", size: 520, color: "rgba(96,165,250,0.20)", drift: "b" },
+  { cx: "80%", cy: "60%", size: 820, color: "rgba(96,165,250,0.12)", drift: "b" },
+  { cx: "52%", cy: "46%", size: 1040, color: "rgba(244,244,245,0.08)", drift: "c" },
 ];
 
 // Glowing "map point" dots scattered across the hero backdrop. Timing/size vary
 // per dot so the pulse looks organic rather than synchronized.
 const DOTS = [
-  { top: "26%", left: "14%", color: "#fbbf24", size: 7, d: "5.5s", delay: "0s" },
-  { top: "38%", left: "84%", color: "#60a5fa", size: 6, d: "6.5s", delay: "1.2s" },
-  { top: "62%", left: "22%", color: "#60a5fa", size: 5, d: "7s", delay: "0.6s" },
-  { top: "70%", left: "72%", color: "#fbbf24", size: 7, d: "6s", delay: "2s" },
-  { top: "18%", left: "60%", color: "#fbbf24", size: 5, d: "8s", delay: "0.3s" },
-  { top: "52%", left: "48%", color: "#60a5fa", size: 6, d: "5s", delay: "1.6s" },
+  { top: "26%", left: "14%", color: "#fbbf24", size: 9, d: "2.4s", delay: "0s" },
+  { top: "38%", left: "84%", color: "#60a5fa", size: 8, d: "2.8s", delay: "0.6s" },
+  { top: "62%", left: "22%", color: "#60a5fa", size: 7, d: "2.2s", delay: "0.3s" },
+  { top: "70%", left: "72%", color: "#fbbf24", size: 9, d: "3s", delay: "1s" },
+  { top: "18%", left: "60%", color: "#fbbf24", size: 7, d: "2.6s", delay: "0.15s" },
+  { top: "52%", left: "48%", color: "#60a5fa", size: 8, d: "2s", delay: "0.8s" },
 ];
 
 export default async function Home() {
@@ -86,7 +86,7 @@ export default async function Home() {
                     width: dot.size,
                     height: dot.size,
                     background: dot.color,
-                    boxShadow: `0 0 14px ${dot.color}`,
+                    boxShadow: `0 0 ${dot.size * 2.4}px ${dot.color}`,
                     "--d": dot.d,
                     "--delay": dot.delay,
                   } as React.CSSProperties
