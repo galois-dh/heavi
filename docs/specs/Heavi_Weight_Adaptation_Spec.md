@@ -92,7 +92,7 @@ Subject to: W_min[i] <= W[i] <= W_max[i] for all criteria i, and sum(W) = 1.0
 maximize: count(score(EIA, W) >= 0.60) / count(EIA)
 ```
 
-This directly targets the metric investors care about ("what percentage of real solar farms does your model identify as suitable?").
+This directly targets the key recall metric ("what percentage of real solar farms does your model identify as suitable?").
 
 ### Optimization Algorithm
 

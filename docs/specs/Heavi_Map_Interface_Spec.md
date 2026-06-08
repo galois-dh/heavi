@@ -367,7 +367,7 @@ Steps 1-5 can be built as a standalone map component before wiring into any prod
 
 ## Design Direction
 
-The map interface should feel like a professional spatial analysis tool, not a consumer web map. Design references: Felt Maps, Atlas AI, Planet Explorer.
+The map interface should feel like a professional spatial analysis tool, not a consumer web map. Design references: Atlas AI, Planet Explorer.
 
 **Dark theme** (consistent with current Heavi dark UI):
 - Basemap: use a dark-style tile layer (OpenFreeMap dark or MapTiler dark matter)

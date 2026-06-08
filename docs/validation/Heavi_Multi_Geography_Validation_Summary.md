@@ -1,7 +1,6 @@
 # HEAVI MULTI-GEOGRAPHY VALIDATION SUMMARY
 
 **Date:** 2026-06-06
-**Spec:** [`Heavi_Multi_Geography_Validation_Spec.md`](../specs/Heavi_Multi_Geography_Validation_Spec.md)
 **Tests run:** Test 1 (Solar multi-state EIA), Test 5 (Data selection engine)
 **Tests deferred:** Test 2 (Wildfire multi-county), Test 3 (Flood multi-event), Test 4 (Trade area multi-metro), Test 6 (End-to-end UI workflow) — prereqs documented at the bottom.
 
@@ -73,11 +72,11 @@ Silent failures:             0
 | AC5 | No silent failures — every unavailable source explicitly logged | **PASS** — 0 silent failures |
 | AC6 | API timeout rate <10% | **PASS** — 0% |
 
-### Findings (worth a footnote in investor conversations)
+### Findings
 
 1. **The selection engine produces a bimodal composite for `solar_siting`.** Across 50 CONUS locations there are exactly two composite confidence values: 0.6650 (MODERATE, 35 locations, transmission via HIFLD PostGIS) and 0.6125 (LOW, 15 locations, transmission via OSM Overpass fallback). All other criteria (`solar_ghi`, `solar_slope`, `solar_aspect`, `solar_land_cover`, `solar_soil`, the six exclusions) select the same national source on every location. The composite is therefore driven entirely by which transmission source is available.
    - **Why:** REST sources flagged `verified` in `data_repository_seed` return `available=True` without per-location probing — only `degraded`-tier REST sources and PostGIS tables get a live spatial probe. This is by design; the trade-off is that the per-location confidence signal is coarse for solar siting because nearly every source is verified-nationally.
-   - **Implication for investors:** the engine is *honest* (no silent failures) but not *granular* for solar at the source-availability layer. Per-criterion *data quality* still varies — what changes per location is which transmission source got picked. If granular per-location confidence becomes a buyer requirement, the next step is to add per-location coverage probes to USGS 3DEP, NLCD, SSURGO etc. and surface partial-tile coverage in the confidence layer.
+   - **Implication:** the engine is *honest* (no silent failures) but not *granular* for solar at the source-availability layer. Per-criterion *data quality* still varies — what changes per location is which transmission source got picked. If granular per-location confidence becomes a buyer requirement, the next step is to add per-location coverage probes to USGS 3DEP, NLCD, SSURGO etc. and surface partial-tile coverage in the confidence layer.
 
 2. **Overpass is on the critical path for two criteria nationally.** `solar_road` always uses `osm_roads_overpass`; `solar_transmission` falls back to `osm_substations_overpass` outside the HIFLD-loaded states. If Overpass goes down, both criteria degrade. The 0% API-failure rate observed in this run reflects a healthy Overpass at test time, not a guarantee.
 
@@ -89,7 +88,7 @@ Silent failures:             0
 
 The following limitations are now grounded in the multi-geography data above:
 
-- **Solar selection-engine confidence is coarse-grained for solar_siting** (bimodal: 0.6650 or 0.6125 across CONUS). It tells investors whether you're inside or outside HIFLD transmission coverage; it does not tell them which of the other criteria have weaker source coverage at the location. *Severity: MEDIUM.* Adds product roadmap work to make per-criterion availability location-aware for verified REST sources.
+- **Solar selection-engine confidence is coarse-grained for solar_siting** (bimodal: 0.6650 or 0.6125 across CONUS). It tells you whether you're inside or outside HIFLD transmission coverage; it does not tell which of the other criteria have weaker source coverage at the location. *Severity: MEDIUM.* Adds product roadmap work to make per-criterion availability location-aware for verified REST sources.
 
 - **Overpass dependency for `solar_road` is universal.** Every CONUS location uses OSM Overpass for road distance, regardless of where it is. *Severity: MEDIUM.* Mitigation paths: (1) bulk-load OSM road network into PostGIS for solar-eligible regions, or (2) accept the dependency and document SLAs against Overpass uptime.
 

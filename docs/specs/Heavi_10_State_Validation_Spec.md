@@ -3,7 +3,7 @@
 
 ## Purpose
 
-Current solar validation covers 5 states (TX, AZ, NC, NV, FL) with regional weights and refined exclusions: 52% High nationally, 77% among non-excluded parcels. Expanding to 10 states strengthens the investor claim and reveals state-specific issues before design partner outreach.
+Current solar validation covers 5 states (TX, AZ, NC, NV, FL) with regional weights and refined exclusions: 52% High nationally, 77% among non-excluded parcels. Expanding to 10 states strengthens the generalization claim and reveals state-specific issues before design partner outreach.
 
 ## New States to Add
 

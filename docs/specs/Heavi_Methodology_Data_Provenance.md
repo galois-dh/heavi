@@ -10,7 +10,7 @@
 This document grounds every criterion choice and data source selection in peer-reviewed literature or authoritative agency methodology. It serves three functions:
 
 1. **Product foundation** — the methodology repository is seeded from this document
-2. **Investor diligence** — every methodology claim traces to a published source
+2. **Technical diligence** — every methodology claim traces to a published source
 3. **Output provenance** — every scored assessment cites the relevant literature
 
 The document follows the platform architecture: for each analysis workflow, each criterion has a data tree with provenance at every node.

@@ -10,8 +10,8 @@ numbers.
 
 ## Deliverable 1 — Methodology whitepaper (7/7 PASS)
 
-`docs/whitepaper/Heavi_Solar_Methodology_Whitepaper.md` → `….pdf` (rendered by the new
-`app/whitepaper_pdf.py` reportlab Markdown→PDF pipeline).
+`docs/whitepaper/Heavi_Solar_Methodology_Whitepaper_Public.md` → `….pdf` (rendered by the
+new `app/whitepaper_pdf.py` reportlab Markdown→PDF pipeline).
 
 1. ✅ PDF generated, **12 pages** (target 12–15).
 2. ✅ All 10-state validation results with per-state table (§4.2) + national row.

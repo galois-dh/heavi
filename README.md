@@ -82,7 +82,7 @@ packages/
   data-catalog/  Dataset loaders
   validation/    Validation + methodology harnesses
 docs/
-  whitepaper/    Methodology whitepaper (public summary + full)
+  whitepaper/    Methodology whitepaper (public summary)
   specs/         Engineering specs written to drive the build (see below)
   validation/    Validation summaries
   sales/         Sample output package (assessment + portfolio PDFs)

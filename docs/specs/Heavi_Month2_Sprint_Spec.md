@@ -6,7 +6,7 @@
 Month 1 shipped: geocoding, batch scoring, map UI, PDF export, real LBNL interconnection data. 10-state validation completed: 71% High among greenfield-eligible EIA installations, positive separation in 10/10 states.
 
 Month 2 has two goals:
-1. Package the methodology and validation into a publishable whitepaper (builds credibility with investors and technical buyers at near-zero cost)
+1. Package the methodology and validation into a publishable whitepaper (builds credibility with technical buyers at near-zero cost)
 2. Prepare the product for design partner pilots (precision metric definition, pilot workflow, sample output packages)
 
 ---
@@ -22,7 +22,7 @@ A technical document that:
 - Publishes validation results across 10 states
 - Provides a citable reference for buyers presenting to their IC
 - Differentiates from competitors who don't publish their methodology
-- Costs nothing but time and builds credibility with both investors and buyers
+- Costs nothing but time and builds credibility with technical buyers
 
 ### Format
 Markdown → PDF (using the existing PDF generation pipeline). 12-15 pages. Written in academic style but accessible to a technical business audience (VP of Site Development, not a GIS PhD).
@@ -134,7 +134,7 @@ This is a DOCUMENT, not code. Generate it as a markdown file, then convert to a 
 
 The whitepaper should be:
 - Professional but not overly academic (accessible to VPs, not just PhDs)
-- Honest about limitations (this builds trust, as the investor assessment confirmed)
+- Honest about limitations (this builds trust)
 - Data-dense (tables, numbers, specific metrics — not vague claims)
 - Citable (proper references that a buyer could verify)
 
