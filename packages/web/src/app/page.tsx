@@ -1,18 +1,35 @@
 import Link from "next/link";
-import { Upload, Map as MapIcon, FileText } from "lucide-react";
+import {
+  Database,
+  BookOpen,
+  Workflow,
+  ShieldCheck,
+  Sun,
+  Flame,
+  Store,
+  Map as MapIcon,
+  FileText,
+  MapPin,
+  Layers,
+  Bot,
+  Tag,
+  Code2,
+} from "lucide-react";
 import { LandingNav } from "../components/landing-nav";
 import { Reveal, StatCounter } from "../components/landing-fx";
 
-// The landing page is public (middleware allows "/"). It is solar-first: the
-// hero, "how it works", and "what makes this different" all speak to a VP of
-// Site Development screening solar sites. Hazard and Locations are secondary.
-// See docs/specs/Heavi_Landing_Page_Spec.md.
+// Public portfolio landing page (middleware allows "/"). Frames Heavi as a
+// platform: a four-layer architecture for auditable spatial analysis, with three
+// equally-weighted modules built on shared infrastructure.
+
+const GITHUB = "https://github.com/galois-dh/heavi";
+const WHITEPAPER = "/whitepaper.pdf";
 
 const STATS = [
   { value: 6321, label: "installations validated" },
-  { value: 10, label: "states · 5 NERC regions" },
+  { value: 10, label: "states validated" },
   { value: 15, label: "federal data sources" },
-  { value: 4426, label: "active queue projects" },
+  { value: 4426, label: "queue projects tracked" },
 ];
 
 // Drifting concentric contour rings on the hero backdrop. Each pair shares a
@@ -36,10 +53,93 @@ const DOTS = [
   { top: "52%", left: "48%", color: "#60a5fa", size: 8, d: "2s", delay: "0.8s" },
 ];
 
-export default function Home() {
-  // Public demo: "Start screening" goes straight to the (now public) product.
-  const startHref = "/energy";
+const LAYERS = [
+  {
+    icon: <Database size={22} strokeWidth={1.8} />,
+    title: "Data Repository",
+    body: "34 federal and open datasets with per-source availability checking, so the platform knows what data actually exists at a location before it scores anything.",
+  },
+  {
+    icon: <BookOpen size={22} strokeWidth={1.8} />,
+    title: "Methodology Repository",
+    body: "31 scored criteria, each with a quality-ordered data tree and academic citations grounding its weight, thresholds, and normalization.",
+  },
+  {
+    icon: <Workflow size={22} strokeWidth={1.8} />,
+    title: "Data Selection Engine",
+    body: "Traverses each criterion's tree and selects the best available source at that exact location, falling back to documented proxies when authoritative data is missing.",
+  },
+  {
+    icon: <ShieldCheck size={22} strokeWidth={1.8} />,
+    title: "Confidence Scoring",
+    body: "Reports which data was actually used, where the gaps are, and how much to trust the result — a weakest-link confidence tier, never a silent default.",
+  },
+];
 
+const MODULES = [
+  {
+    icon: <Sun size={22} strokeWidth={1.8} />,
+    iconWrap: "bg-amber-500/10 text-amber-300",
+    link: "text-amber-300",
+    name: "Heavi Energy",
+    tag: "Solar site screening",
+    body: "14 criteria, regional weight calibration against 6,321 EIA installations, interconnection queue context from 4,426 LBNL projects, batch scoring with map visualization.",
+    href: "/energy",
+  },
+  {
+    icon: <Flame size={22} strokeWidth={1.8} />,
+    iconWrap: "bg-rose-500/10 text-rose-300",
+    link: "text-rose-300",
+    name: "Heavi Hazard",
+    tag: "Wildfire + flood risk",
+    body: "10 criteria, per-peril dollar estimates with NSI building data, NIFC + LANDFIRE fallback chains, multi-geography validation.",
+    href: "/hazard",
+  },
+  {
+    icon: <Store size={22} strokeWidth={1.8} />,
+    iconWrap: "bg-emerald-500/10 text-emerald-300",
+    link: "text-emerald-300",
+    name: "Heavi Locations",
+    tag: "Trade area analysis",
+    body: "7 criteria, Huff gravity model, Census demographics, competitive density, drive-time isochrones, 96.7% Starbucks validation.",
+    href: "/locations",
+  },
+];
+
+const INFRA = [
+  {
+    icon: <MapIcon size={20} strokeWidth={1.8} />,
+    title: "Map-based delivery",
+    body: "MapLibre GL JS with toggleable constraint layers.",
+  },
+  {
+    icon: <FileText size={20} strokeWidth={1.8} />,
+    title: "PDF export",
+    body: "Audit-ready reports with full methodology documentation.",
+  },
+  {
+    icon: <MapPin size={20} strokeWidth={1.8} />,
+    title: "Address geocoding",
+    body: "Census geocoder with Nominatim fallback.",
+  },
+  {
+    icon: <Layers size={20} strokeWidth={1.8} />,
+    title: "Batch scoring",
+    body: "Up to 200 locations per run.",
+  },
+  {
+    icon: <Bot size={20} strokeWidth={1.8} />,
+    title: "MCP tools",
+    body: "Spatial tools exposed for AI-agent consumption.",
+  },
+  {
+    icon: <Tag size={20} strokeWidth={1.8} />,
+    title: "Natural-language labels",
+    body: "Human-readable names throughout, never raw IDs.",
+  },
+];
+
+export default function Home() {
   return (
     <div className="relative bg-zinc-950">
       <LandingNav />
@@ -99,26 +199,18 @@ export default function Home() {
               Heavi
             </p>
             <h1
-              className="heavi-reveal mt-6 text-6xl font-bold leading-[1.02] tracking-tight text-white md:text-8xl"
+              className="heavi-reveal mx-auto mt-6 max-w-5xl text-5xl font-bold leading-[1.04] tracking-tight text-white md:text-7xl"
               style={{ animationDelay: "0.08s" }}
             >
-              Screen solar sites in
-              <br className="hidden sm:block" /> minutes, not months.
+              Deterministic spatial analysis with confidence scoring.
             </h1>
             <p
               className="heavi-reveal mx-auto mt-7 max-w-2xl text-lg leading-relaxed text-zinc-400"
               style={{ animationDelay: "0.16s" }}
             >
-              Score candidate parcels against 15 federal data sources. See which
-              sites are worth developing, which are constrained, and how
-              confident you should be in each assessment.
-            </p>
-            <p
-              className="heavi-reveal mx-auto mt-4 max-w-2xl text-base leading-relaxed text-zinc-500"
-              style={{ animationDelay: "0.22s" }}
-            >
-              Every result includes the methodology documentation your lender can
-              audit.
+              A platform that scores any US location against federal data sources,
+              tells you which data was actually available, and documents the
+              methodology behind every output. Built solo with Claude Code.
             </p>
 
             <div
@@ -126,28 +218,21 @@ export default function Home() {
               style={{ animationDelay: "0.3s" }}
             >
               <Link
-                href={startHref}
+                href="/energy"
                 className="inline-flex w-full items-center justify-center rounded-lg bg-amber-500 px-6 py-3 text-sm font-semibold text-zinc-950 shadow-lg shadow-amber-500/25 transition hover:bg-amber-400 sm:w-auto"
               >
-                Start screening →
+                Explore the platform →
               </Link>
-              <Link
-                href="/sample-assessment.pdf"
+              <a
+                href={GITHUB}
                 target="_blank"
-                className="inline-flex w-full items-center justify-center rounded-lg border border-zinc-700 bg-zinc-950/40 px-6 py-3 text-sm font-semibold text-zinc-200 backdrop-blur-sm transition hover:border-zinc-500 hover:bg-zinc-900 sm:w-auto"
+                rel="noreferrer noopener"
+                className="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-zinc-700 bg-zinc-950/40 px-6 py-3 text-sm font-semibold text-zinc-200 backdrop-blur-sm transition hover:border-zinc-500 hover:bg-zinc-900 sm:w-auto"
               >
-                See a sample assessment →
-              </Link>
+                <Code2 size={16} strokeWidth={2} />
+                Read the code →
+              </a>
             </div>
-
-            <p
-              className="heavi-reveal mt-10 inline-flex items-center gap-2 rounded-full border border-zinc-800 bg-zinc-900/60 px-4 py-1.5 text-xs text-zinc-400 backdrop-blur-sm"
-              style={{ animationDelay: "0.38s" }}
-            >
-              <span className="h-1.5 w-1.5 rounded-full bg-amber-400" />
-              Validated against 6,321 real US solar installations across 10
-              states.
-            </p>
           </div>
 
           {/* Stat counters — animate up from 0 when the row scrolls into view. */}
@@ -160,161 +245,139 @@ export default function Home() {
           </div>
         </section>
 
-        {/* ─────────────────── Section 2: How It Works ─────────────────── */}
-        <section className="mx-auto max-w-6xl px-6 py-24">
-          <Reveal>
-            <SectionLabel>How it works</SectionLabel>
-          </Reveal>
-          <div className="mt-10 grid grid-cols-1 gap-5 md:grid-cols-3">
-            <Reveal>
-              <StepCard
-                step="01"
-                icon={<Upload size={22} strokeWidth={1.8} />}
-                title="Upload your parcels"
-                body="Drop a CSV of coordinates or addresses, or type a single location into the search bar. Batch up to 200 parcels at once."
-              />
-            </Reveal>
-            <Reveal delay={120}>
-              <StepCard
-                step="02"
-                icon={<MapIcon size={22} strokeWidth={1.8} />}
-                title="See scored results on the map"
-                body="Every parcel color-coded by suitability, ranked in a sidebar. Interconnection queue context from 4,426 active solar projects. Toggle constraint layers: protected areas, flood zones, transmission lines."
-              />
-            </Reveal>
-            <Reveal delay={240}>
-              <StepCard
-                step="03"
-                icon={<FileText size={22} strokeWidth={1.8} />}
-                title="Export audit-ready PDFs"
-                body="Per-site or portfolio. Score, confidence level, data sources used, methodology citations, known limitations. Hand it to your investment committee or your lender."
-              />
-            </Reveal>
-          </div>
-        </section>
-
-        {/* ───────────── Section 3: What Makes This Different ───────────── */}
+        {/* ─────────────── Section 2: Architecture (How it works) ─────────────── */}
         <section className="border-y border-zinc-900 bg-zinc-900/20">
           <div className="mx-auto max-w-5xl px-6 py-24">
             <Reveal>
-              <SectionLabel>What makes this different</SectionLabel>
+              <SectionLabel>How it works</SectionLabel>
+              <h2 className="mt-4 text-3xl font-bold tracking-tight text-white sm:text-4xl">
+                A four-layer architecture for auditable spatial analysis
+              </h2>
+              <p className="mt-4 max-w-2xl text-base leading-relaxed text-zinc-400">
+                Every output traces through the same pipeline: known data,
+                documented methodology, the best available source per criterion,
+                and an honest confidence score. This is the technical
+                differentiator.
+              </p>
             </Reveal>
-            <div className="mt-12 space-y-12">
-              <Reveal>
-                <DiffBlock title="You know the score AND how much to trust it.">
-                  Every assessment reports which federal data was available at
-                  that location, which criteria used authoritative versus proxy
-                  sources, and where the gaps are. No other screening tool tells
-                  you this.
-                </DiffBlock>
-              </Reveal>
-              <Reveal>
-                <DiffBlock title="Methodology your lender can verify.">
-                  14 criteria grounded in peer-reviewed literature. Weights
-                  calibrated per grid region against real solar installation
-                  records. Published whitepaper with full validation results.
-                </DiffBlock>
-              </Reveal>
-              <Reveal>
-                <DiffBlock title="Interconnection context built in.">
-                  4,426 active solar projects from a national interconnection
-                  queue dataset. See existing capacity and queue activity near
-                  every scored parcel before you file an interconnection
-                  application.
-                </DiffBlock>
-              </Reveal>
+
+            <div className="mt-12">
+              {LAYERS.map((l, i) => (
+                <Reveal key={l.title} delay={i * 80}>
+                  <LayerCard
+                    index={i + 1}
+                    icon={l.icon}
+                    title={l.title}
+                    body={l.body}
+                    last={i === LAYERS.length - 1}
+                  />
+                </Reveal>
+              ))}
             </div>
           </div>
         </section>
 
-        {/* ───────────────── Section 4: Market Validation ───────────────── */}
-        <section className="mx-auto max-w-4xl px-6 py-24">
+        {/* ─────────────── Section 3: Three modules (equal weight) ─────────────── */}
+        <section className="mx-auto max-w-6xl px-6 py-24">
           <Reveal>
-            <figure className="relative overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-900/50 p-10 sm:p-14">
-              <span
-                aria-hidden
-                className="absolute -left-1 -top-6 select-none font-serif text-[10rem] leading-none text-amber-500/15"
-              >
-                &ldquo;
-              </span>
-              <blockquote className="relative space-y-5 text-xl leading-relaxed text-zinc-200 sm:text-2xl">
-                <p>
-                  The world&rsquo;s largest renewable energy company automated
-                  their solar site selection against the same criteria Heavi
-                  scores: land classification, ecology, flood risk, terrain, and
-                  grid proximity.
-                </p>
-                <p className="text-zinc-400">
-                  They built it inside a six-figure enterprise GIS license with a
-                  dedicated GIS team.
-                </p>
-                <p className="font-medium text-white">
-                  Heavi does the same analysis without the license or the team.
-                </p>
-              </blockquote>
-            </figure>
+            <SectionLabel>Three modules, one engine</SectionLabel>
+            <p className="mt-4 max-w-2xl text-base leading-relaxed text-zinc-400">
+              The same data-selection and confidence-scoring engine powers three
+              domains. Each is independently validated against real-world ground
+              truth.
+            </p>
+          </Reveal>
+          <div className="mt-12 grid grid-cols-1 gap-5 md:grid-cols-3">
+            {MODULES.map((m, i) => (
+              <Reveal key={m.name} delay={i * 120}>
+                <ModuleCard {...m} />
+              </Reveal>
+            ))}
+          </div>
+        </section>
+
+        {/* ─────────────── Section 4: Shared infrastructure ─────────────── */}
+        <section className="border-y border-zinc-900 bg-zinc-900/20">
+          <div className="mx-auto max-w-6xl px-6 py-24">
+            <Reveal>
+              <SectionLabel>Shared infrastructure</SectionLabel>
+              <p className="mt-4 max-w-2xl text-base leading-relaxed text-zinc-400">
+                Every module inherits the same delivery, export, and integration
+                layer.
+              </p>
+            </Reveal>
+            <div className="mt-12 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
+              {INFRA.map((f, i) => (
+                <Reveal key={f.title} delay={(i % 3) * 100}>
+                  <InfraItem icon={f.icon} title={f.title} body={f.body} />
+                </Reveal>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* ─────────────── Section 5: Built with AI ─────────────── */}
+        <section className="mx-auto max-w-5xl px-6 py-24">
+          <Reveal>
+            <div className="relative overflow-hidden rounded-2xl border border-amber-500/30 bg-gradient-to-br from-amber-500/15 via-amber-500/5 to-zinc-900/0 px-8 py-14 sm:px-14">
+              <SectionLabel>Built with AI</SectionLabel>
+              <h2 className="mt-4 max-w-3xl text-2xl font-bold tracking-tight text-white sm:text-3xl">
+                One person. Spec-driven development.
+              </h2>
+              <p className="mt-4 max-w-2xl text-base leading-relaxed text-zinc-300">
+                This entire platform was built by one person using Claude Code and
+                spec-driven development. Every spec is in the repo. Every commit
+                traces to a specification.
+              </p>
+              <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+                <a
+                  href={GITHUB}
+                  target="_blank"
+                  rel="noreferrer noopener"
+                  className="inline-flex items-center justify-center gap-2 rounded-lg bg-amber-500 px-6 py-3 text-sm font-semibold text-zinc-950 shadow-lg shadow-amber-500/25 transition hover:bg-amber-400"
+                >
+                  <Code2 size={16} strokeWidth={2} />
+                  View the code on GitHub →
+                </a>
+                <a
+                  href={WHITEPAPER}
+                  target="_blank"
+                  rel="noreferrer noopener"
+                  className="inline-flex items-center justify-center rounded-lg border border-zinc-700 px-6 py-3 text-sm font-semibold text-zinc-200 transition hover:border-zinc-500 hover:bg-zinc-900"
+                >
+                  Read the methodology whitepaper →
+                </a>
+              </div>
+            </div>
           </Reveal>
         </section>
 
-        {/* ──────────── Section 5: Secondary Modules + CTA ──────────── */}
-        <section className="border-t border-zinc-900 bg-zinc-950">
-          <div className="mx-auto max-w-6xl px-6 py-20">
-            <Reveal>
-              <SectionLabel>Also on the platform</SectionLabel>
-            </Reveal>
-            <div className="mt-8 grid grid-cols-1 gap-4 md:grid-cols-2">
-              <Reveal>
-                <SecondaryModule
-                  accent="text-rose-300"
-                  dot="bg-rose-400/70"
-                  title="Heavi Hazard"
-                  body="Wildfire and flood risk assessment for property portfolios. For CRE acquisition teams and commercial lenders."
-                  href="/hazard"
-                />
-              </Reveal>
-              <Reveal delay={120}>
-                <SecondaryModule
-                  accent="text-emerald-300"
-                  dot="bg-emerald-400/70"
-                  title="Heavi Locations"
-                  body="Trade area analysis for retail and QSR expansion. Census demographics, competitive density, drive-time catchments."
-                  href="/locations"
-                />
-              </Reveal>
-            </div>
-
-            {/* Closing CTA */}
-            <Reveal>
-              <div className="relative mt-16 overflow-hidden rounded-2xl border border-amber-500/30 bg-gradient-to-br from-amber-500/20 via-amber-500/5 to-zinc-900/0 px-8 py-14 text-center sm:px-12">
-                <h2 className="text-2xl font-bold tracking-tight text-white sm:text-3xl">
-                  Running a solar development pipeline?
-                </h2>
-                <p className="mx-auto mt-4 max-w-xl text-base leading-relaxed text-zinc-300">
-                  We&rsquo;re offering free 90-day pilots to mid-market developers
-                  screening 50 to 500 MW.
-                </p>
-                <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
-                  <a
-                    href="mailto:pilots@heavi.ai?subject=Heavi%20solar%20pilot%20request"
-                    className="inline-flex w-full items-center justify-center rounded-lg bg-amber-500 px-6 py-3 text-sm font-semibold text-zinc-950 shadow-lg shadow-amber-500/25 transition hover:bg-amber-400 sm:w-auto"
-                  >
-                    Request a pilot →
-                  </a>
-                  <Link
-                    href="/whitepaper.pdf"
-                    target="_blank"
-                    className="inline-flex w-full items-center justify-center rounded-lg border border-zinc-700 px-6 py-3 text-sm font-semibold text-zinc-200 transition hover:border-zinc-500 hover:bg-zinc-900 sm:w-auto"
-                  >
-                    Read the whitepaper →
-                  </Link>
-                </div>
-              </div>
-            </Reveal>
+        {/* ─────────────────────────── Footer ─────────────────────────── */}
+        <footer className="border-t border-zinc-900 px-6 py-10">
+          <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-3 text-xs text-zinc-500 sm:flex-row">
+            <span>Heavi · Deterministic spatial analysis</span>
+            <span className="flex flex-wrap items-center justify-center gap-x-2 gap-y-1">
+              Code:{" "}
+              <a
+                href={GITHUB}
+                target="_blank"
+                rel="noreferrer noopener"
+                className="text-zinc-300 transition hover:text-amber-300"
+              >
+                github.com/galois-dh/heavi
+              </a>
+              <span className="text-zinc-700">|</span>
+              Whitepaper:{" "}
+              <a
+                href={WHITEPAPER}
+                target="_blank"
+                rel="noreferrer noopener"
+                className="text-zinc-300 transition hover:text-amber-300"
+              >
+                methodology (PDF)
+              </a>
+            </span>
           </div>
-        </section>
-
-        <footer className="border-t border-zinc-900 px-6 py-8 text-center text-xs text-zinc-600">
-          Heavi · Spatial decision intelligence
         </footer>
       </main>
     </div>
@@ -331,76 +394,102 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
   );
 }
 
-function StepCard({
-  step,
+function LayerCard({
+  index,
   icon,
   title,
   body,
+  last,
 }: {
-  step: string;
+  index: number;
   icon: React.ReactNode;
   title: string;
   body: string;
+  last: boolean;
 }) {
   return (
-    <div className="flex h-full flex-col rounded-2xl border border-zinc-800 bg-zinc-900/40 p-7 transition duration-300 hover:border-zinc-600 hover:bg-zinc-900/70">
-      <div className="flex items-center justify-between">
-        <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-amber-500/10 text-amber-300">
+    <div>
+      <div className="flex gap-5 rounded-2xl border border-zinc-800 bg-zinc-900/40 p-6 transition duration-300 hover:border-zinc-600 hover:bg-zinc-900/70">
+        <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-amber-500/10 text-amber-300">
           {icon}
         </span>
-        <span className="text-sm font-semibold tabular-nums text-zinc-600">
-          {step}
-        </span>
+        <div className="flex-1">
+          <div className="flex items-baseline gap-3">
+            <span className="text-xs font-bold tabular-nums text-amber-400/80">
+              {String(index).padStart(2, "0")}
+            </span>
+            <h3 className="text-lg font-semibold text-white">{title}</h3>
+          </div>
+          <p className="mt-2 text-sm leading-relaxed text-zinc-400">{body}</p>
+        </div>
       </div>
-      <h3 className="mt-5 text-lg font-semibold text-white">{title}</h3>
-      <p className="mt-2 text-sm leading-relaxed text-zinc-400">{body}</p>
+      {!last && (
+        <div
+          aria-hidden
+          className="ml-[2.75rem] h-5 w-px bg-gradient-to-b from-amber-500/50 to-zinc-800"
+        />
+      )}
     </div>
   );
 }
 
-function DiffBlock({
-  title,
-  children,
-}: {
-  title: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="max-w-3xl border-l-2 border-amber-500/60 pl-6">
-      <h3 className="text-xl font-semibold tracking-tight text-white sm:text-2xl">
-        {title}
-      </h3>
-      <p className="mt-3 text-base leading-relaxed text-zinc-400">{children}</p>
-    </div>
-  );
-}
-
-function SecondaryModule({
-  accent,
-  dot,
-  title,
+function ModuleCard({
+  icon,
+  iconWrap,
+  link,
+  name,
+  tag,
   body,
   href,
 }: {
-  accent: string;
-  dot: string;
-  title: string;
+  icon: React.ReactNode;
+  iconWrap: string;
+  link: string;
+  name: string;
+  tag: string;
   body: string;
   href: string;
 }) {
   return (
     <Link
       href={href}
-      className="group flex h-full flex-col rounded-xl border border-zinc-800 bg-zinc-900/30 p-5 transition hover:border-zinc-700 hover:bg-zinc-900/60"
+      className="group flex h-full flex-col rounded-2xl border border-zinc-800 bg-zinc-900/40 p-7 transition duration-300 hover:border-zinc-600 hover:bg-zinc-900/70"
     >
-      <div className="flex items-center gap-2">
-        <span className={`h-1.5 w-1.5 rounded-full ${dot}`} />
-        <h3 className={`text-sm font-semibold ${accent}`}>{title}</h3>
-      </div>
-      <p className="mt-2 text-sm leading-relaxed text-zinc-400">{body}</p>
-      <span className="mt-3 text-xs font-medium text-zinc-500 transition group-hover:text-zinc-300">
-        Learn more →
+      <span
+        className={`flex h-11 w-11 items-center justify-center rounded-xl ${iconWrap}`}
+      >
+        {icon}
+      </span>
+      <h3 className="mt-5 text-lg font-semibold text-white">{name}</h3>
+      <p className="mt-1 text-sm font-medium text-zinc-400">{tag}</p>
+      <p className="mt-4 flex-1 text-sm leading-relaxed text-zinc-400">{body}</p>
+      <span
+        className={`mt-6 text-sm font-semibold ${link} transition group-hover:translate-x-0.5`}
+      >
+        Try it →
       </span>
     </Link>
+  );
+}
+
+function InfraItem({
+  icon,
+  title,
+  body,
+}: {
+  icon: React.ReactNode;
+  title: string;
+  body: string;
+}) {
+  return (
+    <div className="flex h-full gap-4 rounded-xl border border-zinc-800 bg-zinc-900/30 p-5 transition hover:border-zinc-700">
+      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-zinc-800/80 text-zinc-300">
+        {icon}
+      </span>
+      <div>
+        <h3 className="text-sm font-semibold text-white">{title}</h3>
+        <p className="mt-1 text-sm leading-relaxed text-zinc-400">{body}</p>
+      </div>
+    </div>
   );
 }
