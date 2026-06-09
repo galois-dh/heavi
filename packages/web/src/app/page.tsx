@@ -16,7 +16,7 @@ import {
   Code2,
 } from "lucide-react";
 import { LandingNav } from "../components/landing-nav";
-import { Reveal, StatCounter } from "../components/landing-fx";
+import { Reveal } from "../components/landing-fx";
 
 // Public portfolio landing page (middleware allows "/"). Frames Heavi as a
 // platform: lead with what you can do (three modules), then how it works (the
@@ -24,14 +24,6 @@ import { Reveal, StatCounter } from "../components/landing-fx";
 
 const GITHUB = "https://github.com/galois-dh/heavi";
 const WHITEPAPER = "/whitepaper.pdf";
-
-// Platform-wide stats (not solar-specific validation numbers).
-const STATS = [
-  { value: 34, label: "federal data sources" },
-  { value: 31, label: "scored criteria" },
-  { value: 3, label: "analysis modules" },
-  { value: 14, label: "peer-reviewed citations" },
-];
 
 // Drifting concentric contour rings on the hero backdrop. Each pair shares a
 // center (cx/cy) and a drift animation so they stay concentric while moving.
@@ -203,17 +195,18 @@ export default function Home() {
               className="heavi-reveal mx-auto mt-6 max-w-4xl text-5xl font-bold leading-[1.05] tracking-tight text-white md:text-7xl"
               style={{ animationDelay: "0.08s" }}
             >
-              Score any location in the US.
+              Solar siting. Hazard risk. Trade areas.
               <br className="hidden sm:block" />{" "}
-              <span className="text-amber-400">Know exactly how much to trust it.</span>
+              <span className="text-amber-400">Each one auditable.</span>
             </h1>
             <p
               className="heavi-reveal mx-auto mt-7 max-w-2xl text-lg leading-relaxed text-zinc-400"
               style={{ animationDelay: "0.16s" }}
             >
-              34 federal data sources. Confidence scoring that tells you what data
-              was available and where the gaps are. Methodology documentation
-              attached to every output.
+              Three spatial analysis modules built on shared infrastructure. 34
+              federal data sources with a data selection engine that reports which
+              sources were available at each location, where the gaps are, and the
+              academic methodology behind every criterion.
             </p>
 
             <div
@@ -235,15 +228,6 @@ export default function Home() {
                 <Code2 size={16} strokeWidth={2} />
                 View on GitHub →
               </a>
-            </div>
-          </div>
-
-          {/* Stat counters — animate up from 0 when the row scrolls into view. */}
-          <div className="relative z-10 border-t border-zinc-900/70 px-6 pb-12">
-            <div className="mx-auto grid max-w-5xl grid-cols-2 gap-x-6 gap-y-8 py-8 md:grid-cols-4">
-              {STATS.map((s) => (
-                <StatCounter key={s.label} value={s.value} label={s.label} />
-              ))}
             </div>
           </div>
         </section>
