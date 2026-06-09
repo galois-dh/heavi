@@ -197,7 +197,7 @@ export default function Home() {
             >
               Solar siting. Hazard risk. Trade areas.
               <br className="hidden sm:block" />{" "}
-              <span className="text-amber-400">Each one auditable.</span>
+              <span className="text-amber-400">Analyzed and auditable.</span>
             </h1>
             <p
               className="heavi-reveal mx-auto mt-7 max-w-2xl text-lg leading-relaxed text-zinc-400"
