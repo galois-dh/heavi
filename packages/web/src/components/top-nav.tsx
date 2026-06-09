@@ -1,34 +1,15 @@
 "use client";
 
 import Link from "next/link";
-import { UserButton, useUser } from "@clerk/nextjs";
 
 type NavKey = "energy" | "hazard" | "locations";
 
-// The three authenticated product pages. The old "Modules" dropdown (individual
-// wildfire/flood/earthquake/solar/trade-area/portfolio/suitability/query tool
-// pages) was removed along with those routes.
+// The three product pages. Public demo — no auth controls in the nav.
 const PRODUCTS: { key: NavKey; label: string; href: string }[] = [
   { key: "energy",    label: "Energy",    href: "/energy" },
   { key: "hazard",    label: "Hazard",    href: "/hazard" },
   { key: "locations", label: "Locations", href: "/locations" },
 ];
-
-/** Sign-in link when signed out, UserButton (avatar + sign-out) when signed in. */
-function AuthControls() {
-  const { isLoaded, isSignedIn } = useUser();
-  if (!isLoaded) return null;
-  return isSignedIn ? (
-    <UserButton />
-  ) : (
-    <Link
-      href="/sign-in"
-      className="rounded-md px-3 py-1.5 font-semibold text-zinc-200 transition hover:bg-zinc-800 hover:text-white"
-    >
-      Sign in
-    </Link>
-  );
-}
 
 export function TopNav({ active }: { active?: NavKey }) {
   return (
@@ -57,10 +38,6 @@ export function TopNav({ active }: { active?: NavKey }) {
             </Link>
           );
         })}
-
-        <span className="mx-2 hidden h-4 w-px bg-zinc-800 sm:block" />
-
-        <AuthControls />
       </nav>
     </header>
   );

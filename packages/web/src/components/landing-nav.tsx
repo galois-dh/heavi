@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { UserButton, useUser } from "@clerk/nextjs";
 
 const LINKS = [
   { label: "Energy", href: "/energy" },
@@ -10,26 +9,9 @@ const LINKS = [
   { label: "Locations", href: "/locations" },
 ];
 
-/** Sign-in link when signed out, UserButton when signed in (mirrors TopNav). */
-function Auth() {
-  const { isLoaded, isSignedIn } = useUser();
-  if (!isLoaded) return <span className="h-7 w-7" aria-hidden />;
-  return isSignedIn ? (
-    <UserButton />
-  ) : (
-    <Link
-      href="/sign-in"
-      className="rounded-md px-3 py-1.5 text-sm font-medium text-zinc-200 transition hover:text-white"
-    >
-      Sign in
-    </Link>
-  );
-}
-
 /**
  * Landing-only navigation: floating + transparent over the hero, turning solid
- * with a backdrop blur once the page is scrolled. Product pages keep the solid
- * TopNav; this component is mounted only on "/".
+ * with a backdrop blur once the page is scrolled. Public demo — no auth UI.
  */
 export function LandingNav() {
   const [scrolled, setScrolled] = useState(false);
@@ -65,8 +47,6 @@ export function LandingNav() {
             </Link>
           ))}
         </nav>
-
-        <Auth />
       </div>
     </header>
   );
