@@ -19,17 +19,18 @@ import { LandingNav } from "../components/landing-nav";
 import { Reveal, StatCounter } from "../components/landing-fx";
 
 // Public portfolio landing page (middleware allows "/"). Frames Heavi as a
-// platform: a four-layer architecture for auditable spatial analysis, with three
-// equally-weighted modules built on shared infrastructure.
+// platform: lead with what you can do (three modules), then how it works (the
+// four-layer architecture), on shared infrastructure.
 
 const GITHUB = "https://github.com/galois-dh/heavi";
 const WHITEPAPER = "/whitepaper.pdf";
 
+// Platform-wide stats (not solar-specific validation numbers).
 const STATS = [
-  { value: 6321, label: "installations validated" },
-  { value: 10, label: "states validated" },
-  { value: 15, label: "federal data sources" },
-  { value: 4426, label: "queue projects tracked" },
+  { value: 34, label: "federal data sources" },
+  { value: 31, label: "scored criteria" },
+  { value: 3, label: "analysis modules" },
+  { value: 14, label: "peer-reviewed citations" },
 ];
 
 // Drifting concentric contour rings on the hero backdrop. Each pair shares a
@@ -51,29 +52,6 @@ const DOTS = [
   { top: "70%", left: "72%", color: "#fbbf24", size: 9, d: "3s", delay: "1s" },
   { top: "18%", left: "60%", color: "#fbbf24", size: 7, d: "2.6s", delay: "0.15s" },
   { top: "52%", left: "48%", color: "#60a5fa", size: 8, d: "2s", delay: "0.8s" },
-];
-
-const LAYERS = [
-  {
-    icon: <Database size={22} strokeWidth={1.8} />,
-    title: "Data Repository",
-    body: "34 federal and open datasets with per-source availability checking, so the platform knows what data actually exists at a location before it scores anything.",
-  },
-  {
-    icon: <BookOpen size={22} strokeWidth={1.8} />,
-    title: "Methodology Repository",
-    body: "31 scored criteria, each with a quality-ordered data tree and academic citations grounding its weight, thresholds, and normalization.",
-  },
-  {
-    icon: <Workflow size={22} strokeWidth={1.8} />,
-    title: "Data Selection Engine",
-    body: "Traverses each criterion's tree and selects the best available source at that exact location, falling back to documented proxies when authoritative data is missing.",
-  },
-  {
-    icon: <ShieldCheck size={22} strokeWidth={1.8} />,
-    title: "Confidence Scoring",
-    body: "Reports which data was actually used, where the gaps are, and how much to trust the result — a weakest-link confidence tier, never a silent default.",
-  },
 ];
 
 const MODULES = [
@@ -103,6 +81,29 @@ const MODULES = [
     tag: "Trade area analysis",
     body: "7 criteria, Huff gravity model, Census demographics, competitive density, drive-time isochrones, 96.7% Starbucks validation.",
     href: "/locations",
+  },
+];
+
+const LAYERS = [
+  {
+    icon: <Database size={22} strokeWidth={1.8} />,
+    title: "Data Repository",
+    body: "34 federal and open datasets with per-source availability checking, so the platform knows what data actually exists at a location before it scores anything.",
+  },
+  {
+    icon: <BookOpen size={22} strokeWidth={1.8} />,
+    title: "Methodology Repository",
+    body: "31 scored criteria, each with a quality-ordered data tree and academic citations grounding its weight, thresholds, and normalization.",
+  },
+  {
+    icon: <Workflow size={22} strokeWidth={1.8} />,
+    title: "Data Selection Engine",
+    body: "Traverses each criterion's tree and selects the best available source at that exact location, falling back to documented proxies when authoritative data is missing.",
+  },
+  {
+    icon: <ShieldCheck size={22} strokeWidth={1.8} />,
+    title: "Confidence Scoring",
+    body: "Reports which data was actually used, where the gaps are, and how much to trust the result — a weakest-link confidence tier, never a silent default.",
   },
 ];
 
@@ -199,18 +200,20 @@ export default function Home() {
               Heavi
             </p>
             <h1
-              className="heavi-reveal mx-auto mt-6 max-w-5xl text-5xl font-bold leading-[1.04] tracking-tight text-white md:text-7xl"
+              className="heavi-reveal mx-auto mt-6 max-w-4xl text-5xl font-bold leading-[1.05] tracking-tight text-white md:text-7xl"
               style={{ animationDelay: "0.08s" }}
             >
-              Deterministic spatial analysis with confidence scoring.
+              Score any location in the US.
+              <br className="hidden sm:block" />{" "}
+              <span className="text-amber-400">Know exactly how much to trust it.</span>
             </h1>
             <p
               className="heavi-reveal mx-auto mt-7 max-w-2xl text-lg leading-relaxed text-zinc-400"
               style={{ animationDelay: "0.16s" }}
             >
-              A platform that scores any US location against federal data sources,
-              tells you which data was actually available, and documents the
-              methodology behind every output. Built solo with Claude Code.
+              34 federal data sources. Confidence scoring that tells you what data
+              was available and where the gaps are. Methodology documentation
+              attached to every output.
             </p>
 
             <div
@@ -230,7 +233,7 @@ export default function Home() {
                 className="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-zinc-700 bg-zinc-950/40 px-6 py-3 text-sm font-semibold text-zinc-200 backdrop-blur-sm transition hover:border-zinc-500 hover:bg-zinc-900 sm:w-auto"
               >
                 <Code2 size={16} strokeWidth={2} />
-                Read the code →
+                View on GitHub →
               </a>
             </div>
           </div>
@@ -245,7 +248,25 @@ export default function Home() {
           </div>
         </section>
 
-        {/* ─────────────── Section 2: Architecture (How it works) ─────────────── */}
+        {/* ─────────────── Section 2: Three modules (equal weight) ─────────────── */}
+        <section className="mx-auto max-w-6xl px-6 py-24">
+          <Reveal>
+            <SectionLabel>What you can do</SectionLabel>
+            <p className="mt-4 max-w-2xl text-base leading-relaxed text-zinc-400">
+              Three modules, one engine. Each scores a different domain and is
+              independently validated against real-world ground truth.
+            </p>
+          </Reveal>
+          <div className="mt-12 grid grid-cols-1 gap-5 md:grid-cols-3">
+            {MODULES.map((m, i) => (
+              <Reveal key={m.name} delay={i * 120}>
+                <ModuleCard {...m} />
+              </Reveal>
+            ))}
+          </div>
+        </section>
+
+        {/* ─────────────── Section 3: Architecture (How it works) ─────────────── */}
         <section className="border-y border-zinc-900 bg-zinc-900/20">
           <div className="mx-auto max-w-5xl px-6 py-24">
             <Reveal>
@@ -277,79 +298,22 @@ export default function Home() {
           </div>
         </section>
 
-        {/* ─────────────── Section 3: Three modules (equal weight) ─────────────── */}
+        {/* ─────────────── Section 4: Shared infrastructure ─────────────── */}
         <section className="mx-auto max-w-6xl px-6 py-24">
           <Reveal>
-            <SectionLabel>Three modules, one engine</SectionLabel>
+            <SectionLabel>Shared infrastructure</SectionLabel>
             <p className="mt-4 max-w-2xl text-base leading-relaxed text-zinc-400">
-              The same data-selection and confidence-scoring engine powers three
-              domains. Each is independently validated against real-world ground
-              truth.
+              Every module inherits the same delivery, export, and integration
+              layer.
             </p>
           </Reveal>
-          <div className="mt-12 grid grid-cols-1 gap-5 md:grid-cols-3">
-            {MODULES.map((m, i) => (
-              <Reveal key={m.name} delay={i * 120}>
-                <ModuleCard {...m} />
+          <div className="mt-12 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
+            {INFRA.map((f, i) => (
+              <Reveal key={f.title} delay={(i % 3) * 100}>
+                <InfraItem icon={f.icon} title={f.title} body={f.body} />
               </Reveal>
             ))}
           </div>
-        </section>
-
-        {/* ─────────────── Section 4: Shared infrastructure ─────────────── */}
-        <section className="border-y border-zinc-900 bg-zinc-900/20">
-          <div className="mx-auto max-w-6xl px-6 py-24">
-            <Reveal>
-              <SectionLabel>Shared infrastructure</SectionLabel>
-              <p className="mt-4 max-w-2xl text-base leading-relaxed text-zinc-400">
-                Every module inherits the same delivery, export, and integration
-                layer.
-              </p>
-            </Reveal>
-            <div className="mt-12 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
-              {INFRA.map((f, i) => (
-                <Reveal key={f.title} delay={(i % 3) * 100}>
-                  <InfraItem icon={f.icon} title={f.title} body={f.body} />
-                </Reveal>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        {/* ─────────────── Section 5: Built with AI ─────────────── */}
-        <section className="mx-auto max-w-5xl px-6 py-24">
-          <Reveal>
-            <div className="relative overflow-hidden rounded-2xl border border-amber-500/30 bg-gradient-to-br from-amber-500/15 via-amber-500/5 to-zinc-900/0 px-8 py-14 sm:px-14">
-              <SectionLabel>Built with AI</SectionLabel>
-              <h2 className="mt-4 max-w-3xl text-2xl font-bold tracking-tight text-white sm:text-3xl">
-                One person. Spec-driven development.
-              </h2>
-              <p className="mt-4 max-w-2xl text-base leading-relaxed text-zinc-300">
-                This entire platform was built by one person using Claude Code and
-                spec-driven development. Every spec is in the repo. Every commit
-                traces to a specification.
-              </p>
-              <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-                <a
-                  href={GITHUB}
-                  target="_blank"
-                  rel="noreferrer noopener"
-                  className="inline-flex items-center justify-center gap-2 rounded-lg bg-amber-500 px-6 py-3 text-sm font-semibold text-zinc-950 shadow-lg shadow-amber-500/25 transition hover:bg-amber-400"
-                >
-                  <Code2 size={16} strokeWidth={2} />
-                  View the code on GitHub →
-                </a>
-                <a
-                  href={WHITEPAPER}
-                  target="_blank"
-                  rel="noreferrer noopener"
-                  className="inline-flex items-center justify-center rounded-lg border border-zinc-700 px-6 py-3 text-sm font-semibold text-zinc-200 transition hover:border-zinc-500 hover:bg-zinc-900"
-                >
-                  Read the methodology whitepaper →
-                </a>
-              </div>
-            </div>
-          </Reveal>
         </section>
 
         {/* ─────────────────────────── Footer ─────────────────────────── */}
@@ -394,45 +358,6 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
   );
 }
 
-function LayerCard({
-  index,
-  icon,
-  title,
-  body,
-  last,
-}: {
-  index: number;
-  icon: React.ReactNode;
-  title: string;
-  body: string;
-  last: boolean;
-}) {
-  return (
-    <div>
-      <div className="flex gap-5 rounded-2xl border border-zinc-800 bg-zinc-900/40 p-6 transition duration-300 hover:border-zinc-600 hover:bg-zinc-900/70">
-        <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-amber-500/10 text-amber-300">
-          {icon}
-        </span>
-        <div className="flex-1">
-          <div className="flex items-baseline gap-3">
-            <span className="text-xs font-bold tabular-nums text-amber-400/80">
-              {String(index).padStart(2, "0")}
-            </span>
-            <h3 className="text-lg font-semibold text-white">{title}</h3>
-          </div>
-          <p className="mt-2 text-sm leading-relaxed text-zinc-400">{body}</p>
-        </div>
-      </div>
-      {!last && (
-        <div
-          aria-hidden
-          className="ml-[2.75rem] h-5 w-px bg-gradient-to-b from-amber-500/50 to-zinc-800"
-        />
-      )}
-    </div>
-  );
-}
-
 function ModuleCard({
   icon,
   iconWrap,
@@ -469,6 +394,45 @@ function ModuleCard({
         Try it →
       </span>
     </Link>
+  );
+}
+
+function LayerCard({
+  index,
+  icon,
+  title,
+  body,
+  last,
+}: {
+  index: number;
+  icon: React.ReactNode;
+  title: string;
+  body: string;
+  last: boolean;
+}) {
+  return (
+    <div>
+      <div className="flex gap-5 rounded-2xl border border-zinc-800 bg-zinc-900/40 p-6 transition duration-300 hover:border-zinc-600 hover:bg-zinc-900/70">
+        <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-amber-500/10 text-amber-300">
+          {icon}
+        </span>
+        <div className="flex-1">
+          <div className="flex items-baseline gap-3">
+            <span className="text-xs font-bold tabular-nums text-amber-400/80">
+              {String(index).padStart(2, "0")}
+            </span>
+            <h3 className="text-lg font-semibold text-white">{title}</h3>
+          </div>
+          <p className="mt-2 text-sm leading-relaxed text-zinc-400">{body}</p>
+        </div>
+      </div>
+      {!last && (
+        <div
+          aria-hidden
+          className="ml-[2.75rem] h-5 w-px bg-gradient-to-b from-amber-500/50 to-zinc-800"
+        />
+      )}
+    </div>
   );
 }
 
