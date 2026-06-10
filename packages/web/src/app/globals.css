@@ -32,131 +32,28 @@
   animation: heavi-fade-up 0.7s cubic-bezier(0.16, 0.84, 0.44, 1) both;
 }
 
-/* Hero topographic contour rings: large circle outlines that slowly drift and
-   breathe. GPU-friendly — transform only. Concentric pairs share a keyframe so
-   they translate by the same pixel amount and stay concentric. */
-.hero-ring {
-  position: absolute;
-  border-radius: 9999px;
-  border-width: 1px;
-  border-style: solid;
-  will-change: transform;
-}
-.hero-ring-a {
-  animation: hero-ring-drift-a 15s ease-in-out infinite alternate;
-}
-.hero-ring-b {
-  animation: hero-ring-drift-b 17s ease-in-out infinite alternate;
-}
-.hero-ring-c {
-  animation: hero-ring-drift-c 19s ease-in-out infinite alternate;
-}
-@keyframes hero-ring-drift-a {
-  from {
-    transform: translate3d(0, 0, 0) scale(1);
-  }
-  to {
-    transform: translate3d(60px, 44px, 0) scale(1.16);
-  }
-}
-@keyframes hero-ring-drift-b {
-  from {
-    transform: translate3d(0, 0, 0) scale(1.12);
-  }
-  to {
-    transform: translate3d(-66px, -34px, 0) scale(0.95);
-  }
-}
-@keyframes hero-ring-drift-c {
-  from {
-    transform: translate3d(0, 0, 0) scale(1);
-  }
-  to {
-    transform: translate3d(42px, -58px, 0) scale(1.12);
-  }
-}
-
-/* Glowing analysis clusters: soft amber radial glows that slowly pulse in
-   brightness and breathe. Per-cluster timing via --d / --delay. */
-.hero-cluster {
-  opacity: 0.55;
-  will-change: transform, opacity;
-  animation: hero-cluster-pulse var(--d, 8s) ease-in-out var(--delay, 0s) infinite;
-}
-@keyframes hero-cluster-pulse {
-  0%,
-  100% {
-    opacity: 0.35;
-    transform: scale(0.92);
-  }
-  50% {
-    opacity: 0.85;
-    transform: scale(1.08);
-  }
-}
-
-/* Floating data particles: tiny dots drifting upward and fading, like points
-   rising from the terrain. Per-particle timing via --dur / --delay. */
-.hero-particle {
-  opacity: 0.4; /* static fallback for reduced-motion */
-  will-change: transform, opacity;
-  animation: hero-particle-rise var(--dur, 12s) linear var(--delay, 0s) infinite;
-}
-@keyframes hero-particle-rise {
-  0% {
-    opacity: 0;
-    transform: translateY(24px);
-  }
-  18% {
-    opacity: 0.5;
-  }
-  82% {
-    opacity: 0.45;
-  }
-  100% {
-    opacity: 0;
-    transform: translateY(-150px);
-  }
-}
-
-/* Scroll parallax — progressive enhancement via CSS scroll-driven animations
-   (no JavaScript). Clusters and particles drift up at different rates as the
-   hero scrolls away, for depth; the terrain base stays put. Browsers without
-   scroll-timeline support simply skip the parallax. */
-@supports (animation-timeline: scroll()) {
-  .parallax-clusters {
-    animation: hero-parallax-slow linear both;
-    animation-timeline: scroll(root);
-    animation-range: 0 100vh;
-  }
-  .parallax-particles {
-    animation: hero-parallax-fast linear both;
-    animation-timeline: scroll(root);
-    animation-range: 0 100vh;
-  }
-}
-@keyframes hero-parallax-slow {
-  to {
-    transform: translateY(-50px);
-  }
-}
-@keyframes hero-parallax-fast {
-  to {
-    transform: translateY(-110px);
-  }
-}
-
 @media (prefers-reduced-motion: reduce) {
-  .reveal,
-  .hero-ring-a,
-  .hero-ring-b,
-  .hero-ring-c,
-  .hero-cluster,
-  .hero-particle,
-  .parallax-clusters,
-  .parallax-particles {
+  .reveal {
     animation: none;
   }
+}
+
+/* JSON syntax highlighting for the live API response block (Section 2). Tokens
+   are emitted server-side by highlightJson() in page.tsx. */
+.tok-key {
+  color: #7dd3fc; /* sky-300 — object keys */
+}
+.tok-str {
+  color: #6ee7b7; /* emerald-300 — string values */
+}
+.tok-num {
+  color: #fcd34d; /* amber-300 — numbers */
+}
+.tok-bool {
+  color: #c4b5fd; /* violet-300 — booleans */
+}
+.tok-null {
+  color: #71717a; /* zinc-500 — null */
 }
 
 /* Clerk UserButton dropdown: force the user identifier (name/email) and action

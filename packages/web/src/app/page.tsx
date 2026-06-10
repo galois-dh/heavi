@@ -7,70 +7,133 @@ import {
   Sun,
   Flame,
   Store,
-  Map as MapIcon,
-  FileText,
-  MapPin,
-  Layers,
-  Bot,
-  Tag,
+  Check,
+  ArrowRight,
+  CornerDownRight,
   Code2,
 } from "lucide-react";
 import { LandingNav } from "../components/landing-nav";
 import { Reveal } from "../components/landing-fx";
 
-// Public portfolio landing page (middleware allows "/"). Frames Heavi as a
-// platform: lead with what you can do (three modules), then how it works (the
-// four-layer architecture), on shared infrastructure.
+// Technical-showcase landing page (public; middleware allows "/"). The content
+// IS the visual — a real API response, the architecture, a data tree, and the
+// validation table. No animated background. See
+// docs/specs/Heavi_Technical_Homepage_Spec.md.
 
 const GITHUB = "https://github.com/galois-dh/heavi";
+const SPECS_URL = `${GITHUB}/tree/main/docs/specs`;
 const WHITEPAPER = "/whitepaper.pdf";
+const EMAIL = "dhazarik@gmail.com";
 
-// Faint drifting contour rings — now terrain texture (very low opacity), not a
-// focal point. Each pair shares a center (cx/cy) + drift so they stay concentric.
-const RINGS = [
-  { cx: "26%", cy: "34%", size: 460, color: "rgba(245,158,11,0.08)", drift: "a" },
-  { cx: "26%", cy: "34%", size: 720, color: "rgba(245,158,11,0.05)", drift: "a" },
-  { cx: "80%", cy: "60%", size: 520, color: "rgba(96,165,250,0.07)", drift: "b" },
-  { cx: "80%", cy: "60%", size: 820, color: "rgba(96,165,250,0.05)", drift: "b" },
-  { cx: "52%", cy: "46%", size: 1040, color: "rgba(244,244,245,0.05)", drift: "c" },
+// ── Section 2: real scored response for Kern County (35.35, -119.05) ──
+const API_RESPONSE = `{
+  "location": { "latitude": 35.35, "longitude": -119.05 },
+  "score": 78,
+  "rating": "High",
+  "weight_profile": "WECC (calibrated)",
+  "confidence": {
+    "tier": "HIGH",
+    "composite": 0.95,
+    "statement": "Based on authoritative data for all major criteria."
+  },
+  "criteria": {
+    "Transmission proximity": { "score": 86, "source": "HIFLD Transmission Lines", "confidence": "HIGH" },
+    "Solar resource (GHI)": { "score": 67, "source": "NREL PVWatts v8", "confidence": "HIGH" },
+    "Terrain slope": { "score": 99, "source": "USGS 3D Elevation Program", "confidence": "HIGH" },
+    "Road access": { "score": 50, "source": "OpenStreetMap Roads", "confidence": "HIGH" },
+    "Terrain aspect": { "score": 100, "source": "USGS 3D Elevation Program", "confidence": "HIGH" },
+    "Land cover type": { "score": 10, "source": "National Land Cover Database", "confidence": "HIGH" },
+    "Soil buildability": { "score": 100, "source": "USDA SSURGO", "confidence": "HIGH" }
+  },
+  "exclusions": {
+    "Protected areas": { "result": "pass", "source": "USGS PAD-US" },
+    "Wetlands": { "result": "pass", "source": "National Wetlands Inventory" },
+    "Critical habitat": { "result": "pass", "source": "USFWS" },
+    "Steep slope": { "result": "pass", "source": "USGS 3DEP" },
+    "Developed land": { "result": "pass", "source": "NLCD 2021" }
+  },
+  "gaps": [
+    { "criterion": "Environmental Justice", "message": "EPA EJScreen discontinued." }
+  ],
+  "interconnection": {
+    "nearest_substation_mi": 1.7,
+    "existing_capacity_mw": 314,
+    "queue_projects": 52,
+    "queue_capacity_mw": 13169,
+    "iso": "CAISO"
+  }
+}`;
+
+// Token-based JSON syntax highlighter. Content is static/trusted, so emitting
+// HTML with token <span>s and dangerouslySetInnerHTML is safe here.
+const JSON_TOKEN = /("(?:\\.|[^"\\])*"\s*:?|\b(?:true|false|null)\b|-?\d+(?:\.\d+)?)/g;
+function highlightJson(src: string): string {
+  const escaped = src
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+  return escaped.replace(JSON_TOKEN, (tok) => {
+    let cls = "tok-num";
+    if (tok.startsWith("&quot;") || tok.startsWith('"')) {
+      cls = tok.trimEnd().endsWith(":") ? "tok-key" : "tok-str";
+    } else if (tok === "true" || tok === "false") {
+      cls = "tok-bool";
+    } else if (tok === "null") {
+      cls = "tok-null";
+    }
+    return `<span class="${cls}">${tok}</span>`;
+  });
+}
+
+const PIPELINE = [
+  {
+    icon: <Database size={20} strokeWidth={1.8} />,
+    title: "Data Repository",
+    head: "34 sources",
+    body: "Federal and open data with availability checking per location.",
+  },
+  {
+    icon: <BookOpen size={20} strokeWidth={1.8} />,
+    title: "Methodology Repository",
+    head: "31 criteria",
+    body: "Data trees and academic citations. Doorga, Hernandez, Huff, Scawthorn, Finney.",
+  },
+  {
+    icon: <Workflow size={20} strokeWidth={1.8} />,
+    title: "Data Selection Engine",
+    head: "Quality-ordered",
+    body: "Traverses trees per criterion. Selects the best source at each location: authoritative → fallback → proxy → gap.",
+  },
+  {
+    icon: <ShieldCheck size={20} strokeWidth={1.8} />,
+    title: "Confidence Scoring",
+    head: "Five tiers",
+    body: "Reports what data was used, where gaps are, and how much to trust the result. HIGH to CANNOT ASSESS.",
+  },
 ];
 
-// Glowing "analysis" clusters at approximate US geographic positions across the
-// hero. Varying sizes suggest different analysis densities. Each pulses softly.
-const CLUSTERS = [
-  { left: "15%", top: "42%", size: 120, d: "7s", delay: "0s" },
-  { left: "23%", top: "60%", size: 70, d: "9s", delay: "1.4s" },
-  { left: "38%", top: "33%", size: 95, d: "8s", delay: "0.7s" },
-  { left: "50%", top: "54%", size: 60, d: "6.5s", delay: "2.1s" },
-  { left: "57%", top: "30%", size: 85, d: "10s", delay: "0.3s" },
-  { left: "69%", top: "46%", size: 110, d: "7.5s", delay: "1.1s" },
-  { left: "80%", top: "32%", size: 75, d: "8.5s", delay: "2.4s" },
-  { left: "85%", top: "56%", size: 50, d: "6s", delay: "0.6s" },
-  { left: "32%", top: "72%", size: 65, d: "9.5s", delay: "1.8s" },
-  { left: "63%", top: "68%", size: 45, d: "7s", delay: "3s" },
-];
-
-// Tiny particles drifting upward at different rates, like data points rising
-// from the terrain. Hardcoded (not random) to keep SSR/client markup identical.
-const PARTICLES = [
-  { left: "9%", top: "68%", size: 3, dur: "12s", delay: "0s", color: "#fbbf24" },
-  { left: "17%", top: "82%", size: 2, dur: "15s", delay: "2.1s", color: "#cbd5e1" },
-  { left: "26%", top: "55%", size: 4, dur: "10s", delay: "1.2s", color: "#fbbf24" },
-  { left: "31%", top: "78%", size: 2, dur: "14s", delay: "3.4s", color: "#cbd5e1" },
-  { left: "38%", top: "63%", size: 3, dur: "11s", delay: "0.6s", color: "#fbbf24" },
-  { left: "44%", top: "84%", size: 2, dur: "16s", delay: "2.8s", color: "#cbd5e1" },
-  { left: "49%", top: "58%", size: 3, dur: "9s", delay: "1.7s", color: "#fbbf24" },
-  { left: "55%", top: "75%", size: 2, dur: "13s", delay: "0.3s", color: "#cbd5e1" },
-  { left: "61%", top: "62%", size: 4, dur: "10.5s", delay: "2.4s", color: "#fbbf24" },
-  { left: "66%", top: "80%", size: 2, dur: "15.5s", delay: "1s", color: "#cbd5e1" },
-  { left: "72%", top: "57%", size: 3, dur: "11.5s", delay: "3s", color: "#fbbf24" },
-  { left: "77%", top: "73%", size: 2, dur: "14.5s", delay: "0.9s", color: "#cbd5e1" },
-  { left: "83%", top: "64%", size: 3, dur: "9.5s", delay: "2.2s", color: "#fbbf24" },
-  { left: "88%", top: "79%", size: 2, dur: "13.5s", delay: "1.5s", color: "#cbd5e1" },
-  { left: "13%", top: "50%", size: 2, dur: "16s", delay: "3.6s", color: "#cbd5e1" },
-  { left: "42%", top: "48%", size: 3, dur: "12.5s", delay: "0.4s", color: "#fbbf24" },
-  { left: "70%", top: "50%", size: 2, dur: "15s", delay: "2.6s", color: "#cbd5e1" },
-  { left: "92%", top: "46%", size: 3, dur: "10s", delay: "1.9s", color: "#fbbf24" },
+const TREE = [
+  {
+    title: "NWI PostGIS",
+    kind: "authoritative · confidence 1.0",
+    note: "National Wetlands Inventory loaded for Kern County",
+    status: "Available at this location",
+    tone: "ok",
+  },
+  {
+    title: "NWI REST API",
+    kind: "authoritative · confidence 1.0",
+    note: "National NWI service (currently degraded)",
+    status: "Would try if PostGIS unavailable",
+    tone: "idle",
+  },
+  {
+    title: "SSURGO Hydric Proxy",
+    kind: "proxy · confidence 0.4",
+    note: "Soil-based wetland indicator from USDA",
+    status: "Fallback used outside loaded geographies",
+    tone: "proxy",
+  },
 ];
 
 const MODULES = [
@@ -80,7 +143,8 @@ const MODULES = [
     link: "text-amber-300",
     name: "Heavi Energy",
     tag: "Solar site screening",
-    body: "14 criteria, regional weight calibration against 6,321 EIA installations, interconnection queue context from 4,426 LBNL projects, batch scoring with map visualization.",
+    specs: "14 criteria · regional weight calibration · 6,321 EIA installations",
+    validated: "71% High across 10 states",
     href: "/energy",
   },
   {
@@ -89,7 +153,8 @@ const MODULES = [
     link: "text-rose-300",
     name: "Heavi Hazard",
     tag: "Wildfire + flood risk",
-    body: "10 criteria, per-peril dollar estimates with NSI building data, NIFC + LANDFIRE fallback chains, multi-geography validation.",
+    specs: "10 criteria · per-peril dollar estimates · NSI building data",
+    validated: "AUC 0.76 (Sonoma), 16x discrimination (Lee County)",
     href: "/hazard",
   },
   {
@@ -98,309 +163,360 @@ const MODULES = [
     link: "text-emerald-300",
     name: "Heavi Locations",
     tag: "Trade area analysis",
-    body: "7 criteria, Huff gravity model, Census demographics, competitive density, drive-time isochrones, 96.7% Starbucks validation.",
+    specs: "7 criteria · Huff gravity model · drive-time isochrones",
+    validated: "96.7% Starbucks Strong (Dallas)",
     href: "/locations",
   },
 ];
 
-const LAYERS = [
-  {
-    icon: <Database size={22} strokeWidth={1.8} />,
-    title: "Data Repository",
-    body: "34 federal and open datasets with per-source availability checking, so the platform knows what data actually exists at a location before it scores anything.",
-  },
-  {
-    icon: <BookOpen size={22} strokeWidth={1.8} />,
-    title: "Methodology Repository",
-    body: "31 scored criteria, each with a quality-ordered data tree and academic citations grounding its weight, thresholds, and normalization.",
-  },
-  {
-    icon: <Workflow size={22} strokeWidth={1.8} />,
-    title: "Data Selection Engine",
-    body: "Traverses each criterion's tree and selects the best available source at that exact location, falling back to documented proxies when authoritative data is missing.",
-  },
-  {
-    icon: <ShieldCheck size={22} strokeWidth={1.8} />,
-    title: "Confidence Scoring",
-    body: "Reports which data was actually used, where the gaps are, and how much to trust the result — a weakest-link confidence tier, never a silent default.",
-  },
+const VALIDATION = [
+  { state: "Texas", nerc: "ERCOT", eia: "87%", random: "47%", sep: "+0.079" },
+  { state: "Arizona", nerc: "WECC", eia: "40%", random: "33%", sep: "+0.220" },
+  { state: "North Carolina", nerc: "SERC", eia: "53%", random: "40%", sep: "+0.044" },
+  { state: "Nevada", nerc: "WECC", eia: "47%", random: "7%", sep: "+0.204" },
+  { state: "Florida", nerc: "SERC", eia: "53%", random: "0%", sep: "+0.184" },
+  { state: "California", nerc: "WECC", eia: "53%", random: "33%", sep: "+0.118" },
+  { state: "Georgia", nerc: "SERC", eia: "47%", random: "20%", sep: "+0.104" },
+  { state: "Colorado", nerc: "WECC", eia: "73%", random: "40%", sep: "+0.190" },
+  { state: "Indiana", nerc: "MISO", eia: "40%", random: "20%", sep: "+0.062" },
+  { state: "Ohio", nerc: "PJM", eia: "20%", random: "33%", sep: "+0.017" },
 ];
 
-const INFRA = [
+const CATALOG = [
+  { group: "Solar Resource", sources: ["NREL PVWatts v8", "NREL NSRDB"] },
+  { group: "Terrain", sources: ["USGS 3DEP"] },
+  { group: "Infrastructure", sources: ["HIFLD Transmission", "OSM Substations", "OSM Roads", "EIA Form 860"] },
+  { group: "Environmental", sources: ["USFWS NWI", "USFWS Critical Habitat", "USGS PAD-US", "EPA EJScreen"] },
+  { group: "Land & Soil", sources: ["MRLC NLCD 2021", "USDA SSURGO"] },
   {
-    icon: <MapIcon size={20} strokeWidth={1.8} />,
-    title: "Map-based delivery",
-    body: "MapLibre GL JS with toggleable constraint layers.",
+    group: "Hazard",
+    sources: ["FEMA NFHL", "USFS FSim", "NIFC Fire Perimeters", "LANDFIRE", "USACE NSI", "HAZUS DDFs", "OpenFEMA", "USGS Peak Flow"],
   },
-  {
-    icon: <FileText size={20} strokeWidth={1.8} />,
-    title: "PDF export",
-    body: "Audit-ready reports with full methodology documentation.",
-  },
-  {
-    icon: <MapPin size={20} strokeWidth={1.8} />,
-    title: "Address geocoding",
-    body: "Census geocoder with Nominatim fallback.",
-  },
-  {
-    icon: <Layers size={20} strokeWidth={1.8} />,
-    title: "Batch scoring",
-    body: "Up to 200 locations per run.",
-  },
-  {
-    icon: <Bot size={20} strokeWidth={1.8} />,
-    title: "MCP tools",
-    body: "Spatial tools exposed for AI-agent consumption.",
-  },
-  {
-    icon: <Tag size={20} strokeWidth={1.8} />,
-    title: "Natural-language labels",
-    body: "Human-readable names throughout, never raw IDs.",
-  },
+  { group: "Demographics", sources: ["Census ACS", "Census LEHD"] },
+  { group: "POIs", sources: ["OpenStreetMap", "OpenRouteService"] },
+  { group: "Interconnection", sources: ["LBNL Queued Up 2025"] },
+];
+
+const SPECS = [
+  "Platform Architecture — data repository, methodology repository, data selection engine",
+  "Methodology & Data Provenance — 31 criteria with academic citations and data trees",
+  "Weight Adaptation — NERC regional calibration via constrained optimization",
+  "Exclusion Precision — refined thresholds from conservative literature defaults",
+  "Workflow Integration — hazard and trade area through the shared architecture",
+  "Map Interface — MapLibre GL JS delivery surface",
+  "Data Tree Completeness — LANDFIRE and NIFC fallback chains",
+  "Insufficient Data Handling — CANNOT ASSESS safety net",
+  "Month 1 Sprint — geocoding, batch scoring, PDF export, interconnection",
+  "10-State Validation — 300-location validation protocol",
+  "Month 2 Sprint — methodology whitepaper, precision framework, sample package",
+  "Natural Language Display — human-readable labels replacing technical IDs",
+];
+
+const METRICS = [
+  { value: "34", label: "data sources integrated" },
+  { value: "31", label: "scored criteria across 3 modules" },
+  { value: "12", label: "specification documents" },
+  { value: "300", label: "locations validated" },
+  { value: "14", label: "peer-reviewed citations" },
+  { value: "~20", label: "commits from first spec to production" },
 ];
 
 export default function Home() {
+  const highlighted = highlightJson(API_RESPONSE);
+
   return (
     <div className="relative bg-zinc-950">
       <LandingNav />
 
       <main>
-        {/* ───────────────────────── Section 1: Hero ───────────────────────── */}
-        <section className="relative flex min-h-[100svh] flex-col overflow-hidden">
-          {/* Satellite-view backdrop: dark terrain at night with amber analysis
-              hotspots. CSS-only (gradients + transform/opacity animations); the
-              parallax is a CSS scroll-driven enhancement, no JavaScript. */}
-          <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden">
-            {/* Dark terrain base — layered gradients for depth + noise-like
-                variation; lighter toward center, darker at the edges. */}
-            <div
-              className="absolute inset-0"
-              style={{
-                backgroundColor: "#0a0f1a",
-                backgroundImage: [
-                  "radial-gradient(90% 75% at 50% 30%, rgba(17,24,39,0.85) 0%, rgba(13,17,23,0) 60%)",
-                  "radial-gradient(55% 50% at 18% 72%, rgba(15,23,42,0.55) 0%, rgba(10,15,26,0) 70%)",
-                  "radial-gradient(52% 50% at 82% 64%, rgba(17,24,39,0.5) 0%, rgba(10,15,26,0) 70%)",
-                  "radial-gradient(45% 40% at 66% 22%, rgba(13,17,23,0.6) 0%, rgba(10,15,26,0) 72%)",
-                  "radial-gradient(120% 120% at 50% 0%, rgba(20,28,46,0.35) 0%, rgba(10,15,26,0) 55%)",
-                ].join(", "),
-              }}
-            />
-
-            {/* Atmospheric haze band across the horizon. */}
-            <div
-              className="absolute inset-x-0 top-1/2 h-48 -translate-y-1/2"
-              style={{
-                background:
-                  "linear-gradient(180deg, rgba(30,58,138,0) 0%, rgba(30,58,138,0.13) 50%, rgba(30,58,138,0) 100%)",
-              }}
-            />
-
-            {/* Faint contour rings — terrain texture. */}
-            {RINGS.map((r, i) => (
-              <span
-                key={`ring-${i}`}
-                className={`hero-ring hero-ring-${r.drift}`}
-                style={{
-                  left: r.cx,
-                  top: r.cy,
-                  width: r.size,
-                  height: r.size,
-                  marginLeft: -r.size / 2,
-                  marginTop: -r.size / 2,
-                  borderColor: r.color,
-                }}
-              />
-            ))}
-
-            {/* Glowing analysis clusters (parallax-slow). */}
-            <div className="parallax-clusters absolute inset-0">
-              {CLUSTERS.map((c, i) => (
-                <span
-                  key={`cluster-${i}`}
-                  className="hero-cluster absolute rounded-full"
-                  style={
-                    {
-                      left: c.left,
-                      top: c.top,
-                      width: c.size,
-                      height: c.size,
-                      marginLeft: -c.size / 2,
-                      marginTop: -c.size / 2,
-                      background:
-                        "radial-gradient(circle, rgba(251,191,36,0.55) 0%, rgba(251,191,36,0.14) 42%, rgba(251,191,36,0) 70%)",
-                      "--d": c.d,
-                      "--delay": c.delay,
-                    } as React.CSSProperties
-                  }
-                />
-              ))}
-            </div>
-
-            {/* Floating data particles rising from the terrain (parallax-fast). */}
-            <div className="parallax-particles absolute inset-0">
-              {PARTICLES.map((p, i) => (
-                <span
-                  key={`particle-${i}`}
-                  className="hero-particle absolute rounded-full"
-                  style={
-                    {
-                      left: p.left,
-                      top: p.top,
-                      width: p.size,
-                      height: p.size,
-                      background: p.color,
-                      "--dur": p.dur,
-                      "--delay": p.delay,
-                    } as React.CSSProperties
-                  }
-                />
-              ))}
-            </div>
-
-            {/* Fade into the page below. */}
-            <div className="absolute inset-x-0 bottom-0 h-40 bg-gradient-to-b from-transparent to-zinc-950" />
+        {/* ───────────────── Section 1: Hero (clean, no animation) ───────────────── */}
+        <section className="flex min-h-[88svh] flex-col items-center justify-center px-6 py-32 text-center">
+          <p className="heavi-reveal text-xs font-semibold uppercase tracking-[0.4em] text-amber-400">
+            Heavi
+          </p>
+          <h1
+            className="heavi-reveal mx-auto mt-6 max-w-4xl text-5xl font-bold leading-[1.05] tracking-tight text-white md:text-7xl"
+            style={{ animationDelay: "0.08s" }}
+          >
+            Solar siting. Hazard risk. Trade areas.
+            <br className="hidden sm:block" />{" "}
+            <span className="text-amber-400">Analyzed and auditable.</span>
+          </h1>
+          <p
+            className="heavi-reveal mx-auto mt-7 max-w-2xl text-lg leading-relaxed text-zinc-400"
+            style={{ animationDelay: "0.16s" }}
+          >
+            A spatial analysis platform with 34 federal data sources, confidence
+            scoring, and documented methodology.
+          </p>
+          <div
+            className="heavi-reveal mt-9 flex flex-col items-center justify-center gap-3 sm:flex-row"
+            style={{ animationDelay: "0.24s" }}
+          >
+            <Link
+              href="/energy"
+              className="inline-flex w-full items-center justify-center rounded-lg bg-amber-500 px-6 py-3 text-sm font-semibold text-zinc-950 transition hover:bg-amber-400 sm:w-auto"
+            >
+              Explore the platform →
+            </Link>
+            <a
+              href={GITHUB}
+              target="_blank"
+              rel="noreferrer noopener"
+              className="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-zinc-700 px-6 py-3 text-sm font-semibold text-zinc-200 transition hover:border-zinc-500 hover:bg-zinc-900 sm:w-auto"
+            >
+              <Code2 size={16} strokeWidth={2} />
+              View on GitHub →
+            </a>
           </div>
+        </section>
 
-          {/* Hero content */}
-          <div className="relative z-10 flex flex-1 flex-col items-center justify-center px-6 pb-12 pt-28 text-center">
-            <p className="heavi-reveal text-xs font-semibold uppercase tracking-[0.4em] text-amber-400">
-              Heavi
-            </p>
-            <h1
-              className="heavi-reveal mx-auto mt-6 max-w-4xl text-5xl font-bold leading-[1.05] tracking-tight text-white md:text-7xl"
-              style={{ animationDelay: "0.08s" }}
-            >
-              Solar siting. Hazard risk. Trade areas.
-              <br className="hidden sm:block" />{" "}
-              <span className="text-amber-400">Analyzed and auditable.</span>
-            </h1>
-            <p
-              className="heavi-reveal mx-auto mt-7 max-w-2xl text-lg leading-relaxed text-zinc-400"
-              style={{ animationDelay: "0.16s" }}
-            >
-              Three spatial analysis modules built on shared infrastructure. 34
-              federal data sources with a data selection engine that reports which
-              sources were available at each location, where the gaps are, and the
-              academic methodology behind every criterion.
-            </p>
+        {/* ───────────────── Section 2: Live API Response ───────────────── */}
+        <Section heading="What the API returns">
+          <div className="overflow-hidden rounded-xl border border-zinc-800 bg-[#0d1117] shadow-xl shadow-black/30">
+            <div className="flex items-center gap-2 border-b border-zinc-800 bg-zinc-900/60 px-4 py-2.5">
+              <span className="h-3 w-3 rounded-full bg-rose-500/70" />
+              <span className="h-3 w-3 rounded-full bg-amber-500/70" />
+              <span className="h-3 w-3 rounded-full bg-emerald-500/70" />
+              <span className="ml-3 font-mono text-xs text-zinc-500">
+                POST /solar/score-v2 · 35.35, -119.05
+              </span>
+            </div>
+            <pre className="overflow-x-auto px-5 py-4 font-mono text-[12.5px] leading-relaxed text-zinc-300">
+              <code dangerouslySetInnerHTML={{ __html: highlighted }} />
+            </pre>
+          </div>
+          <p className="mt-4 text-sm text-zinc-500">
+            Every assessment returns the score, the data source for each
+            criterion, the confidence level, and where the gaps are.
+          </p>
+        </Section>
 
-            <div
-              className="heavi-reveal mt-9 flex flex-col items-center justify-center gap-3 sm:flex-row"
-              style={{ animationDelay: "0.3s" }}
-            >
+        {/* ───────────────── Section 3: Architecture Pipeline ───────────────── */}
+        <Section heading="How it works" banded>
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-4 md:gap-0">
+            {PIPELINE.map((p, i) => (
+              <div key={p.title} className="flex items-stretch">
+                <div className="flex h-full flex-1 flex-col rounded-xl border border-zinc-800 bg-zinc-900/40 p-5 transition hover:border-zinc-600 md:mx-2">
+                  <div className="flex items-center justify-between">
+                    <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-amber-500/10 text-amber-300">
+                      {p.icon}
+                    </span>
+                    <span className="font-mono text-xs font-bold text-zinc-600">
+                      {String(i + 1).padStart(2, "0")}
+                    </span>
+                  </div>
+                  <h3 className="mt-4 text-base font-semibold text-white">{p.title}</h3>
+                  <p className="mt-0.5 text-xs font-semibold uppercase tracking-wider text-amber-400/80">
+                    {p.head}
+                  </p>
+                  <p className="mt-2 text-sm leading-relaxed text-zinc-400">{p.body}</p>
+                </div>
+                {i < PIPELINE.length - 1 && (
+                  <span className="hidden items-center px-1 text-zinc-700 md:flex">
+                    <ArrowRight size={18} />
+                  </span>
+                )}
+              </div>
+            ))}
+          </div>
+        </Section>
+
+        {/* ───────────────── Section 4: Data Tree Example ───────────────── */}
+        <Section heading="Adaptive data selection">
+          <div className="rounded-xl border border-zinc-800 bg-zinc-900/30 p-6 sm:p-8">
+            <p className="font-mono text-sm font-semibold text-white">Wetlands criterion</p>
+            <div className="mt-4 ml-2 border-l border-zinc-800 pl-5">
+              <div className="space-y-4">
+                {TREE.map((n) => {
+                  const tone =
+                    n.tone === "ok"
+                      ? { ring: "border-emerald-500/40", chip: "bg-emerald-500/10 text-emerald-300", icon: <Check size={14} /> }
+                      : n.tone === "proxy"
+                        ? { ring: "border-amber-500/40", chip: "bg-amber-500/10 text-amber-300", icon: <CornerDownRight size={14} /> }
+                        : { ring: "border-zinc-700", chip: "bg-zinc-800 text-zinc-400", icon: <CornerDownRight size={14} /> };
+                  return (
+                    <div key={n.title} className="relative">
+                      <span className="absolute -left-5 top-4 h-px w-4 bg-zinc-800" />
+                      <div className={`rounded-lg border bg-zinc-950/40 p-4 ${tone.ring}`}>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className={`flex h-5 w-5 items-center justify-center rounded ${tone.chip}`}>
+                            {tone.icon}
+                          </span>
+                          <span className="font-mono text-sm font-semibold text-white">{n.title}</span>
+                          <span className="font-mono text-[11px] text-zinc-500">{n.kind}</span>
+                        </div>
+                        <p className="mt-2 text-sm text-zinc-400">{n.note}</p>
+                        <p className="mt-1 text-xs text-zinc-500">
+                          <span className="text-zinc-400">Status:</span> {n.status}
+                        </p>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+          <p className="mt-4 text-sm text-zinc-500">
+            At each location, the engine tries the highest-quality source first. If
+            unavailable, it falls back and reports reduced confidence. Outside Kern
+            County, wetlands data falls back to the SSURGO soil proxy. The output
+            tells you exactly which source was used.
+          </p>
+        </Section>
+
+        {/* ───────────────── Section 5: Three Modules ───────────────── */}
+        <Section heading="Three analysis modules" banded>
+          <div className="grid grid-cols-1 gap-5 md:grid-cols-3">
+            {MODULES.map((m) => (
               <Link
-                href="/energy"
-                className="inline-flex w-full items-center justify-center rounded-lg bg-amber-500 px-6 py-3 text-sm font-semibold text-zinc-950 shadow-lg shadow-amber-500/25 transition hover:bg-amber-400 sm:w-auto"
+                key={m.name}
+                href={m.href}
+                className="group flex h-full flex-col rounded-2xl border border-zinc-800 bg-zinc-900/40 p-7 transition duration-300 hover:border-zinc-600 hover:bg-zinc-900/70"
               >
-                Explore the platform →
+                <span className={`flex h-11 w-11 items-center justify-center rounded-xl ${m.iconWrap}`}>
+                  {m.icon}
+                </span>
+                <h3 className="mt-5 text-lg font-semibold text-white">{m.name}</h3>
+                <p className="mt-1 text-sm font-medium text-zinc-400">{m.tag}</p>
+                <p className="mt-4 text-sm leading-relaxed text-zinc-400">{m.specs}</p>
+                <p className="mt-3 flex-1 text-sm text-zinc-300">
+                  <span className="font-semibold text-emerald-300">Validated:</span> {m.validated}
+                </p>
+                <span className={`mt-6 text-sm font-semibold ${m.link} transition group-hover:translate-x-0.5`}>
+                  Try it →
+                </span>
               </Link>
-              <a
-                href={GITHUB}
-                target="_blank"
-                rel="noreferrer noopener"
-                className="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-zinc-700 bg-zinc-950/40 px-6 py-3 text-sm font-semibold text-zinc-200 backdrop-blur-sm transition hover:border-zinc-500 hover:bg-zinc-900 sm:w-auto"
-              >
-                <Code2 size={16} strokeWidth={2} />
-                View on GitHub →
-              </a>
-            </div>
-          </div>
-        </section>
-
-        {/* ─────────────── Section 2: Three modules (equal weight) ─────────────── */}
-        <section className="mx-auto max-w-6xl px-6 py-24">
-          <Reveal>
-            <SectionLabel>What you can do</SectionLabel>
-            <p className="mt-4 max-w-2xl text-base leading-relaxed text-zinc-400">
-              Three modules, one engine. Each scores a different domain and is
-              independently validated against real-world ground truth.
-            </p>
-          </Reveal>
-          <div className="mt-12 grid grid-cols-1 gap-5 md:grid-cols-3">
-            {MODULES.map((m, i) => (
-              <Reveal key={m.name} delay={i * 120}>
-                <ModuleCard {...m} />
-              </Reveal>
             ))}
           </div>
-        </section>
+        </Section>
 
-        {/* ─────────────── Section 3: Architecture (How it works) ─────────────── */}
-        <section className="border-y border-zinc-900 bg-zinc-900/20">
-          <div className="mx-auto max-w-5xl px-6 py-24">
-            <Reveal>
-              <SectionLabel>How it works</SectionLabel>
-              <h2 className="mt-4 text-3xl font-bold tracking-tight text-white sm:text-4xl">
-                A four-layer architecture for auditable spatial analysis
-              </h2>
-              <p className="mt-4 max-w-2xl text-base leading-relaxed text-zinc-400">
-                Every output traces through the same pipeline: known data,
-                documented methodology, the best available source per criterion,
-                and an honest confidence score. This is the technical
-                differentiator.
-              </p>
-            </Reveal>
-
-            <div className="mt-12">
-              {LAYERS.map((l, i) => (
-                <Reveal key={l.title} delay={i * 80}>
-                  <LayerCard
-                    index={i + 1}
-                    icon={l.icon}
-                    title={l.title}
-                    body={l.body}
-                    last={i === LAYERS.length - 1}
-                  />
-                </Reveal>
-              ))}
-            </div>
+        {/* ───────────────── Section 6: Validation Results ───────────────── */}
+        <Section heading="10-state solar validation">
+          <div className="overflow-x-auto rounded-xl border border-zinc-800">
+            <table className="w-full min-w-[560px] text-left text-sm">
+              <thead>
+                <tr className="border-b border-zinc-800 bg-zinc-900/60 text-xs uppercase tracking-wider text-zinc-500">
+                  <th className="px-4 py-3 font-semibold">State</th>
+                  <th className="px-4 py-3 font-semibold">NERC</th>
+                  <th className="px-4 py-3 font-semibold">EIA %High</th>
+                  <th className="px-4 py-3 font-semibold">Random %High</th>
+                  <th className="px-4 py-3 font-semibold">Separation</th>
+                </tr>
+              </thead>
+              <tbody>
+                {VALIDATION.map((r) => (
+                  <tr
+                    key={r.state}
+                    className="border-b border-zinc-900 text-zinc-300 transition hover:bg-zinc-900/40"
+                  >
+                    <td className="px-4 py-3 font-medium text-white">{r.state}</td>
+                    <td className="px-4 py-3 font-mono text-zinc-400">{r.nerc}</td>
+                    <td className="px-4 py-3 tabular-nums">{r.eia}</td>
+                    <td className="px-4 py-3 tabular-nums text-zinc-400">{r.random}</td>
+                    <td className="px-4 py-3 font-mono tabular-nums font-semibold text-emerald-400">
+                      {r.sep}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
-        </section>
+          <p className="mt-4 text-sm text-zinc-500">
+            300 locations (150 real EIA installations + 150 matched random rural).
+            71% of greenfield-eligible installations score High. Positive
+            discrimination in all 10 states.
+          </p>
+        </Section>
 
-        {/* ─────────────── Section 4: Shared infrastructure ─────────────── */}
-        <section className="mx-auto max-w-6xl px-6 py-24">
-          <Reveal>
-            <SectionLabel>Shared infrastructure</SectionLabel>
-            <p className="mt-4 max-w-2xl text-base leading-relaxed text-zinc-400">
-              Every module inherits the same delivery, export, and integration
-              layer.
-            </p>
-          </Reveal>
-          <div className="mt-12 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
-            {INFRA.map((f, i) => (
-              <Reveal key={f.title} delay={(i % 3) * 100}>
-                <InfraItem icon={f.icon} title={f.title} body={f.body} />
-              </Reveal>
+        {/* ───────────────── Section 7: Data Source Catalog ───────────────── */}
+        <Section heading="34 federal and open data sources" banded>
+          <div className="grid grid-cols-1 gap-x-8 gap-y-6 sm:grid-cols-2 lg:grid-cols-3">
+            {CATALOG.map((c) => (
+              <div key={c.group}>
+                <p className="text-xs font-semibold uppercase tracking-wider text-amber-400/80">
+                  {c.group}
+                </p>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {c.sources.map((s) => (
+                    <span
+                      key={s}
+                      className="rounded-md border border-zinc-800 bg-zinc-900/60 px-2.5 py-1 font-mono text-xs text-zinc-300"
+                    >
+                      {s}
+                    </span>
+                  ))}
+                </div>
+              </div>
             ))}
           </div>
-        </section>
+        </Section>
 
-        {/* ─────────────────────────── Footer ─────────────────────────── */}
-        <footer className="border-t border-zinc-900 px-6 py-10">
-          <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-3 text-xs text-zinc-500 sm:flex-row">
-            <span>Heavi · Deterministic spatial analysis</span>
-            <span className="flex flex-wrap items-center justify-center gap-x-2 gap-y-1">
+        {/* ───────────────── Section 8: The Specifications ───────────────── */}
+        <Section heading="Built from specifications">
+          <p className="max-w-3xl text-base leading-relaxed text-zinc-400">
+            This platform was built using spec-driven development. Each feature
+            started as a detailed specification document with data models, API
+            endpoints, and acceptance criteria. Claude Code read the spec and
+            implemented it.
+          </p>
+          <ol className="mt-8 grid grid-cols-1 gap-3 md:grid-cols-2">
+            {SPECS.map((s, i) => (
+              <li key={i}>
+                <a
+                  href={SPECS_URL}
+                  target="_blank"
+                  rel="noreferrer noopener"
+                  className="flex h-full gap-3 rounded-lg border border-zinc-800 bg-zinc-900/30 p-4 transition hover:border-zinc-600 hover:bg-zinc-900/60"
+                >
+                  <span className="font-mono text-xs font-bold text-amber-400/80">
+                    {String(i + 1).padStart(2, "0")}
+                  </span>
+                  <span className="text-sm leading-relaxed text-zinc-300">{s}</span>
+                </a>
+              </li>
+            ))}
+          </ol>
+          <p className="mt-6 text-sm text-zinc-500">
+            12 specifications. Every acceptance criterion traced to a commit.
+          </p>
+        </Section>
+
+        {/* ───────────────── Section 9: Build Metrics ───────────────── */}
+        <Section heading="Build metrics" banded>
+          <div className="grid grid-cols-2 gap-x-6 gap-y-10 md:grid-cols-3 lg:grid-cols-6">
+            {METRICS.map((m) => (
+              <div key={m.label}>
+                <div className="font-mono text-4xl font-bold tracking-tight text-white">
+                  {m.value}
+                </div>
+                <div className="mt-2 text-xs leading-snug text-zinc-500">{m.label}</div>
+              </div>
+            ))}
+          </div>
+        </Section>
+
+        {/* ───────────────── Section 10: Footer ───────────────── */}
+        <footer className="border-t border-zinc-900 px-6 py-12">
+          <div className="mx-auto max-w-5xl space-y-2 font-mono text-sm text-zinc-500">
+            <p>
               Code:{" "}
-              <a
-                href={GITHUB}
-                target="_blank"
-                rel="noreferrer noopener"
-                className="text-zinc-300 transition hover:text-amber-300"
-              >
+              <a href={GITHUB} target="_blank" rel="noreferrer noopener" className="text-zinc-300 hover:text-amber-300">
                 github.com/galois-dh/heavi
               </a>
-              <span className="text-zinc-700">|</span>
+            </p>
+            <p>
               Whitepaper:{" "}
-              <a
-                href={WHITEPAPER}
-                target="_blank"
-                rel="noreferrer noopener"
-                className="text-zinc-300 transition hover:text-amber-300"
-              >
-                methodology (PDF)
+              <a href={WHITEPAPER} target="_blank" rel="noreferrer noopener" className="text-zinc-300 hover:text-amber-300">
+                heavi-web.vercel.app/whitepaper.pdf
               </a>
-            </span>
+            </p>
+            <p>
+              Built by Danial Hazarika ·{" "}
+              <a href={`mailto:${EMAIL}`} className="text-zinc-300 hover:text-amber-300">
+                {EMAIL}
+              </a>
+            </p>
           </div>
         </footer>
       </main>
@@ -408,112 +524,25 @@ export default function Home() {
   );
 }
 
-/* ─────────────────────────── Presentational bits ─────────────────────────── */
+/* ─────────────────────────── Section wrapper ─────────────────────────── */
 
-function SectionLabel({ children }: { children: React.ReactNode }) {
-  return (
-    <p className="text-xs font-semibold uppercase tracking-[0.3em] text-amber-400/90">
-      {children}
-    </p>
-  );
-}
-
-function ModuleCard({
-  icon,
-  iconWrap,
-  link,
-  name,
-  tag,
-  body,
-  href,
+function Section({
+  heading,
+  banded,
+  children,
 }: {
-  icon: React.ReactNode;
-  iconWrap: string;
-  link: string;
-  name: string;
-  tag: string;
-  body: string;
-  href: string;
+  heading: string;
+  banded?: boolean;
+  children: React.ReactNode;
 }) {
   return (
-    <Link
-      href={href}
-      className="group flex h-full flex-col rounded-2xl border border-zinc-800 bg-zinc-900/40 p-7 transition duration-300 hover:border-zinc-600 hover:bg-zinc-900/70"
-    >
-      <span
-        className={`flex h-11 w-11 items-center justify-center rounded-xl ${iconWrap}`}
-      >
-        {icon}
-      </span>
-      <h3 className="mt-5 text-lg font-semibold text-white">{name}</h3>
-      <p className="mt-1 text-sm font-medium text-zinc-400">{tag}</p>
-      <p className="mt-4 flex-1 text-sm leading-relaxed text-zinc-400">{body}</p>
-      <span
-        className={`mt-6 text-sm font-semibold ${link} transition group-hover:translate-x-0.5`}
-      >
-        Try it →
-      </span>
-    </Link>
-  );
-}
-
-function LayerCard({
-  index,
-  icon,
-  title,
-  body,
-  last,
-}: {
-  index: number;
-  icon: React.ReactNode;
-  title: string;
-  body: string;
-  last: boolean;
-}) {
-  return (
-    <div>
-      <div className="flex gap-5 rounded-2xl border border-zinc-800 bg-zinc-900/40 p-6 transition duration-300 hover:border-zinc-600 hover:bg-zinc-900/70">
-        <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-amber-500/10 text-amber-300">
-          {icon}
-        </span>
-        <div className="flex-1">
-          <div className="flex items-baseline gap-3">
-            <span className="text-xs font-bold tabular-nums text-amber-400/80">
-              {String(index).padStart(2, "0")}
-            </span>
-            <h3 className="text-lg font-semibold text-white">{title}</h3>
-          </div>
-          <p className="mt-2 text-sm leading-relaxed text-zinc-400">{body}</p>
-        </div>
+    <section className={banded ? "border-y border-zinc-900 bg-zinc-900/20" : ""}>
+      <div className="mx-auto max-w-5xl px-6 py-20">
+        <Reveal>
+          <h2 className="text-3xl font-bold tracking-tight text-white">{heading}</h2>
+          <div className="mt-10">{children}</div>
+        </Reveal>
       </div>
-      {!last && (
-        <div
-          aria-hidden
-          className="ml-[2.75rem] h-5 w-px bg-gradient-to-b from-amber-500/50 to-zinc-800"
-        />
-      )}
-    </div>
-  );
-}
-
-function InfraItem({
-  icon,
-  title,
-  body,
-}: {
-  icon: React.ReactNode;
-  title: string;
-  body: string;
-}) {
-  return (
-    <div className="flex h-full gap-4 rounded-xl border border-zinc-800 bg-zinc-900/30 p-5 transition hover:border-zinc-700">
-      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-zinc-800/80 text-zinc-300">
-        {icon}
-      </span>
-      <div>
-        <h3 className="text-sm font-semibold text-white">{title}</h3>
-        <p className="mt-1 text-sm leading-relaxed text-zinc-400">{body}</p>
-      </div>
-    </div>
+    </section>
   );
 }
