@@ -7,10 +7,14 @@ from pathlib import Path
 import asyncpg
 import httpx
 from dotenv import load_dotenv
-from fastapi import FastAPI, File, Form, HTTPException, UploadFile
+from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import Response
+from fastapi.responses import JSONResponse, Response
 from pydantic import BaseModel
+from slowapi import Limiter
+from slowapi.errors import RateLimitExceeded
+from slowapi.middleware import SlowAPIMiddleware
+from slowapi.util import get_remote_address
 
 from .constraints import (
     SUPPORTED_LAYERS as CONSTRAINT_LAYERS,
@@ -68,11 +72,51 @@ if len(_parents) >= 4:
 
 app = FastAPI(title="Heavi API", version="0.1.0")
 
-# ALLOWED_ORIGINS is a comma-separated list of allowed Origin headers, e.g.
-# "https://heavi.vercel.app,http://localhost:3000". Defaults to localhost:3000
-# for dev. Trailing slashes/blank entries are tolerated.
-_origins_env = os.getenv("ALLOWED_ORIGINS", "http://localhost:3000")
-_allowed_origins = [o.strip().rstrip("/") for o in _origins_env.split(",") if o.strip()]
+# ─── Rate limiting (slowapi) ───────────────────────────────────────────────
+# Public-demo protection: a default cap per client IP, with tighter caps on the
+# expensive scoring / batch / PDF endpoints (decorators on each route below).
+# In-memory per-process store, which is fine for the single-instance demo.
+
+
+def _client_ip(request: Request) -> str:
+    # Behind Railway/Vercel proxies the socket peer is the proxy, so prefer the
+    # first X-Forwarded-For hop to rate-limit by the real client IP.
+    forwarded = request.headers.get("x-forwarded-for")
+    if forwarded:
+        return forwarded.split(",")[0].strip()
+    return get_remote_address(request)
+
+
+limiter = Limiter(key_func=_client_ip, default_limits=["30/hour"])
+app.state.limiter = limiter
+
+
+def _rate_limit_handler(request: Request, exc: RateLimitExceeded) -> JSONResponse:
+    return JSONResponse(
+        status_code=429,
+        content={"detail": "Rate limit exceeded. This is a public demo with limited capacity."},
+    )
+
+
+app.add_exception_handler(RateLimitExceeded, _rate_limit_handler)
+# Enforces the default per-IP limit across all routes. Added before CORS so the
+# CORS middleware stays outermost and tags the 429 response with CORS headers.
+app.add_middleware(SlowAPIMiddleware)
+
+# ─── CORS — locked to the public demo's known front ends (no wildcard) ──────
+# ALLOWED_ORIGINS (comma-separated) may override for other deployments, but a
+# bare "*" is never honored.
+_DEFAULT_ORIGINS = [
+    "https://heavi-web.vercel.app",
+    "https://heavi.ai",
+    "http://localhost:3000",
+]
+_origins_env = os.getenv("ALLOWED_ORIGINS", "")
+_allowed_origins = [
+    o.strip().rstrip("/")
+    for o in _origins_env.split(",")
+    if o.strip() and o.strip() != "*"
+] or _DEFAULT_ORIGINS
 
 app.add_middleware(
     CORSMiddleware,
@@ -241,7 +285,8 @@ class SolarScoreV2Request(BaseModel):
 
 
 @app.post("/solar/score-v2")
-async def solar_score_v2(req: SolarScoreV2Request) -> dict:
+@limiter.limit("10/hour")
+async def solar_score_v2(request: Request, req: SolarScoreV2Request) -> dict:
     """Phase 4 — single-location solar siting score consuming the data
     selection engine. Returns score + rating + criteria_scores + exclusions
     + full confidence report + methodology documentation.
@@ -269,7 +314,8 @@ SOLAR_BATCH_LIMIT = 200
 
 
 @app.post("/solar/score-v2/batch")
-async def solar_score_v2_batch(req: SolarBatchRequest) -> dict:
+@limiter.limit("3/hour")
+async def solar_score_v2_batch(request: Request, req: SolarBatchRequest) -> dict:
     """Score many candidate parcels (Month-1 Sprint F2). Calls score_solar_siting
     for each location sequentially and returns the full array. Cap is 200 — at
     ~10s/location a 200-site batch takes ~33 min, so demos should keep to 20-50.
@@ -297,7 +343,10 @@ async def solar_score_v2_batch(req: SolarBatchRequest) -> dict:
 
 
 @app.get("/solar/score-v2/pdf")
-async def solar_score_v2_pdf(lat: float, lng: float, address: str | None = None) -> Response:
+@limiter.limit("5/hour")
+async def solar_score_v2_pdf(
+    request: Request, lat: float, lng: float, address: str | None = None
+) -> Response:
     """Single-site solar assessment as a professional PDF (Month-1 Sprint F3)."""
     if not pool:
         raise HTTPException(503, "Database pool not initialized")
@@ -311,7 +360,8 @@ async def solar_score_v2_pdf(lat: float, lng: float, address: str | None = None)
 
 
 @app.post("/solar/score-v2/batch/pdf")
-async def solar_score_v2_batch_pdf(req: SolarBatchRequest) -> Response:
+@limiter.limit("5/hour")
+async def solar_score_v2_batch_pdf(request: Request, req: SolarBatchRequest) -> Response:
     """Batch portfolio PDF: ranked summary + one detail page per site (F3)."""
     if not pool:
         raise HTTPException(503, "Database pool not initialized")
@@ -350,7 +400,8 @@ async def data_selection_endpoint(
 
 
 @app.get("/geocode")
-async def geocode_endpoint(q: str) -> dict:
+@limiter.limit("30/hour")
+async def geocode_endpoint(request: Request, q: str) -> dict:
     """Resolve an address, place name, city/state, or raw lat,lng to coordinates.
     Census Bureau geocoder first (single-match), Nominatim fallback. Raw
     coordinates are returned without any external call (Month-1 Sprint F1)."""
@@ -365,8 +416,9 @@ async def geocode_endpoint(q: str) -> dict:
 
 
 @app.get("/constraints/{layer_id}")
+@limiter.limit("60/hour")
 async def constraints_endpoint(
-    layer_id: str, bbox: str, limit: int = 5000,
+    request: Request, layer_id: str, bbox: str, limit: int = 5000,
 ) -> dict:
     """Map Interface — GeoJSON for a constraint layer within a bounding box.
     `bbox` is 'west,south,east,north' (WGS84). PostGIS layers (transmission,
@@ -491,7 +543,8 @@ async def portfolio_risk_endpoint(file: UploadFile = File(...)) -> dict:
 
 
 @app.get("/portfolio-risk/{job_id}/report")
-async def portfolio_report_endpoint(job_id: str) -> Response:
+@limiter.limit("5/hour")
+async def portfolio_report_endpoint(request: Request, job_id: str) -> Response:
     """Generate the multi-page PDF for a previously-run portfolio job.
     Jobs live in process memory for up to an hour; restarts wipe them."""
     job = get_job(job_id)
@@ -601,7 +654,8 @@ class TradeAreaScoreV2Request(BaseModel):
 
 
 @app.post("/trade-area/score-v2")
-async def trade_area_score_v2_endpoint(req: TradeAreaScoreV2Request) -> dict:
+@limiter.limit("10/hour")
+async def trade_area_score_v2_endpoint(request: Request, req: TradeAreaScoreV2Request) -> dict:
     """Workflow Integration v2 — trade area wired through the selection engine.
     Returns suitability score + rating + per-criterion confidence (showing which
     POI source and daytime source were used) + methodology. The legacy
@@ -703,7 +757,8 @@ class HazardScoreV2Request(BaseModel):
 
 
 @app.post("/hazard/score-v2")
-async def hazard_score_v2_endpoint(req: HazardScoreV2Request) -> dict:
+@limiter.limit("10/hour")
+async def hazard_score_v2_endpoint(request: Request, req: HazardScoreV2Request) -> dict:
     """Workflow Integration v2 — combined wildfire + flood hazard assessment
     wired through the selection engine. Returns per-peril scores (reported
     separately, not combined), the per-criterion confidence report for all 10
@@ -726,7 +781,10 @@ async def hazard_score_v2_endpoint(req: HazardScoreV2Request) -> dict:
 
 
 @app.get("/hazard/score-v2/pdf")
-async def hazard_score_v2_pdf(lat: float, lng: float, address: str | None = None) -> Response:
+@limiter.limit("5/hour")
+async def hazard_score_v2_pdf(
+    request: Request, lat: float, lng: float, address: str | None = None
+) -> Response:
     """Single-site property hazard assessment (wildfire + flood) as a PDF, with
     NSI replacement-value provenance."""
     if not pool:

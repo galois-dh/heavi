@@ -112,6 +112,8 @@ The API requires a PostGIS database loaded with the datasets above plus API keys
 (`DATABASE_URL`, `NREL_API_KEY`, …); see `.env.example` at the repo root. Secrets live only in
 gitignored `.env` / `.env.local` files and are never committed.
 
+> **This API is rate-limited for the public demo. To run unlimited, clone the repo and run locally.**
+
 ---
 
 ## Built with Claude Code
