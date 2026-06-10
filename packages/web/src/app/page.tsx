@@ -1,3 +1,6 @@
+"use client";
+
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import {
   Database,
@@ -10,10 +13,15 @@ import {
   Check,
   ArrowRight,
   CornerDownRight,
-  Code2,
 } from "lucide-react";
 import { LandingNav } from "../components/landing-nav";
 import { Reveal } from "../components/landing-fx";
+
+// Three.js globe hero background — dynamically imported, client-only (no SSR).
+const HeroGlobe = dynamic(() => import("@/components/hero-globe"), {
+  ssr: false,
+  loading: () => null,
+});
 
 // Technical-showcase landing page (public; middleware allows "/"). The content
 // IS the visual — a real API response, the architecture, a data tree, and the
@@ -229,45 +237,38 @@ export default function Home() {
       <LandingNav />
 
       <main>
-        {/* ───────────────── Section 1: Hero (clean, no animation) ───────────────── */}
-        <section className="flex min-h-[88svh] flex-col items-center justify-center px-6 py-32 text-center">
-          <p className="heavi-reveal text-xs font-semibold uppercase tracking-[0.4em] text-amber-400">
-            Heavi
-          </p>
-          <h1
-            className="heavi-reveal mx-auto mt-6 max-w-4xl text-5xl font-bold leading-[1.05] tracking-tight text-white md:text-7xl"
-            style={{ animationDelay: "0.08s" }}
-          >
-            Solar siting. Hazard risk. Trade areas.
-            <br className="hidden sm:block" />{" "}
-            <span className="text-amber-400">Analyzed and auditable.</span>
-          </h1>
-          <p
-            className="heavi-reveal mx-auto mt-7 max-w-2xl text-lg leading-relaxed text-zinc-400"
-            style={{ animationDelay: "0.16s" }}
-          >
-            A spatial analysis platform with 34 federal data sources, confidence
-            scoring, and documented methodology.
-          </p>
-          <div
-            className="heavi-reveal mt-9 flex flex-col items-center justify-center gap-3 sm:flex-row"
-            style={{ animationDelay: "0.24s" }}
-          >
-            <Link
-              href="/energy"
-              className="inline-flex w-full items-center justify-center rounded-lg bg-amber-500 px-6 py-3 text-sm font-semibold text-zinc-950 transition hover:bg-amber-400 sm:w-auto"
-            >
-              Explore the platform →
-            </Link>
-            <a
-              href={GITHUB}
-              target="_blank"
-              rel="noreferrer noopener"
-              className="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-zinc-700 px-6 py-3 text-sm font-semibold text-zinc-200 transition hover:border-zinc-500 hover:bg-zinc-900 sm:w-auto"
-            >
-              <Code2 size={16} strokeWidth={2} />
-              View on GitHub →
-            </a>
+        {/* ───────────────── Section 1: Hero (Three.js globe background) ───────────────── */}
+        <section className="relative min-h-screen flex items-center overflow-hidden">
+          {/* Globe background — fills entire hero */}
+          <HeroGlobe />
+
+          {/* Dark overlay gradient for text readability on the left side */}
+          <div className="absolute inset-0 bg-gradient-to-r from-[#09090b] via-[#09090b]/80 to-transparent pointer-events-none z-10" />
+
+          {/* Hero text content — positioned on the left */}
+          <div className="relative z-20 max-w-3xl px-8 md:px-16 lg:px-24">
+            <p className="text-sm tracking-[0.3em] text-amber-500 mb-6 uppercase">Heavi</p>
+
+            <h1 className="text-5xl md:text-7xl lg:text-8xl font-bold tracking-tight leading-[0.95]">
+              <span className="text-white">Solar siting.</span><br />
+              <span className="text-white">Hazard risk.</span><br />
+              <span className="text-white">Trade areas.</span><br />
+              <span className="text-amber-400">Analyzed and auditable.</span>
+            </h1>
+
+            <p className="mt-8 text-lg text-zinc-400 max-w-xl">
+              Three spatial analysis modules built on shared infrastructure. 34 federal data sources
+              with adaptive confidence scoring.
+            </p>
+
+            <div className="mt-10 flex items-center gap-4">
+              <a href="/energy" className="inline-flex items-center gap-2 px-6 py-3 bg-amber-500 hover:bg-amber-400 text-black font-medium rounded-lg transition-colors">
+                Explore the platform <span aria-hidden="true">→</span>
+              </a>
+              <a href="https://github.com/galois-dh/heavi" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 px-6 py-3 border border-zinc-700 hover:border-zinc-500 text-zinc-300 font-medium rounded-lg transition-colors">
+                View on GitHub <span aria-hidden="true">→</span>
+              </a>
+            </div>
           </div>
         </section>
 
