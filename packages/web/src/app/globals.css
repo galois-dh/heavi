@@ -76,20 +76,73 @@
   }
 }
 
-/* Glowing map points: pulse opacity + scale; per-dot timing via --d / --delay. */
-.map-dot {
-  opacity: 0.3;
-  animation: map-dot-pulse var(--d, 2.6s) ease-in-out var(--delay, 0s) infinite;
+/* Glowing analysis clusters: soft amber radial glows that slowly pulse in
+   brightness and breathe. Per-cluster timing via --d / --delay. */
+.hero-cluster {
+  opacity: 0.55;
+  will-change: transform, opacity;
+  animation: hero-cluster-pulse var(--d, 8s) ease-in-out var(--delay, 0s) infinite;
 }
-@keyframes map-dot-pulse {
+@keyframes hero-cluster-pulse {
   0%,
   100% {
-    opacity: 0.3;
-    transform: scale(1);
+    opacity: 0.35;
+    transform: scale(0.92);
   }
   50% {
-    opacity: 0.95;
-    transform: scale(1.9);
+    opacity: 0.85;
+    transform: scale(1.08);
+  }
+}
+
+/* Floating data particles: tiny dots drifting upward and fading, like points
+   rising from the terrain. Per-particle timing via --dur / --delay. */
+.hero-particle {
+  opacity: 0.4; /* static fallback for reduced-motion */
+  will-change: transform, opacity;
+  animation: hero-particle-rise var(--dur, 12s) linear var(--delay, 0s) infinite;
+}
+@keyframes hero-particle-rise {
+  0% {
+    opacity: 0;
+    transform: translateY(24px);
+  }
+  18% {
+    opacity: 0.5;
+  }
+  82% {
+    opacity: 0.45;
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-150px);
+  }
+}
+
+/* Scroll parallax — progressive enhancement via CSS scroll-driven animations
+   (no JavaScript). Clusters and particles drift up at different rates as the
+   hero scrolls away, for depth; the terrain base stays put. Browsers without
+   scroll-timeline support simply skip the parallax. */
+@supports (animation-timeline: scroll()) {
+  .parallax-clusters {
+    animation: hero-parallax-slow linear both;
+    animation-timeline: scroll(root);
+    animation-range: 0 100vh;
+  }
+  .parallax-particles {
+    animation: hero-parallax-fast linear both;
+    animation-timeline: scroll(root);
+    animation-range: 0 100vh;
+  }
+}
+@keyframes hero-parallax-slow {
+  to {
+    transform: translateY(-50px);
+  }
+}
+@keyframes hero-parallax-fast {
+  to {
+    transform: translateY(-110px);
   }
 }
 
@@ -98,7 +151,10 @@
   .hero-ring-a,
   .hero-ring-b,
   .hero-ring-c,
-  .map-dot {
+  .hero-cluster,
+  .hero-particle,
+  .parallax-clusters,
+  .parallax-particles {
     animation: none;
   }
 }

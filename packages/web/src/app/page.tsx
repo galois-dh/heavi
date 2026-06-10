@@ -25,25 +25,52 @@ import { Reveal } from "../components/landing-fx";
 const GITHUB = "https://github.com/galois-dh/heavi";
 const WHITEPAPER = "/whitepaper.pdf";
 
-// Drifting concentric contour rings on the hero backdrop. Each pair shares a
-// center (cx/cy) and a drift animation so they stay concentric while moving.
+// Faint drifting contour rings — now terrain texture (very low opacity), not a
+// focal point. Each pair shares a center (cx/cy) + drift so they stay concentric.
 const RINGS = [
-  { cx: "26%", cy: "34%", size: 460, color: "rgba(245,158,11,0.22)", drift: "a" },
-  { cx: "26%", cy: "34%", size: 720, color: "rgba(245,158,11,0.13)", drift: "a" },
-  { cx: "80%", cy: "60%", size: 520, color: "rgba(96,165,250,0.20)", drift: "b" },
-  { cx: "80%", cy: "60%", size: 820, color: "rgba(96,165,250,0.12)", drift: "b" },
-  { cx: "52%", cy: "46%", size: 1040, color: "rgba(244,244,245,0.08)", drift: "c" },
+  { cx: "26%", cy: "34%", size: 460, color: "rgba(245,158,11,0.08)", drift: "a" },
+  { cx: "26%", cy: "34%", size: 720, color: "rgba(245,158,11,0.05)", drift: "a" },
+  { cx: "80%", cy: "60%", size: 520, color: "rgba(96,165,250,0.07)", drift: "b" },
+  { cx: "80%", cy: "60%", size: 820, color: "rgba(96,165,250,0.05)", drift: "b" },
+  { cx: "52%", cy: "46%", size: 1040, color: "rgba(244,244,245,0.05)", drift: "c" },
 ];
 
-// Glowing "map point" dots scattered across the hero backdrop. Timing/size vary
-// per dot so the pulse looks organic rather than synchronized.
-const DOTS = [
-  { top: "26%", left: "14%", color: "#fbbf24", size: 9, d: "2.4s", delay: "0s" },
-  { top: "38%", left: "84%", color: "#60a5fa", size: 8, d: "2.8s", delay: "0.6s" },
-  { top: "62%", left: "22%", color: "#60a5fa", size: 7, d: "2.2s", delay: "0.3s" },
-  { top: "70%", left: "72%", color: "#fbbf24", size: 9, d: "3s", delay: "1s" },
-  { top: "18%", left: "60%", color: "#fbbf24", size: 7, d: "2.6s", delay: "0.15s" },
-  { top: "52%", left: "48%", color: "#60a5fa", size: 8, d: "2s", delay: "0.8s" },
+// Glowing "analysis" clusters at approximate US geographic positions across the
+// hero. Varying sizes suggest different analysis densities. Each pulses softly.
+const CLUSTERS = [
+  { left: "15%", top: "42%", size: 120, d: "7s", delay: "0s" },
+  { left: "23%", top: "60%", size: 70, d: "9s", delay: "1.4s" },
+  { left: "38%", top: "33%", size: 95, d: "8s", delay: "0.7s" },
+  { left: "50%", top: "54%", size: 60, d: "6.5s", delay: "2.1s" },
+  { left: "57%", top: "30%", size: 85, d: "10s", delay: "0.3s" },
+  { left: "69%", top: "46%", size: 110, d: "7.5s", delay: "1.1s" },
+  { left: "80%", top: "32%", size: 75, d: "8.5s", delay: "2.4s" },
+  { left: "85%", top: "56%", size: 50, d: "6s", delay: "0.6s" },
+  { left: "32%", top: "72%", size: 65, d: "9.5s", delay: "1.8s" },
+  { left: "63%", top: "68%", size: 45, d: "7s", delay: "3s" },
+];
+
+// Tiny particles drifting upward at different rates, like data points rising
+// from the terrain. Hardcoded (not random) to keep SSR/client markup identical.
+const PARTICLES = [
+  { left: "9%", top: "68%", size: 3, dur: "12s", delay: "0s", color: "#fbbf24" },
+  { left: "17%", top: "82%", size: 2, dur: "15s", delay: "2.1s", color: "#cbd5e1" },
+  { left: "26%", top: "55%", size: 4, dur: "10s", delay: "1.2s", color: "#fbbf24" },
+  { left: "31%", top: "78%", size: 2, dur: "14s", delay: "3.4s", color: "#cbd5e1" },
+  { left: "38%", top: "63%", size: 3, dur: "11s", delay: "0.6s", color: "#fbbf24" },
+  { left: "44%", top: "84%", size: 2, dur: "16s", delay: "2.8s", color: "#cbd5e1" },
+  { left: "49%", top: "58%", size: 3, dur: "9s", delay: "1.7s", color: "#fbbf24" },
+  { left: "55%", top: "75%", size: 2, dur: "13s", delay: "0.3s", color: "#cbd5e1" },
+  { left: "61%", top: "62%", size: 4, dur: "10.5s", delay: "2.4s", color: "#fbbf24" },
+  { left: "66%", top: "80%", size: 2, dur: "15.5s", delay: "1s", color: "#cbd5e1" },
+  { left: "72%", top: "57%", size: 3, dur: "11.5s", delay: "3s", color: "#fbbf24" },
+  { left: "77%", top: "73%", size: 2, dur: "14.5s", delay: "0.9s", color: "#cbd5e1" },
+  { left: "83%", top: "64%", size: 3, dur: "9.5s", delay: "2.2s", color: "#fbbf24" },
+  { left: "88%", top: "79%", size: 2, dur: "13.5s", delay: "1.5s", color: "#cbd5e1" },
+  { left: "13%", top: "50%", size: 2, dur: "16s", delay: "3.6s", color: "#cbd5e1" },
+  { left: "42%", top: "48%", size: 3, dur: "12.5s", delay: "0.4s", color: "#fbbf24" },
+  { left: "70%", top: "50%", size: 2, dur: "15s", delay: "2.6s", color: "#cbd5e1" },
+  { left: "92%", top: "46%", size: 3, dur: "10s", delay: "1.9s", color: "#fbbf24" },
 ];
 
 const MODULES = [
@@ -140,16 +167,36 @@ export default function Home() {
       <main>
         {/* ───────────────────────── Section 1: Hero ───────────────────────── */}
         <section className="relative flex min-h-[100svh] flex-col overflow-hidden">
-          {/* Animated, CSS-only backdrop: topographic contours, atmospheric
-              glow, pulsing map points, and a fade into the page below. */}
-          <div aria-hidden className="pointer-events-none absolute inset-0">
+          {/* Satellite-view backdrop: dark terrain at night with amber analysis
+              hotspots. CSS-only (gradients + transform/opacity animations); the
+              parallax is a CSS scroll-driven enhancement, no JavaScript. */}
+          <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden">
+            {/* Dark terrain base — layered gradients for depth + noise-like
+                variation; lighter toward center, darker at the edges. */}
             <div
               className="absolute inset-0"
               style={{
-                background:
-                  "radial-gradient(60% 55% at 50% 8%, rgba(245,158,11,0.16) 0%, rgba(245,158,11,0) 60%), radial-gradient(45% 45% at 82% 28%, rgba(59,130,246,0.12) 0%, rgba(59,130,246,0) 70%)",
+                backgroundColor: "#0a0f1a",
+                backgroundImage: [
+                  "radial-gradient(90% 75% at 50% 30%, rgba(17,24,39,0.85) 0%, rgba(13,17,23,0) 60%)",
+                  "radial-gradient(55% 50% at 18% 72%, rgba(15,23,42,0.55) 0%, rgba(10,15,26,0) 70%)",
+                  "radial-gradient(52% 50% at 82% 64%, rgba(17,24,39,0.5) 0%, rgba(10,15,26,0) 70%)",
+                  "radial-gradient(45% 40% at 66% 22%, rgba(13,17,23,0.6) 0%, rgba(10,15,26,0) 72%)",
+                  "radial-gradient(120% 120% at 50% 0%, rgba(20,28,46,0.35) 0%, rgba(10,15,26,0) 55%)",
+                ].join(", "),
               }}
             />
+
+            {/* Atmospheric haze band across the horizon. */}
+            <div
+              className="absolute inset-x-0 top-1/2 h-48 -translate-y-1/2"
+              style={{
+                background:
+                  "linear-gradient(180deg, rgba(30,58,138,0) 0%, rgba(30,58,138,0.13) 50%, rgba(30,58,138,0) 100%)",
+              }}
+            />
+
+            {/* Faint contour rings — terrain texture. */}
             {RINGS.map((r, i) => (
               <span
                 key={`ring-${i}`}
@@ -165,24 +212,53 @@ export default function Home() {
                 }}
               />
             ))}
-            {DOTS.map((dot, i) => (
-              <span
-                key={i}
-                className="map-dot absolute rounded-full"
-                style={
-                  {
-                    top: dot.top,
-                    left: dot.left,
-                    width: dot.size,
-                    height: dot.size,
-                    background: dot.color,
-                    boxShadow: `0 0 ${dot.size * 2.4}px ${dot.color}`,
-                    "--d": dot.d,
-                    "--delay": dot.delay,
-                  } as React.CSSProperties
-                }
-              />
-            ))}
+
+            {/* Glowing analysis clusters (parallax-slow). */}
+            <div className="parallax-clusters absolute inset-0">
+              {CLUSTERS.map((c, i) => (
+                <span
+                  key={`cluster-${i}`}
+                  className="hero-cluster absolute rounded-full"
+                  style={
+                    {
+                      left: c.left,
+                      top: c.top,
+                      width: c.size,
+                      height: c.size,
+                      marginLeft: -c.size / 2,
+                      marginTop: -c.size / 2,
+                      background:
+                        "radial-gradient(circle, rgba(251,191,36,0.55) 0%, rgba(251,191,36,0.14) 42%, rgba(251,191,36,0) 70%)",
+                      "--d": c.d,
+                      "--delay": c.delay,
+                    } as React.CSSProperties
+                  }
+                />
+              ))}
+            </div>
+
+            {/* Floating data particles rising from the terrain (parallax-fast). */}
+            <div className="parallax-particles absolute inset-0">
+              {PARTICLES.map((p, i) => (
+                <span
+                  key={`particle-${i}`}
+                  className="hero-particle absolute rounded-full"
+                  style={
+                    {
+                      left: p.left,
+                      top: p.top,
+                      width: p.size,
+                      height: p.size,
+                      background: p.color,
+                      "--dur": p.dur,
+                      "--delay": p.delay,
+                    } as React.CSSProperties
+                  }
+                />
+              ))}
+            </div>
+
+            {/* Fade into the page below. */}
             <div className="absolute inset-x-0 bottom-0 h-40 bg-gradient-to-b from-transparent to-zinc-950" />
           </div>
 
