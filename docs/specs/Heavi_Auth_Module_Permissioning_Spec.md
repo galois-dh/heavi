@@ -133,7 +133,7 @@ You don't have access to Heavi [Module Name].
 
 Your current plan includes: [list of their modules]
 
-To request access to additional modules, contact danial@heavi.ai.
+To request access to additional modules, contact dhazarik@gmail.com.
 ```
 
 ### Pilot Expired Page (/pilot-expired)
@@ -141,7 +141,7 @@ To request access to additional modules, contact danial@heavi.ai.
 ```
 Your design partner pilot has ended.
 
-To continue using Heavi, contact danial@heavi.ai to discuss 
+To continue using Heavi, contact dhazarik@gmail.com to discuss 
 annual subscription options.
 ```
 

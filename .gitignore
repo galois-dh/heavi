@@ -18,6 +18,9 @@ __pycache__/
 transcript-analysis/
 build/
 packages/api/weight_cache/
+# Calibrated per-NERC weight values stay private; cloners get the literature
+# defaults in config/weights.example.json. See packages/api/app/weights_config.py.
+packages/api/config/weights.json
 # Interconnection source data: the LBNL xlsx is a 15 MB upstream binary and the
 # Census gazetteer is auto-downloaded by load_interconnection_queue.py.
 data/interconnection/*.xlsx

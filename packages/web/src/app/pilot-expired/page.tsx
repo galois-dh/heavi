@@ -8,8 +8,8 @@ export default function PilotExpiredPage() {
         <p className="mt-6 text-lg text-zinc-200">Your design partner pilot has ended.</p>
         <p className="mt-4 text-sm text-zinc-400">
           To continue using Heavi, contact{" "}
-          <a href="mailto:danial@heavi.ai" className="text-blue-400 hover:text-blue-300">
-            danial@heavi.ai
+          <a href="mailto:dhazarik@gmail.com" className="text-blue-400 hover:text-blue-300">
+            dhazarik@gmail.com
           </a>{" "}
           to discuss annual subscription options.
         </p>

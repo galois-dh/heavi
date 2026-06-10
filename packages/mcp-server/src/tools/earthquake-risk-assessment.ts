@@ -5,7 +5,7 @@ import { z } from "zod";
 const API_BASE =
   process.env.HEAVI_API_URL ||
   process.env.API_URL ||
-  "https://heavi-production.up.railway.app";
+  "http://localhost:8000";
 
 const METHODOLOGY_CITATION =
   "USGS ASCE 7-22 Design Maps (bedrock PGA at 2% in 50-yr MCEr level), Wald & " +

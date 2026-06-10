@@ -33,8 +33,8 @@ export default async function NoAccessPage({
         </p>
         <p className="mt-4 text-sm text-zinc-400">
           To request access to additional modules, contact{" "}
-          <a href="mailto:danial@heavi.ai" className="text-blue-400 hover:text-blue-300">
-            danial@heavi.ai
+          <a href="mailto:dhazarik@gmail.com" className="text-blue-400 hover:text-blue-300">
+            dhazarik@gmail.com
           </a>
           .
         </p>

@@ -1,0 +1,15 @@
+{
+  "_comment": "Literature default solar-siting weights (Doorga et al. 2019). Copy to weights.json and add a \"regional\" map of calibrated per-NERC profiles to use calibrated weights; without it, scoring uses these defaults everywhere.",
+  "default": {
+    "excl_flood": 0.05,
+    "solar_aspect": 0.1,
+    "solar_ej": 0.05,
+    "solar_ghi": 0.15,
+    "solar_land_cover": 0.1,
+    "solar_road": 0.12,
+    "solar_slope": 0.15,
+    "solar_soil": 0.08,
+    "solar_transmission": 0.25
+  },
+  "regional": {}
+}

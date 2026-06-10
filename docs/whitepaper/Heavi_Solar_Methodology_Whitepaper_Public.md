@@ -500,4 +500,4 @@ scoring engine are reproducible; methodology is open to technical review.*
 
 *This is the public methodology summary. A comprehensive version with full weight tables,
 scoring functions, and calibration details is available to organizations evaluating the
-platform. Contact danial@heavi.ai.*
+platform. Contact dhazarik@gmail.com.*

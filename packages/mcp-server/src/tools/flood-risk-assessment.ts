@@ -5,7 +5,7 @@ import { z } from "zod";
 const API_BASE =
   process.env.HEAVI_API_URL ||
   process.env.API_URL ||
-  "https://heavi-production.up.railway.app";
+  "http://localhost:8000";
 
 const METHODOLOGY_CITATION =
   "FEMA National Flood Hazard Layer (flood zone + Base Flood Elevation), USACE " +

@@ -48,6 +48,7 @@ from .integrations import (
 from .interconnection import get_interconnection_context
 from .methodology_repository import get_methodology_doc
 from .nerc_regions import get_nerc_region
+from .weights_config import file_weight_profile
 
 MODULE_NAME = "solar_siting_scoring_v2"
 MODULE_VERSION = "0.5.0"  # exclusion-precision refinements (GAP/NLCD/flood/slope)
@@ -636,7 +637,11 @@ async def score_solar_siting(
         if c["criterion_type"] == "scored" and c["weight_default"] is not None
     }
     region = await get_nerc_region(pool, latitude, longitude)
-    profile = await _regional_weight_profile(pool, region)
+    # Calibrated weights come from config/weights.json (private, gitignored) when
+    # present; otherwise the stored DB profile; otherwise literature defaults. A
+    # public clone has no weights.json and no calibrated DB rows, so it falls
+    # back to the literature defaults — and still produces valid scores.
+    profile = file_weight_profile(region) or await _regional_weight_profile(pool, region)
     weights, weight_profile = _resolve_weights(
         default_weights, region, profile, weights_override
     )
