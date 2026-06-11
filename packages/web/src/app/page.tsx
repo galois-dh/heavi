@@ -1,6 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
+import Image from "next/image";
 import Link from "next/link";
 import {
   Database,
@@ -29,7 +30,6 @@ const HeroGlobe = dynamic(() => import("@/components/hero-globe"), {
 // docs/specs/Heavi_Technical_Homepage_Spec.md.
 
 const GITHUB = "https://github.com/galois-dh/heavi";
-const SPECS_URL = `${GITHUB}/tree/main/docs/specs`;
 const WHITEPAPER = "/whitepaper.pdf";
 const EMAIL = "dhazarik@gmail.com";
 
@@ -203,21 +203,6 @@ const CATALOG = [
   { group: "Demographics", sources: ["Census ACS", "Census LEHD"] },
   { group: "POIs", sources: ["OpenStreetMap", "OpenRouteService"] },
   { group: "Interconnection", sources: ["LBNL Queued Up 2025"] },
-];
-
-const SPECS = [
-  "Platform Architecture — data repository, methodology repository, data selection engine",
-  "Methodology & Data Provenance — 31 criteria with academic citations and data trees",
-  "Weight Adaptation — NERC regional calibration via constrained optimization",
-  "Exclusion Precision — refined thresholds from conservative literature defaults",
-  "Workflow Integration — hazard and trade area through the shared architecture",
-  "Map Interface — MapLibre GL JS delivery surface",
-  "Data Tree Completeness — LANDFIRE and NIFC fallback chains",
-  "Insufficient Data Handling — CANNOT ASSESS safety net",
-  "Month 1 Sprint — geocoding, batch scoring, PDF export, interconnection",
-  "10-State Validation — 300-location validation protocol",
-  "Month 2 Sprint — methodology whitepaper, precision framework, sample package",
-  "Natural Language Display — human-readable labels replacing technical IDs",
 ];
 
 const METRICS = [
@@ -453,34 +438,32 @@ export default function Home() {
           </div>
         </Section>
 
-        {/* ───────────────── Section 8: The Specifications ───────────────── */}
-        <Section heading="Built from specifications">
-          <p className="max-w-3xl text-base leading-relaxed text-zinc-400">
-            This platform was built using spec-driven development. Each feature
-            started as a detailed specification document with data models, API
-            endpoints, and acceptance criteria. Claude Code read the spec and
-            implemented it.
-          </p>
-          <ol className="mt-8 grid grid-cols-1 gap-3 md:grid-cols-2">
-            {SPECS.map((s, i) => (
-              <li key={i}>
-                <a
-                  href={SPECS_URL}
-                  target="_blank"
-                  rel="noreferrer noopener"
-                  className="flex h-full gap-3 rounded-lg border border-zinc-800 bg-zinc-900/30 p-4 transition hover:border-zinc-600 hover:bg-zinc-900/60"
-                >
-                  <span className="font-mono text-xs font-bold text-amber-400/80">
-                    {String(i + 1).padStart(2, "0")}
-                  </span>
-                  <span className="text-sm leading-relaxed text-zinc-300">{s}</span>
-                </a>
-              </li>
-            ))}
-          </ol>
-          <p className="mt-6 text-sm text-zinc-500">
-            12 specifications. Every acceptance criterion traced to a commit.
-          </p>
+        {/* ───────────────── Section 8: Product Screenshot ───────────────── */}
+        <Section heading="What it looks like">
+          <figure>
+            <div className="overflow-hidden rounded-xl border border-zinc-800 shadow-2xl shadow-black/60 ring-1 ring-amber-500/10">
+              {/* browser chrome frame */}
+              <div className="flex items-center gap-2 border-b border-zinc-800 bg-zinc-900/80 px-4 py-2.5">
+                <span className="h-3 w-3 rounded-full bg-rose-500/70" />
+                <span className="h-3 w-3 rounded-full bg-amber-500/70" />
+                <span className="h-3 w-3 rounded-full bg-emerald-500/70" />
+                <span className="ml-3 font-mono text-xs text-zinc-500">
+                  heavi-web.vercel.app/energy
+                </span>
+              </div>
+              <Image
+                src="/product-screenshot.png"
+                alt="Heavi Energy: a scored solar parcel in Kern County, California — green map marker, nearby EIA installations, and the assessment detail panel showing score 78/100 High and 95 HIGH confidence."
+                width={1600}
+                height={1000}
+                className="block h-auto w-full"
+              />
+            </div>
+            <figcaption className="mt-4 text-sm text-zinc-500">
+              Solar site assessment for Kern County, California. Score, confidence,
+              per-criterion breakdown, and interconnection context.
+            </figcaption>
+          </figure>
         </Section>
 
         {/* ───────────────── Section 9: Build Metrics ───────────────── */}
