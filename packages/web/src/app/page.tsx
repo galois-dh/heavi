@@ -257,28 +257,61 @@ export default function Home() {
           </div>
         </section>
 
-        {/* ───────────────── Section 2: Live API Response ───────────────── */}
-        <Section heading="What the API returns">
-          <div className="overflow-hidden rounded-xl border border-zinc-800 bg-[#0d1117] shadow-xl shadow-black/30">
-            <div className="flex items-center gap-2 border-b border-zinc-800 bg-zinc-900/60 px-4 py-2.5">
-              <span className="h-3 w-3 rounded-full bg-rose-500/70" />
-              <span className="h-3 w-3 rounded-full bg-amber-500/70" />
-              <span className="h-3 w-3 rounded-full bg-emerald-500/70" />
-              <span className="ml-3 font-mono text-xs text-zinc-500">
-                POST /solar/score-v2 · 35.35, -119.05
-              </span>
+        {/* ───────────────── Section 2: Product Screenshot ───────────────── */}
+        <Section heading="What it looks like">
+          <figure>
+            <div className="overflow-hidden rounded-xl border border-zinc-800 shadow-2xl shadow-black/60 ring-1 ring-amber-500/10">
+              {/* browser chrome frame */}
+              <div className="flex items-center gap-2 border-b border-zinc-800 bg-zinc-900/80 px-4 py-2.5">
+                <span className="h-3 w-3 rounded-full bg-rose-500/70" />
+                <span className="h-3 w-3 rounded-full bg-amber-500/70" />
+                <span className="h-3 w-3 rounded-full bg-emerald-500/70" />
+                <span className="ml-3 font-mono text-xs text-zinc-500">
+                  heavi-web.vercel.app/energy
+                </span>
+              </div>
+              <Image
+                src="/product-screenshot.png"
+                alt="Heavi Energy: a scored solar parcel in Kern County, California — green map marker, nearby EIA installations, and the assessment detail panel showing score 78/100 High and 95 HIGH confidence."
+                width={1600}
+                height={1000}
+                className="block h-auto w-full"
+              />
             </div>
-            <pre className="overflow-x-auto px-5 py-4 font-mono text-[12.5px] leading-relaxed text-zinc-300">
-              <code dangerouslySetInnerHTML={{ __html: highlighted }} />
-            </pre>
-          </div>
-          <p className="mt-4 text-sm text-zinc-500">
-            Every assessment returns the score, the data source for each
-            criterion, the confidence level, and where the gaps are.
-          </p>
+            <figcaption className="mt-4 text-sm text-zinc-500">
+              Solar site assessment for Kern County, California. Score, confidence,
+              per-criterion breakdown, and interconnection context.
+            </figcaption>
+          </figure>
         </Section>
 
-        {/* ───────────────── Section 3: Architecture Pipeline ───────────────── */}
+        {/* ───────────────── Section 3: Three Modules ───────────────── */}
+        <Section heading="Three analysis modules" banded>
+          <div className="grid grid-cols-1 gap-5 md:grid-cols-3">
+            {MODULES.map((m) => (
+              <Link
+                key={m.name}
+                href={m.href}
+                className="group flex h-full flex-col rounded-2xl border border-zinc-800 bg-zinc-900/40 p-7 transition duration-300 hover:border-zinc-600 hover:bg-zinc-900/70"
+              >
+                <span className={`flex h-11 w-11 items-center justify-center rounded-xl ${m.iconWrap}`}>
+                  {m.icon}
+                </span>
+                <h3 className="mt-5 text-lg font-semibold text-white">{m.name}</h3>
+                <p className="mt-1 text-sm font-medium text-zinc-400">{m.tag}</p>
+                <p className="mt-4 text-sm leading-relaxed text-zinc-400">{m.specs}</p>
+                <p className="mt-3 flex-1 text-sm text-zinc-300">
+                  <span className="font-semibold text-emerald-300">Validated:</span> {m.validated}
+                </p>
+                <span className={`mt-6 text-sm font-semibold ${m.link} transition group-hover:translate-x-0.5`}>
+                  Try it →
+                </span>
+              </Link>
+            ))}
+          </div>
+        </Section>
+
+        {/* ───────────────── Section 4: Architecture Pipeline ───────────────── */}
         <Section heading="How it works" banded>
           <div className="grid grid-cols-1 gap-4 md:grid-cols-4 md:gap-0">
             {PIPELINE.map((p, i) => (
@@ -308,7 +341,7 @@ export default function Home() {
           </div>
         </Section>
 
-        {/* ───────────────── Section 4: Data Tree Example ───────────────── */}
+        {/* ───────────────── Section 5: Data Tree Example ───────────────── */}
         <Section heading="Adaptive data selection">
           <div className="rounded-xl border border-zinc-800 bg-zinc-900/30 p-6 sm:p-8">
             <p className="font-mono text-sm font-semibold text-white">Wetlands criterion</p>
@@ -351,33 +384,28 @@ export default function Home() {
           </p>
         </Section>
 
-        {/* ───────────────── Section 5: Three Modules ───────────────── */}
-        <Section heading="Three analysis modules" banded>
-          <div className="grid grid-cols-1 gap-5 md:grid-cols-3">
-            {MODULES.map((m) => (
-              <Link
-                key={m.name}
-                href={m.href}
-                className="group flex h-full flex-col rounded-2xl border border-zinc-800 bg-zinc-900/40 p-7 transition duration-300 hover:border-zinc-600 hover:bg-zinc-900/70"
-              >
-                <span className={`flex h-11 w-11 items-center justify-center rounded-xl ${m.iconWrap}`}>
-                  {m.icon}
-                </span>
-                <h3 className="mt-5 text-lg font-semibold text-white">{m.name}</h3>
-                <p className="mt-1 text-sm font-medium text-zinc-400">{m.tag}</p>
-                <p className="mt-4 text-sm leading-relaxed text-zinc-400">{m.specs}</p>
-                <p className="mt-3 flex-1 text-sm text-zinc-300">
-                  <span className="font-semibold text-emerald-300">Validated:</span> {m.validated}
-                </p>
-                <span className={`mt-6 text-sm font-semibold ${m.link} transition group-hover:translate-x-0.5`}>
-                  Try it →
-                </span>
-              </Link>
-            ))}
+        {/* ───────────────── Section 6: Live API Response ───────────────── */}
+        <Section heading="What the API returns">
+          <div className="overflow-hidden rounded-xl border border-zinc-800 bg-[#0d1117] shadow-xl shadow-black/30">
+            <div className="flex items-center gap-2 border-b border-zinc-800 bg-zinc-900/60 px-4 py-2.5">
+              <span className="h-3 w-3 rounded-full bg-rose-500/70" />
+              <span className="h-3 w-3 rounded-full bg-amber-500/70" />
+              <span className="h-3 w-3 rounded-full bg-emerald-500/70" />
+              <span className="ml-3 font-mono text-xs text-zinc-500">
+                POST /solar/score-v2 · 35.35, -119.05
+              </span>
+            </div>
+            <pre className="overflow-x-auto px-5 py-4 font-mono text-[12.5px] leading-relaxed text-zinc-300">
+              <code dangerouslySetInnerHTML={{ __html: highlighted }} />
+            </pre>
           </div>
+          <p className="mt-4 text-sm text-zinc-500">
+            Every assessment returns the score, the data source for each
+            criterion, the confidence level, and where the gaps are.
+          </p>
         </Section>
 
-        {/* ───────────────── Section 6: Validation Results ───────────────── */}
+        {/* ───────────────── Section 7: Validation Results ───────────────── */}
         <Section heading="10-state solar validation">
           <div className="overflow-x-auto rounded-xl border border-zinc-800">
             <table className="w-full min-w-[560px] text-left text-sm">
@@ -415,7 +443,7 @@ export default function Home() {
           </p>
         </Section>
 
-        {/* ───────────────── Section 7: Data Source Catalog ───────────────── */}
+        {/* ───────────────── Section 8: Data Source Catalog ───────────────── */}
         <Section heading="34 federal and open data sources" banded>
           <div className="grid grid-cols-1 gap-x-8 gap-y-6 sm:grid-cols-2 lg:grid-cols-3">
             {CATALOG.map((c) => (
@@ -436,34 +464,6 @@ export default function Home() {
               </div>
             ))}
           </div>
-        </Section>
-
-        {/* ───────────────── Section 8: Product Screenshot ───────────────── */}
-        <Section heading="What it looks like">
-          <figure>
-            <div className="overflow-hidden rounded-xl border border-zinc-800 shadow-2xl shadow-black/60 ring-1 ring-amber-500/10">
-              {/* browser chrome frame */}
-              <div className="flex items-center gap-2 border-b border-zinc-800 bg-zinc-900/80 px-4 py-2.5">
-                <span className="h-3 w-3 rounded-full bg-rose-500/70" />
-                <span className="h-3 w-3 rounded-full bg-amber-500/70" />
-                <span className="h-3 w-3 rounded-full bg-emerald-500/70" />
-                <span className="ml-3 font-mono text-xs text-zinc-500">
-                  heavi-web.vercel.app/energy
-                </span>
-              </div>
-              <Image
-                src="/product-screenshot.png"
-                alt="Heavi Energy: a scored solar parcel in Kern County, California — green map marker, nearby EIA installations, and the assessment detail panel showing score 78/100 High and 95 HIGH confidence."
-                width={1600}
-                height={1000}
-                className="block h-auto w-full"
-              />
-            </div>
-            <figcaption className="mt-4 text-sm text-zinc-500">
-              Solar site assessment for Kern County, California. Score, confidence,
-              per-criterion breakdown, and interconnection context.
-            </figcaption>
-          </figure>
         </Section>
 
         {/* ───────────────── Section 9: Build Metrics ───────────────── */}
