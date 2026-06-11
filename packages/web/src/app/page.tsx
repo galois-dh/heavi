@@ -29,7 +29,7 @@ const HeroGlobe = dynamic(() => import("@/components/hero-globe"), {
 // validation table. No animated background. See
 // docs/specs/Heavi_Technical_Homepage_Spec.md.
 
-const GITHUB = "https://github.com/galois-dh/heavi";
+const GITHUB = "https://github.com/galois-dh/abelian";
 const WHITEPAPER = "/whitepaper.pdf";
 const EMAIL = "dhazarik@gmail.com";
 
@@ -250,7 +250,7 @@ export default function Home() {
               <a href="/energy" className="inline-flex items-center gap-2 px-6 py-3 bg-amber-500 hover:bg-amber-400 text-black font-medium rounded-lg transition-colors">
                 Explore the platform <span aria-hidden="true">→</span>
               </a>
-              <a href="https://github.com/galois-dh/heavi" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 px-6 py-3 border border-zinc-700 hover:border-zinc-500 text-zinc-300 font-medium rounded-lg transition-colors">
+              <a href="https://github.com/galois-dh/abelian" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 px-6 py-3 border border-zinc-700 hover:border-zinc-500 text-zinc-300 font-medium rounded-lg transition-colors">
                 View on GitHub <span aria-hidden="true">→</span>
               </a>
             </div>
@@ -486,7 +486,7 @@ export default function Home() {
             <p>
               Code:{" "}
               <a href={GITHUB} target="_blank" rel="noreferrer noopener" className="text-zinc-300 hover:text-amber-300">
-                github.com/galois-dh/heavi
+                github.com/galois-dh/abelian
               </a>
             </p>
             <p>
