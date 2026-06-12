@@ -9,7 +9,7 @@ import { downloadHazardPdf, postHazardScoreV2, resolveLocation, type GeocodeResu
 import { HAZARD_CONSTRAINTS, fc, hazardFeature } from "../../lib/map-features";
 
 /**
- * Heavi Hazard — map-first wildfire + flood assessment (Map Interface Spec,
+ * Abelian Hazard — map-first wildfire + flood assessment (Map Interface Spec,
  * Step 7). Same layout as Energy: input sidebar + detail panel, map with
  * risk-tier color coding and toggleable FEMA flood-zone overlay.
  */
@@ -55,7 +55,7 @@ export default function HazardClient() {
         <aside className="flex w-[360px] shrink-0 flex-col overflow-y-auto border-r border-zinc-800 bg-zinc-950">
           <div className="border-b border-zinc-800 p-4">
             <span className="inline-block rounded-full border border-rose-500/30 bg-rose-500/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-rose-300">
-              Heavi Hazard
+              Abelian Hazard
             </span>
             <h1 className="mt-2 text-lg font-bold text-white">Wildfire + flood assessment</h1>
             <p className="mt-1 text-[11px] leading-relaxed text-zinc-400">

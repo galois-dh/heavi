@@ -149,7 +149,7 @@ const MODULES = [
     icon: <Sun size={22} strokeWidth={1.8} />,
     iconWrap: "bg-amber-500/10 text-amber-300",
     link: "text-amber-300",
-    name: "Heavi Energy",
+    name: "Abelian Energy",
     tag: "Solar site screening",
     specs: "14 criteria · regional weight calibration · 6,321 EIA installations",
     validated: "71% High across 10 states",
@@ -159,7 +159,7 @@ const MODULES = [
     icon: <Flame size={22} strokeWidth={1.8} />,
     iconWrap: "bg-rose-500/10 text-rose-300",
     link: "text-rose-300",
-    name: "Heavi Hazard",
+    name: "Abelian Hazard",
     tag: "Wildfire + flood risk",
     specs: "10 criteria · per-peril dollar estimates · NSI building data",
     validated: "AUC 0.76 (Sonoma), 16x discrimination (Lee County)",
@@ -169,7 +169,7 @@ const MODULES = [
     icon: <Store size={22} strokeWidth={1.8} />,
     iconWrap: "bg-emerald-500/10 text-emerald-300",
     link: "text-emerald-300",
-    name: "Heavi Locations",
+    name: "Abelian Locations",
     tag: "Trade area analysis",
     specs: "7 criteria · Huff gravity model · drive-time isochrones",
     validated: "96.7% Starbucks Strong (Dallas)",
@@ -232,7 +232,7 @@ export default function Home() {
 
           {/* Hero text content — positioned on the left */}
           <div className="relative z-20 max-w-3xl px-8 md:px-16 lg:px-24">
-            <p className="text-sm tracking-[0.3em] text-amber-500 mb-6 uppercase">Heavi</p>
+            <p className="text-sm tracking-[0.3em] text-amber-500 mb-6 uppercase">Abelian</p>
 
             <h1 className="text-5xl md:text-7xl lg:text-8xl font-bold tracking-tight leading-[0.95]">
               <span className="text-white">Solar siting.</span><br />
@@ -272,7 +272,7 @@ export default function Home() {
               </div>
               <Image
                 src="/product-screenshot.png"
-                alt="Heavi Energy: a scored solar parcel in Kern County, California — green map marker, nearby EIA installations, and the assessment detail panel showing score 78/100 High and 95 HIGH confidence."
+                alt="Abelian Energy: a scored solar parcel in Kern County, California — green map marker, nearby EIA installations, and the assessment detail panel showing score 78/100 High and 95 HIGH confidence."
                 width={1600}
                 height={1000}
                 className="block h-auto w-full"

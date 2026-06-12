@@ -15,7 +15,7 @@ export function TopNav({ active }: { active?: NavKey }) {
   return (
     <header className="flex shrink-0 items-center justify-between border-b border-zinc-800 bg-zinc-950 px-5 py-2.5">
       <Link href="/" className="group flex items-baseline gap-2">
-        <span className="text-base font-bold tracking-tight text-white">HEAVI</span>
+        <span className="text-base font-bold tracking-tight text-white">ABELIAN</span>
         <span className="hidden text-[11px] text-zinc-500 group-hover:text-zinc-400 sm:inline">
           Spatial decision intelligence
         </span>

@@ -11,7 +11,7 @@ import { LOCATIONS_CONSTRAINTS, fc, tradeAreaFeature } from "../../lib/map-featu
 const CATEGORIES = ["coffee_shop", "pharmacy", "restaurant", "fast_food", "bank", "gym", "grocery", "urgent_care"];
 
 /**
- * Heavi Locations — map-first trade-area scoring (Map Interface Spec, Step 8).
+ * Abelian Locations — map-first trade-area scoring (Map Interface Spec, Step 8).
  * Score a site → marker color-coded by trade-area score, isochrone polygons
  * (5/10/15 min graduated opacity) and competitor POIs overlaid, detail panel
  * with demographics + competitive analysis + data provenance.
@@ -102,7 +102,7 @@ export default function LocationsClient() {
         <aside className="flex w-[360px] shrink-0 flex-col overflow-y-auto border-r border-zinc-800 bg-zinc-950">
           <div className="border-b border-zinc-800 p-4">
             <span className="inline-block rounded-full border border-emerald-500/30 bg-emerald-500/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-emerald-300">
-              Heavi Locations
+              Abelian Locations
             </span>
             <h1 className="mt-2 text-lg font-bold text-white">Trade area scoring</h1>
             <p className="mt-1 text-[11px] leading-relaxed text-zinc-400">

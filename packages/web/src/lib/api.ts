@@ -33,7 +33,7 @@ export async function postQuery(question: string): Promise<QueryResult> {
   return res.json();
 }
 
-// ─── Heavi Energy — solar siting v2 (Phase 4 / 5) ────────────────────────
+// ─── Abelian Energy — solar siting v2 (Phase 4 / 5) ────────────────────────
 
 /** A buyer-facing data gap: a criterion whose data tree was fully exhausted.
  *  `message` is the human-readable explanation (Natural Language Display Spec). */

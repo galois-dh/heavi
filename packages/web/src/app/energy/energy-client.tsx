@@ -11,7 +11,7 @@ import { parseLocationCsv } from "../../lib/csv-locations";
 import { ENERGY_CONSTRAINTS, fc, solarFeature } from "../../lib/map-features";
 
 /**
- * Heavi Energy — map-first site screening (Map + Month-1 Sprint F2).
+ * Abelian Energy — map-first site screening (Map + Month-1 Sprint F2).
  *
  * Single site (address/coords) or a CSV of candidate parcels scored as a batch
  * with a progress indicator, a ranked list in the sidebar, and bidirectional
@@ -113,7 +113,7 @@ export default function EnergyClient({ batchLimit }: { batchLimit: number }) {
         <aside className="flex w-[360px] shrink-0 flex-col overflow-y-auto border-r border-zinc-800 bg-zinc-950">
           <div className="border-b border-zinc-800 p-4">
             <span className="inline-block rounded-full border border-amber-500/30 bg-amber-500/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-amber-300">
-              Heavi Energy
+              Abelian Energy
             </span>
             <h1 className="mt-2 text-lg font-bold text-white">Solar site screening</h1>
             <p className="mt-1 text-[11px] leading-relaxed text-zinc-400">

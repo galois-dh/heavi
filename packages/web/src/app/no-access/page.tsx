@@ -20,7 +20,7 @@ export default async function NoAccessPage({
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-zinc-950 px-6 py-12 text-center">
       <div className="max-w-md">
-        <h1 className="text-xl font-bold text-white">HEAVI</h1>
+        <h1 className="text-xl font-bold text-white">ABELIAN</h1>
         <p className="mt-6 text-lg text-zinc-200">
           You don&apos;t have access to Heavi {moduleName}.
         </p>

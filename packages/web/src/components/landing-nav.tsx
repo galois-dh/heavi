@@ -33,7 +33,7 @@ export function LandingNav() {
     >
       <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-3.5">
         <Link href="/" className="text-base font-bold tracking-tight text-white">
-          HEAVI
+          ABELIAN
         </Link>
 
         <nav className="hidden items-center gap-1 text-sm sm:flex">

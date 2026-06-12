@@ -3,7 +3,7 @@ import { ClerkProvider } from "@clerk/nextjs";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Heavi",
+  title: "Abelian",
   description: "Spatial computation platform",
 };
 

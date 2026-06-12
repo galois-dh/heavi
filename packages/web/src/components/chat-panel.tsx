@@ -132,7 +132,7 @@ export function ChatPanel({ onResult, onSiteReportRequest, loading, setLoading, 
             }`}
           >
             <span className="mr-1.5 text-xs font-medium text-zinc-600">
-              {m.role === "user" ? "You" : "Heavi"}
+              {m.role === "user" ? "You" : "Abelian"}
             </span>
             <span>{m.text}</span>
           </div>
